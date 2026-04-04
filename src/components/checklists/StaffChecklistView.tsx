@@ -22,7 +22,7 @@ import {
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
   pending: { label: 'Pending', variant: 'secondary' },
   completed: { label: 'Done', variant: 'default', className: 'bg-emerald-600 text-white hover:bg-emerald-600/80' },
-  verified: { label: 'Verified', variant: 'default', className: 'bg-sky-600 text-white hover:bg-sky-600/80' },
+  verified: { label: 'Verified', variant: 'default', className: 'bg-ring text-primary-foreground hover:bg-ring/80' },
   rejected: { label: 'Rejected', variant: 'destructive' },
 };
 
