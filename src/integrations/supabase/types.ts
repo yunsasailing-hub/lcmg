@@ -50,6 +50,202 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_instances: {
+        Row: {
+          assigned_to: string | null
+          branch_id: string | null
+          checklist_type: Database["public"]["Enums"]["checklist_type"]
+          created_at: string
+          department: Database["public"]["Enums"]["department"]
+          id: string
+          rejection_note: string | null
+          scheduled_date: string
+          status: Database["public"]["Enums"]["checklist_status"]
+          submitted_at: string | null
+          template_id: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          branch_id?: string | null
+          checklist_type: Database["public"]["Enums"]["checklist_type"]
+          created_at?: string
+          department: Database["public"]["Enums"]["department"]
+          id?: string
+          rejection_note?: string | null
+          scheduled_date?: string
+          status?: Database["public"]["Enums"]["checklist_status"]
+          submitted_at?: string | null
+          template_id: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          branch_id?: string | null
+          checklist_type?: Database["public"]["Enums"]["checklist_type"]
+          created_at?: string
+          department?: Database["public"]["Enums"]["department"]
+          id?: string
+          rejection_note?: string | null
+          scheduled_date?: string
+          status?: Database["public"]["Enums"]["checklist_status"]
+          submitted_at?: string | null
+          template_id?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_instances_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instances_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_task_completions: {
+        Row: {
+          comment: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          instance_id: string
+          is_completed: boolean
+          photo_url: string | null
+          task_id: string
+        }
+        Insert: {
+          comment?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          instance_id: string
+          is_completed?: boolean
+          photo_url?: string | null
+          task_id: string
+        }
+        Update: {
+          comment?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string
+          is_completed?: boolean
+          photo_url?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_task_completions_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_task_completions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_template_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_tasks: {
+        Row: {
+          created_at: string
+          id: string
+          photo_requirement: Database["public"]["Enums"]["photo_requirement"]
+          sort_order: number
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          photo_requirement?: Database["public"]["Enums"]["photo_requirement"]
+          sort_order?: number
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          photo_requirement?: Database["public"]["Enums"]["photo_requirement"]
+          sort_order?: number
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_templates: {
+        Row: {
+          branch_id: string | null
+          checklist_type: Database["public"]["Enums"]["checklist_type"]
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"]
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          checklist_type: Database["public"]["Enums"]["checklist_type"]
+          created_at?: string
+          created_by?: string | null
+          department: Database["public"]["Enums"]["department"]
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          checklist_type?: Database["public"]["Enums"]["checklist_type"]
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"]
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_templates_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -182,6 +378,8 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "manager" | "staff"
+      checklist_status: "pending" | "completed" | "verified" | "rejected"
+      checklist_type: "opening" | "afternoon" | "closing"
       department:
         | "management"
         | "kitchen"
@@ -189,6 +387,7 @@ export type Database = {
         | "service"
         | "bar"
         | "office"
+      photo_requirement: "none" | "optional" | "mandatory"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -317,6 +516,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "manager", "staff"],
+      checklist_status: ["pending", "completed", "verified", "rejected"],
+      checklist_type: ["opening", "afternoon", "closing"],
       department: [
         "management",
         "kitchen",
@@ -325,6 +526,7 @@ export const Constants = {
         "bar",
         "office",
       ],
+      photo_requirement: ["none", "optional", "mandatory"],
     },
   },
 } as const
