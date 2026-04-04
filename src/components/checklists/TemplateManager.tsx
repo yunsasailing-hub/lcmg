@@ -185,7 +185,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
 // ─── Assign Dialog ───
 
-function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () => void }) {
+function AssignDialog({ template }: { template: any }) {
   const [open, setOpen] = useState(false);
   const [staffId, setStaffId] = useState('');
   const { data: staff } = useStaffProfiles(template.branch_id || undefined);
@@ -204,7 +204,6 @@ function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () 
         toast.success('Checklist assigned!');
         setOpen(false);
         setStaffId('');
-        onAssigned();
       },
       onError: () => toast.error('Failed to assign checklist'),
     });
@@ -213,7 +212,9 @@ function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm"><Users className="h-3.5 w-3.5 mr-1" /> Assign Today</Button>
+        <Button variant="outline" size="sm" onClick={e => e.stopPropagation()}>
+          <Users className="h-3.5 w-3.5 mr-1" /> Assign Today
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -241,7 +242,6 @@ function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () 
     </Dialog>
   );
 }
-
 // ─── Main ───
 
 export default function TemplateManager() {
