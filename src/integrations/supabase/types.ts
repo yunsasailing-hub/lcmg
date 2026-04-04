@@ -211,9 +211,13 @@ export type Database = {
           checklist_type: Database["public"]["Enums"]["checklist_type"]
           created_at: string
           created_by: string | null
+          default_assigned_to: string | null
           department: Database["public"]["Enums"]["department"]
+          frequency: Database["public"]["Enums"]["checklist_frequency"]
           id: string
           is_active: boolean
+          last_generated_date: string | null
+          specific_date: string | null
           title: string
           updated_at: string
         }
@@ -222,9 +226,13 @@ export type Database = {
           checklist_type: Database["public"]["Enums"]["checklist_type"]
           created_at?: string
           created_by?: string | null
+          default_assigned_to?: string | null
           department: Database["public"]["Enums"]["department"]
+          frequency?: Database["public"]["Enums"]["checklist_frequency"]
           id?: string
           is_active?: boolean
+          last_generated_date?: string | null
+          specific_date?: string | null
           title: string
           updated_at?: string
         }
@@ -233,9 +241,13 @@ export type Database = {
           checklist_type?: Database["public"]["Enums"]["checklist_type"]
           created_at?: string
           created_by?: string | null
+          default_assigned_to?: string | null
           department?: Database["public"]["Enums"]["department"]
+          frequency?: Database["public"]["Enums"]["checklist_frequency"]
           id?: string
           is_active?: boolean
+          last_generated_date?: string | null
+          specific_date?: string | null
           title?: string
           updated_at?: string
         }
@@ -381,6 +393,7 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "manager" | "staff"
+      checklist_frequency: "daily" | "weekly" | "monthly" | "determinate_date"
       checklist_status: "pending" | "completed" | "verified" | "rejected"
       checklist_type: "opening" | "afternoon" | "closing"
       department:
@@ -519,6 +532,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "manager", "staff"],
+      checklist_frequency: ["daily", "weekly", "monthly", "determinate_date"],
       checklist_status: ["pending", "completed", "verified", "rejected"],
       checklist_type: ["opening", "afternoon", "closing"],
       department: [

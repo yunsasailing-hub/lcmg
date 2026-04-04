@@ -1,10 +1,13 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
@@ -14,6 +17,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates, useCreateTemplate, useCreateInstance, useDeleteTemplate, useDeleteTemplateTask,
@@ -23,18 +27,31 @@ import {
 import { Constants } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 
+type ChecklistFrequency = 'daily' | 'weekly' | 'monthly' | 'determinate_date';
+
+const FREQUENCY_OPTIONS: { value: ChecklistFrequency; labelKey: string }[] = [
+  { value: 'daily', labelKey: 'checklists.frequencyDaily' },
+  { value: 'weekly', labelKey: 'checklists.frequencyWeekly' },
+  { value: 'monthly', labelKey: 'checklists.frequencyMonthly' },
+  { value: 'determinate_date', labelKey: 'checklists.frequencyDeterminate' },
+];
+
 function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ChecklistType>('opening');
-  const [department, setDepartment] = useState<Department>('kitchen');
+  const [department, setDepartment] = useState<Department | ''>('');
   const [branchId, setBranchId] = useState<string>('');
+  const [frequency, setFrequency] = useState<ChecklistFrequency | ''>('');
+  const [specificDate, setSpecificDate] = useState<Date | undefined>();
+  const [assignedStaff, setAssignedStaff] = useState<string>('');
   const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
     { title: '', photo_requirement: 'none' },
   ]);
 
   const { data: branches } = useBranches();
+  const { data: staff } = useStaffProfiles(branchId || undefined);
   const create = useCreateTemplate();
 
   const addTask = () => setTasks(prev => [...prev, { title: '', photo_requirement: 'none' }]);
@@ -44,11 +61,26 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
   const handleCreate = () => {
     if (!title.trim()) { toast.error(t('checklists.titleRequired')); return; }
+    if (!branchId) { toast.error(t('checklists.branchRequired')); return; }
+    if (!department) { toast.error(t('checklists.frequencyRequired')); return; }
+    if (!frequency) { toast.error(t('checklists.frequencyRequired')); return; }
+    if (!assignedStaff) { toast.error(t('checklists.assigneeRequired')); return; }
+    if (frequency === 'determinate_date' && !specificDate) { toast.error(t('checklists.specificDateRequired')); return; }
     const validTasks = tasks.filter(t => t.title.trim());
     if (!validTasks.length) { toast.error(t('checklists.addOneTask')); return; }
 
     create.mutate({
-      template: { title: title.trim(), checklist_type: type, department, branch_id: branchId || null },
+      template: {
+        title: title.trim(),
+        checklist_type: type,
+        department: department as Department,
+        branch_id: branchId,
+        frequency: frequency as any,
+        default_assigned_to: assignedStaff,
+        specific_date: frequency === 'determinate_date' && specificDate
+          ? format(specificDate, 'yyyy-MM-dd')
+          : null,
+      },
       tasks: validTasks.map((t, i) => ({ title: t.title.trim(), sort_order: i, photo_requirement: t.photo_requirement })),
     }, {
       onSuccess: () => { toast.success(t('checklists.created')); setOpen(false); resetForm(); onCreated(); },
@@ -57,7 +89,8 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   };
 
   const resetForm = () => {
-    setTitle(''); setType('opening'); setDepartment('kitchen'); setBranchId('');
+    setTitle(''); setType('opening'); setDepartment(''); setBranchId('');
+    setFrequency(''); setSpecificDate(undefined); setAssignedStaff('');
     setTasks([{ title: '', photo_requirement: 'none' }]);
   };
 
@@ -74,8 +107,18 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
         <div className="space-y-4">
           <div>
-            <Label>{t('checklists.templateTitle')}</Label>
+            <Label>{t('checklists.templateTitle')} *</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('checklists.templateTitlePlaceholder')} />
+          </div>
+
+          <div>
+            <Label>{t('checklists.branch')} *</Label>
+            <Select value={branchId || ''} onValueChange={v => { setBranchId(v); setAssignedStaff(''); }}>
+              <SelectTrigger><SelectValue placeholder={t('checklists.branch')} /></SelectTrigger>
+              <SelectContent>
+                {branches?.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -91,9 +134,9 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
               </Select>
             </div>
             <div>
-              <Label>{t('login.department')}</Label>
-              <Select value={department} onValueChange={v => setDepartment(v as Department)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>{t('login.department')} *</Label>
+              <Select value={department || ''} onValueChange={v => setDepartment(v as Department)}>
+                <SelectTrigger><SelectValue placeholder={t('login.selectDept')} /></SelectTrigger>
                 <SelectContent>
                   {Constants.public.Enums.department.map(d => (
                     <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
@@ -104,12 +147,44 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
           </div>
 
           <div>
-            <Label>{t('checklists.branch')}</Label>
-            <Select value={branchId || 'none'} onValueChange={v => setBranchId(v === 'none' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder={t('checklists.allBranches')} /></SelectTrigger>
+            <Label>{t('checklists.frequency')} *</Label>
+            <Select value={frequency || ''} onValueChange={v => setFrequency(v as ChecklistFrequency)}>
+              <SelectTrigger><SelectValue placeholder={t('checklists.frequency')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">{t('checklists.allBranches')}</SelectItem>
-                {branches?.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                {FREQUENCY_OPTIONS.map(f => (
+                  <SelectItem key={f.value} value={f.value}>{t(f.labelKey)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {frequency === 'determinate_date' && (
+            <div>
+              <Label>{t('checklists.specificDate')} *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !specificDate && 'text-muted-foreground')}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {specificDate ? format(specificDate, 'PP') : t('checklists.specificDate')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={specificDate} onSelect={setSpecificDate}
+                    disabled={d => d < new Date(new Date().toDateString())}
+                    className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          <div>
+            <Label>{t('checklists.defaultAssignee')} *</Label>
+            <Select value={assignedStaff || ''} onValueChange={setAssignedStaff} disabled={!branchId}>
+              <SelectTrigger><SelectValue placeholder={branchId ? t('checklists.selectStaff') : t('checklists.branchRequired')} /></SelectTrigger>
+              <SelectContent>
+                {staff?.map(s => (
+                  <SelectItem key={s.id} value={s.user_id}>{s.full_name || s.email || 'Unknown'}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -312,6 +387,11 @@ export default function TemplateManager() {
 
   const templateToDelete = templates?.find(t => t.id === deleteDialogId);
 
+  const getFrequencyLabel = (freq: string) => {
+    const opt = FREQUENCY_OPTIONS.find(f => f.value === freq);
+    return opt ? t(opt.labelKey) : freq;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -358,6 +438,7 @@ export default function TemplateManager() {
             const taskCount = tasks.length;
             const isExpanded = expandedId === tpl.id;
             const isEditing = editingId === tpl.id;
+            const freq = (tpl as any).frequency;
 
             return (
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
@@ -369,6 +450,7 @@ export default function TemplateManager() {
                         <p className="font-medium text-foreground truncate">{tpl.title}</p>
                         <p className="text-xs text-muted-foreground capitalize mt-0.5">
                           {tpl.checklist_type} · {tpl.department} · {taskCount} {taskCount !== 1 ? t('checklists.tasks_plural') : t('checklists.task')}
+                          {freq && <> · {getFrequencyLabel(freq)}</>}
                         </p>
                       </div>
                     </div>
