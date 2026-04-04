@@ -22,13 +22,13 @@ import {
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
 
-function useStatusConfig() {
+function useStatusConfig(): Record<string, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> {
   const { t } = useTranslation();
   return {
-    pending: { label: t('status.pending'), variant: 'secondary' as const },
-    completed: { label: t('status.completed'), variant: 'default' as const, className: 'bg-success text-success-foreground hover:bg-success/80' },
-    verified: { label: t('status.verified'), variant: 'default' as const, className: 'bg-info text-info-foreground hover:bg-info/80' },
-    rejected: { label: t('status.rejected'), variant: 'destructive' as const },
+    pending: { label: t('status.pending'), variant: 'secondary' },
+    completed: { label: t('status.completed'), variant: 'default', className: 'bg-success text-success-foreground hover:bg-success/80' },
+    verified: { label: t('status.verified'), variant: 'default', className: 'bg-info text-info-foreground hover:bg-info/80' },
+    rejected: { label: t('status.rejected'), variant: 'destructive' },
   };
 }
 

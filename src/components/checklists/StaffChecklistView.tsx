@@ -21,13 +21,13 @@ import {
   type PhotoRequirement,
 } from '@/hooks/useChecklists';
 
-function useStatusConfig() {
+function useStatusConfig(): Record<string, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> {
   const { t } = useTranslation();
   return {
-    pending: { label: t('status.pending'), variant: 'secondary' as const },
-    completed: { label: t('status.completed'), variant: 'default' as const, className: 'bg-emerald-600 text-white hover:bg-emerald-600/80' },
-    verified: { label: t('status.verified'), variant: 'default' as const, className: 'bg-ring text-primary-foreground hover:bg-ring/80' },
-    rejected: { label: t('status.rejected'), variant: 'destructive' as const },
+    pending: { label: t('status.pending'), variant: 'secondary' },
+    completed: { label: t('status.completed'), variant: 'default', className: 'bg-emerald-600 text-white hover:bg-emerald-600/80' },
+    verified: { label: t('status.verified'), variant: 'default', className: 'bg-ring text-primary-foreground hover:bg-ring/80' },
+    rejected: { label: t('status.rejected'), variant: 'destructive' },
   };
 }
 
