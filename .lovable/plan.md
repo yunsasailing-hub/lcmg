@@ -1,30 +1,25 @@
 
 
-## Checklist Template Excel Import/Export
+## Fix "Opening" Button and Checklist Code Review
 
-### Overview
-Add Export and Import buttons to the Template Manager so owners/managers can bulk-manage checklist templates via `.xlsx` files.
+### Problem identified
+In `TemplateManager.tsx`, the right side of each template card (containing the "opening"/"afternoon"/"closing" badge and the "Assign Today" button) has `onClick={e => e.stopPropagation()}` on line 324. This prevents the card from expanding when clicking anywhere near the badge or assign button area. When the user clicks the "Opening" badge, the click is swallowed and nothing happens.
 
-### What will be built
+### Additional issues found
+1. **ModuleCard ref warning** — Console shows "Function components cannot be given refs" for `ModuleCard` and `MobileNav`. These need `React.forwardRef`.
+2. **Unused variable in `useAuth.tsx`** — Line 40 has an unused `data` variable in `fetchRoles`.
 
-**1. Install `xlsx` package** (SheetJS) for client-side Excel processing.
+### Fix plan
 
-**2. Create `src/utils/checklistExcel.ts`**
-- `exportTemplatesToXlsx(templates)` — builds a workbook with two sheets:
-  - **Templates**: title, type, department, branch name
-  - **Tasks**: template title (ref), task title, sort order, photo requirement
-  - Triggers browser download
-- `parseTemplatesFromXlsx(file): Promise<ParsedTemplate[]>` — reads uploaded file, validates fields (type must be valid enum, photo_requirement must be none/optional/mandatory), returns array of template+tasks objects or throws with validation errors
+**1. `src/components/checklists/TemplateManager.tsx`**
+- Move `stopPropagation` from the wrapper div to only the `AssignDialog` button itself, so clicking the badge area still triggers card expansion
+- The AssignDialog already has `stopPropagation` on its trigger button (line 215), so the wrapper div's `stopPropagation` is redundant — just remove it from the wrapper
 
-**3. Update `src/components/checklists/TemplateManager.tsx`**
-- Add "Export" button (downloads all templates as .xlsx)
-- Add "Import" button (hidden file input, accepts .xlsx)
-- On import: parse file → show count confirmation toast → call `useCreateTemplate` for each → refetch
-- Error handling: show toast with validation errors if file is malformed
+**2. `src/components/shared/ModuleCard.tsx`**
+- Wrap with `React.forwardRef` to fix the console warning
 
-### Technical details
-- `xlsx` library works entirely client-side, no backend changes needed
-- Export uses data already loaded by `useTemplates()` hook
-- Import validates against `Constants.public.Enums.checklist_type` and `Constants.public.Enums.department`
-- Photo requirement validated against: `none`, `optional`, `mandatory`
+**3. `src/components/layout/AppShell.tsx`**
+- Wrap `MobileNav` with `React.forwardRef` to fix the console warning
+
+These are small targeted fixes — no structural changes needed.
 
