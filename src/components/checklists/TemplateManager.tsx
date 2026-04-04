@@ -355,34 +355,12 @@ export default function TemplateManager() {
                 </button>
                 {isExpanded && (
                   <div className="border-t px-4 pb-3 pt-2 space-y-1.5">
-                    {tasks.length > 0 ? tasks.map((task: any, idx: number) => (
-                      <div key={task.id || idx} className="flex items-center gap-2 text-sm group">
-                        <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="flex-1 text-foreground">{task.title}</span>
-                        {task.photo_requirement !== 'none' && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            📸 {task.photo_requirement}
-                          </Badge>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          onClick={() => handleDeleteTask(task.id)}
-                        >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
-                    )) : (
-                      <p className="text-xs text-muted-foreground italic">No tasks in this template.</p>
-                    )}
-
-                    {/* Delete template button */}
-                    <div className="pt-2 border-t mt-2">
+                    {/* Delete Template — top of expanded section */}
+                    <div className="flex justify-end mb-1">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full">
-                            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Template
+                          <Button variant="destructive" size="sm" className="h-8">
+                            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete Template
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -404,6 +382,28 @@ export default function TemplateManager() {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
+
+                    {tasks.length > 0 ? tasks.map((task: any, idx: number) => (
+                      <div key={task.id || idx} className="flex items-center gap-2 text-sm">
+                        <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="flex-1 text-foreground">{task.title}</span>
+                        {task.photo_requirement !== 'none' && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            📸 {task.photo_requirement}
+                          </Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0"
+                          onClick={() => handleDeleteTask(task.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    )) : (
+                      <p className="text-xs text-muted-foreground italic">No tasks in this template.</p>
+                    )}
                   </div>
                 )}
               </div>
