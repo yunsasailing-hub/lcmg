@@ -1,0 +1,1 @@
+ALTER TABLE public.checklist_instances ADD COLUMN notes text DEFAULT null;

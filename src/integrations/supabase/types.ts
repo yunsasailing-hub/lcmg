@@ -58,6 +58,7 @@ export type Database = {
           created_at: string
           department: Database["public"]["Enums"]["department"]
           id: string
+          notes: string | null
           rejection_note: string | null
           scheduled_date: string
           status: Database["public"]["Enums"]["checklist_status"]
@@ -74,6 +75,7 @@ export type Database = {
           created_at?: string
           department: Database["public"]["Enums"]["department"]
           id?: string
+          notes?: string | null
           rejection_note?: string | null
           scheduled_date?: string
           status?: Database["public"]["Enums"]["checklist_status"]
@@ -90,6 +92,7 @@ export type Database = {
           created_at?: string
           department?: Database["public"]["Enums"]["department"]
           id?: string
+          notes?: string | null
           rejection_note?: string | null
           scheduled_date?: string
           status?: Database["public"]["Enums"]["checklist_status"]
