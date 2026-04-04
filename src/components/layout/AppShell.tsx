@@ -35,6 +35,64 @@ function LanguageToggle({ collapsed = false }: { collapsed?: boolean }) {
   );
 }
 
+function LanguagePill({ inMenu = false }: { inMenu?: boolean }) {
+  const { i18n, t } = useTranslation();
+  const currentLanguage = i18n.language === 'vi' ? 'vi' : 'en';
+
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between gap-3 rounded-full border p-1',
+        inMenu ? 'w-full' : 'w-full max-w-xs',
+      )}
+      style={{
+        background: 'var(--nav-active)',
+        borderColor: 'var(--sidebar-border)',
+      }}
+      aria-label={t('nav.language')}
+    >
+      <div className="flex items-center gap-2 px-3" style={{ color: 'var(--nav-foreground)' }}>
+        <Globe className="h-4 w-4 shrink-0" />
+        <span className="text-xs font-semibold uppercase tracking-[0.16em]">
+          {t('nav.language')}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1">
+        {[
+          { value: 'en', label: 'EN' },
+          { value: 'vi', label: 'VI' },
+        ].map((language) => {
+          const isActive = currentLanguage === language.value;
+
+          return (
+            <button
+              key={language.value}
+              type="button"
+              onClick={() => i18n.changeLanguage(language.value)}
+              className="min-h-9 rounded-full px-3 text-xs font-bold tracking-[0.16em] transition-colors"
+              style={
+                isActive
+                  ? {
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                    }
+                  : {
+                      color: 'var(--nav-foreground)',
+                    }
+              }
+              aria-pressed={isActive}
+              aria-label={language.value === 'en' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+            >
+              {language.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { signOut, profile } = useAuth();
   const { t } = useTranslation();
@@ -100,7 +158,7 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 
 function MobileNav() {
   const { signOut } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const [showMore, setShowMore] = useState(false);
 
@@ -109,34 +167,36 @@ function MobileNav() {
 
   useEffect(() => setShowMore(false), [location.pathname]);
 
-  const isVi = i18n.language === 'vi';
-
   return (
     <>
-      <header
-        className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between px-4"
-        style={{ background: 'var(--nav)' }}
+      <div
+        className="fixed inset-x-0 top-0 z-40 border-b"
+        style={{
+          background: 'var(--nav)',
+          borderColor: 'var(--sidebar-border)',
+          paddingTop: 'env(safe-area-inset-top)',
+        }}
       >
-        <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => i18n.changeLanguage(isVi ? 'en' : 'vi')}
-            className="flex h-8 items-center justify-center gap-1 rounded-md px-2.5 text-xs font-semibold transition-colors hover:bg-nav-active"
-            style={{ color: 'var(--nav-foreground)', background: 'var(--nav-active)' }}
-            title={isVi ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-          >
-            <Globe className="h-4 w-4" />
-            {isVi ? 'EN' : 'VI'}
-          </button>
+        <header className="flex h-14 items-center justify-between px-4">
+          <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
           <button
             onClick={() => signOut()}
-            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
-            style={{ color: 'var(--nav-foreground)' }}
+            className="flex h-10 w-10 items-center justify-center rounded-full border transition-colors hover:bg-nav-active"
+            style={{
+              color: 'var(--nav-foreground)',
+              borderColor: 'var(--sidebar-border)',
+            }}
+            aria-label={t('nav.signOut')}
+            title={t('nav.signOut')}
           >
             <LogOut className="h-5 w-5" />
           </button>
+        </header>
+
+        <div className="px-4 pb-3">
+          <LanguagePill />
         </div>
-      </header>
+      </div>
 
       <nav
         className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t px-1 pb-[env(safe-area-inset-bottom)]"
@@ -182,9 +242,13 @@ function MobileNav() {
 
             {showMore && (
               <div
-                className="absolute bottom-full right-0 mb-2 w-44 rounded-lg border p-1 shadow-lg"
+                className="absolute bottom-full right-0 z-40 mb-2 w-56 max-w-[calc(100vw-1rem)] rounded-lg border p-2 shadow-lg"
                 style={{ background: 'var(--nav)', borderColor: 'var(--sidebar-border)' }}
               >
+                <div className="mb-2">
+                  <LanguagePill inMenu />
+                </div>
+
                 {overflowItems.map(item => {
                   const isActive = location.pathname.startsWith(item.to);
                   return (
@@ -213,7 +277,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background pt-14 pb-20">
+      <div
+        className="min-h-screen bg-background pb-20"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 7.75rem)' }}
+      >
         <MobileNav />
         <main className="px-4 py-4">{children}</main>
       </div>
