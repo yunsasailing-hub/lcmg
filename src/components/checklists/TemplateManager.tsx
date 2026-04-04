@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload } from 'lucide-react';
+import { useState, useRef, forwardRef } from 'react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
