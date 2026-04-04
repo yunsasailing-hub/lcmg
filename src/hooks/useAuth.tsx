@@ -37,7 +37,6 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 
 async function fetchRoles(userId: string): Promise<AppRole[]> {
   try {
-    const { data, error } = await supabase.rpc('has_role', { _user_id: userId, _role: 'owner' as AppRole });
     // We need to check each role individually since direct table access is blocked
     const roles: AppRole[] = [];
     for (const role of ['owner', 'manager', 'staff'] as AppRole[]) {
