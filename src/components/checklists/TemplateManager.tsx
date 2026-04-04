@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload } from 'lucide-react';
+import { useState, useRef, forwardRef } from 'react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -185,7 +185,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
 // ─── Assign Dialog ───
 
-function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () => void }) {
+function AssignDialog({ template }: { template: any }) {
   const [open, setOpen] = useState(false);
   const [staffId, setStaffId] = useState('');
   const { data: staff } = useStaffProfiles(template.branch_id || undefined);
@@ -204,7 +204,6 @@ function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () 
         toast.success('Checklist assigned!');
         setOpen(false);
         setStaffId('');
-        onAssigned();
       },
       onError: () => toast.error('Failed to assign checklist'),
     });
@@ -213,7 +212,9 @@ function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm"><Users className="h-3.5 w-3.5 mr-1" /> Assign Today</Button>
+        <Button variant="outline" size="sm" onClick={e => e.stopPropagation()}>
+          <Users className="h-3.5 w-3.5 mr-1" /> Assign Today
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -241,13 +242,13 @@ function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () 
     </Dialog>
   );
 }
-
 // ─── Main ───
 
 export default function TemplateManager() {
   const { data: templates, isLoading, refetch } = useTemplates();
   const createTemplate = useCreateTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleExport = () => {
     if (!templates?.length) { toast.error('No templates to export'); return; }
@@ -300,22 +301,47 @@ export default function TemplateManager() {
       ) : (
         <div className="space-y-2">
           {templates.map(tpl => {
-            const taskCount = (tpl as any).tasks?.length ?? 0;
+            const tasks = (tpl as any).tasks || [];
+            const taskCount = tasks.length;
+            const isExpanded = expandedId === tpl.id;
 
             return (
-              <div key={tpl.id} className="rounded-lg border bg-card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{tpl.title}</p>
-                    <p className="text-xs text-muted-foreground capitalize mt-0.5">
-                      {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
-                    </p>
+              <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
+                <button
+                  onClick={() => setExpandedId(isExpanded ? null : tpl.id)}
+                  className="w-full p-4 text-left hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      {isExpanded ? <ChevronUp className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{tpl.title}</p>
+                        <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                          {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                      <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
+                      <AssignDialog template={tpl} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
-                    <AssignDialog template={tpl} onAssigned={() => {}} />
+                </button>
+                {isExpanded && tasks.length > 0 && (
+                  <div className="border-t px-4 pb-3 pt-2 space-y-1.5">
+                    {tasks.map((task: any, idx: number) => (
+                      <div key={task.id || idx} className="flex items-center gap-2 text-sm">
+                        <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="flex-1 text-foreground">{task.title}</span>
+                        {task.photo_requirement !== 'none' && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            📸 {task.photo_requirement}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
