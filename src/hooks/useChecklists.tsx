@@ -189,6 +189,68 @@ export function useVerifyChecklist() {
 
 // ─── Template Management Hooks ───
 
+export function useDeleteTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      // Delete tasks first, then template
+      const { error: tasksError } = await supabase
+        .from('checklist_template_tasks')
+        .delete()
+        .eq('template_id', templateId);
+      if (tasksError) throw tasksError;
+
+      const { error } = await supabase
+        .from('checklist_templates')
+        .update({ is_active: false })
+        .eq('id', templateId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+    },
+  });
+}
+
+export function useDeleteTemplateTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase
+        .from('checklist_template_tasks')
+        .delete()
+        .eq('id', taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['template-tasks'] });
+    },
+  });
+}
+
+export function useUpdateInstanceNotes() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ instanceId, notes }: { instanceId: string; notes: string }) => {
+      const { data, error } = await supabase
+        .from('checklist_instances')
+        .update({ notes } as any)
+        .eq('id', instanceId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+    },
+  });
+}
+
 export function useTemplates(branchId?: string) {
   return useQuery({
     queryKey: ['templates', branchId],

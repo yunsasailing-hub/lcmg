@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef } from 'react';
+import { useState, useRef } from 'react';
 import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,12 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates,
   useCreateTemplate,
   useCreateInstance,
+  useDeleteTemplate,
+  useDeleteTemplateTask,
   useBranches,
   useStaffProfiles,
   type PhotoRequirement,
@@ -242,11 +248,14 @@ function AssignDialog({ template }: { template: any }) {
     </Dialog>
   );
 }
+
 // ─── Main ───
 
 export default function TemplateManager() {
   const { data: templates, isLoading, refetch } = useTemplates();
   const createTemplate = useCreateTemplate();
+  const deleteTemplate = useDeleteTemplate();
+  const deleteTask = useDeleteTemplateTask();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -273,6 +282,23 @@ export default function TemplateManager() {
       toast.error(err.message || 'Import failed');
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDeleteTemplate = (templateId: string) => {
+    deleteTemplate.mutate(templateId, {
+      onSuccess: () => {
+        toast.success('Template deleted');
+        if (expandedId === templateId) setExpandedId(null);
+      },
+      onError: () => toast.error('Failed to delete template'),
+    });
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    deleteTask.mutate(taskId, {
+      onSuccess: () => toast.success('Task removed'),
+      onError: () => toast.error('Failed to delete task'),
+    });
   };
 
   return (
@@ -327,10 +353,10 @@ export default function TemplateManager() {
                     </div>
                   </div>
                 </button>
-                {isExpanded && tasks.length > 0 && (
+                {isExpanded && (
                   <div className="border-t px-4 pb-3 pt-2 space-y-1.5">
-                    {tasks.map((task: any, idx: number) => (
-                      <div key={task.id || idx} className="flex items-center gap-2 text-sm">
+                    {tasks.length > 0 ? tasks.map((task: any, idx: number) => (
+                      <div key={task.id || idx} className="flex items-center gap-2 text-sm group">
                         <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="flex-1 text-foreground">{task.title}</span>
                         {task.photo_requirement !== 'none' && (
@@ -338,8 +364,46 @@ export default function TemplateManager() {
                             📸 {task.photo_requirement}
                           </Badge>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          onClick={() => handleDeleteTask(task.id)}
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
                       </div>
-                    ))}
+                    )) : (
+                      <p className="text-xs text-muted-foreground italic">No tasks in this template.</p>
+                    )}
+
+                    {/* Delete template button */}
+                    <div className="pt-2 border-t mt-2">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full">
+                            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Template
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete "{tpl.title}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently remove this template and all its tasks. Existing assigned checklists will not be affected.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteTemplate(tpl.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 )}
               </div>

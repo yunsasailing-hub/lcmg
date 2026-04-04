@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, MessageSquare, Send } from 'lucide-react';
+import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, MessageSquare, Send, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -12,6 +14,7 @@ import {
   useTaskCompletions,
   useUpsertCompletion,
   useSubmitChecklist,
+  useUpdateInstanceNotes,
   uploadChecklistPhoto,
   type ChecklistStatus,
   type PhotoRequirement,
@@ -88,6 +91,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const { data: completions, isLoading: loadingCompletions } = useTaskCompletions(instanceId);
   const upsert = useUpsertCompletion();
   const submit = useSubmitChecklist();
+  const updateNotes = useUpdateInstanceNotes();
 
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -96,6 +100,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const instance = checklists?.find(c => c.id === instanceId);
   const tpl = instance?.template as any;
   const isEditable = instance?.status === 'pending' || instance?.status === 'rejected';
+  const [notes, setNotes] = useState((instance as any)?.notes || '');
 
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
@@ -168,6 +173,10 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       toast.error('Please complete all tasks and upload required photos.');
       return;
     }
+    // Save notes before submitting
+    if (notes.trim()) {
+      updateNotes.mutate({ instanceId, notes: notes.trim() });
+    }
     submit.mutate(instanceId, {
       onSuccess: () => {
         toast.success('Checklist submitted!');
@@ -212,15 +221,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                 className={`rounded-lg border bg-card p-3 space-y-2 ${needsPhoto && done ? 'border-destructive/50' : ''}`}
               >
                 <div className="flex items-start gap-3">
-                  <button
-                    onClick={() => handleToggle(task.id, done)}
-                    disabled={!isEditable}
-                    className="mt-0.5 shrink-0"
-                  >
-                    {done
-                      ? <CircleCheck className="h-5 w-5 text-emerald-600" />
-                      : <Circle className="h-5 w-5 text-muted-foreground" />}
-                  </button>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
                     {photoReq === 'mandatory' && (
@@ -230,41 +230,49 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                       <p className="text-xs text-muted-foreground mt-0.5">📷 Photo optional</p>
                     )}
                   </div>
-                  {isEditable && (
-                    <div className="flex gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={uploading === task.id}
-                        onClick={() => handlePhoto(task.id)}
-                      >
-                        <Camera className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setExpandedComment(expandedComment === task.id ? null : task.id)}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isEditable && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={uploading === task.id}
+                          onClick={() => handlePhoto(task.id)}
+                        >
+                          <Camera className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setExpandedComment(expandedComment === task.id ? null : task.id)}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    <Checkbox
+                      checked={done}
+                      onCheckedChange={() => handleToggle(task.id, done)}
+                      disabled={!isEditable}
+                      className="h-5 w-5 ml-1"
+                    />
+                  </div>
                 </div>
 
                 {c?.photo_url && (
-                  <div className="ml-8">
+                  <div>
                     <img src={c.photo_url} alt="Task photo" className="h-16 w-16 rounded-md object-cover border" />
                   </div>
                 )}
 
                 {c?.comment && (
-                  <p className="ml-8 text-xs text-muted-foreground italic">💬 {c.comment}</p>
+                  <p className="text-xs text-muted-foreground italic">💬 {c.comment}</p>
                 )}
 
                 {expandedComment === task.id && isEditable && (
-                  <div className="ml-8 flex gap-2">
+                  <div className="flex gap-2">
                     <Textarea
                       placeholder="Add a comment..."
                       value={comments[task.id] || ''}
@@ -281,6 +289,26 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           })}
         </div>
       )}
+
+      {/* Notes field */}
+      <div className="rounded-lg border bg-card p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <StickyNote className="h-4 w-4 text-muted-foreground" />
+          <Label className="text-sm font-medium">Notes (optional)</Label>
+        </div>
+        {isEditable ? (
+          <Textarea
+            placeholder="Add any additional notes about this checklist..."
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            className="min-h-[80px] text-sm"
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            {(instance as any)?.notes || 'No notes added.'}
+          </p>
+        )}
+      </div>
 
       {isEditable && (
         <Button
