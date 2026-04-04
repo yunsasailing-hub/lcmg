@@ -225,20 +225,28 @@ function ManagerDetail({ instanceId, templateId, instance, onBack }: {
             return (
               <div key={task.id} className="rounded-lg border bg-card p-3 space-y-2">
                 <div className="flex items-start gap-3">
+                  <p className={cn('text-sm font-medium flex-1', done && 'line-through text-muted-foreground')}>{task.title}</p>
                   {done
                     ? <CircleCheck className="h-5 w-5 text-success shrink-0 mt-0.5" />
                     : <Circle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
-                  <p className={cn('text-sm font-medium flex-1', done && 'line-through text-muted-foreground')}>{task.title}</p>
                 </div>
                 {c?.photo_url && (
-                  <div className="ml-8">
+                  <div>
                     <img src={c.photo_url} alt="Task photo" className="h-20 w-20 rounded-md object-cover border" />
                   </div>
                 )}
-                {c?.comment && <p className="ml-8 text-xs text-muted-foreground italic">💬 {c.comment}</p>}
+                {c?.comment && <p className="text-xs text-muted-foreground italic">💬 {c.comment}</p>}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Notes */}
+      {(instance as any).notes && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">📝 Notes</p>
+          <p className="text-sm text-foreground">{(instance as any).notes}</p>
         </div>
       )}
 
