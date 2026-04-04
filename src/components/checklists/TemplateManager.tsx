@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import {
   type Department,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
+import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 
 // ─── Create Template Dialog ───
 
@@ -245,12 +246,48 @@ function AssignDialog({ template, onAssigned }: { template: any; onAssigned: () 
 
 export default function TemplateManager() {
   const { data: templates, isLoading, refetch } = useTemplates();
+  const createTemplate = useCreateTemplate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    if (!templates?.length) { toast.error('No templates to export'); return; }
+    exportTemplatesToXlsx(templates);
+    toast.success('Templates exported!');
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = await parseTemplatesFromXlsx(file);
+      for (const tpl of parsed) {
+        await createTemplate.mutateAsync({
+          template: { title: tpl.title, checklist_type: tpl.checklist_type, department: tpl.department, branch_id: null },
+          tasks: tpl.tasks,
+        });
+      }
+      toast.success(`${parsed.length} template(s) imported!`);
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || 'Import failed');
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-medium text-muted-foreground">Checklist Templates</h3>
-        <CreateTemplateDialog onCreated={() => refetch()} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-1" /> Export
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-1" /> Import
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          <CreateTemplateDialog onCreated={() => refetch()} />
+        </div>
       </div>
 
       {isLoading ? (
