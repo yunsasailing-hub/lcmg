@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
@@ -7,6 +8,7 @@ import { Users, Building2, ClipboardCheck, GraduationCap, CookingPot, Package, W
 
 export default function Dashboard() {
   const { profile, roles } = useAuth();
+  const { t } = useTranslation();
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there';
   const roleLabel = roles.length > 0 ? roles[0].charAt(0).toUpperCase() + roles[0].slice(1) : 'Staff';
@@ -14,27 +16,25 @@ export default function Dashboard() {
   return (
     <AppShell>
       <PageHeader
-        title={`Welcome back, ${firstName}`}
-        description={`${roleLabel} · La Cala Restaurant Management`}
+        title={t('dashboard.welcome', { name: firstName })}
+        description={t('dashboard.roleLabel', { role: roleLabel })}
       />
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={Users} label="Team Members" value={12} subtitle="3 on shift today" />
-        <StatCard icon={ClipboardCheck} label="Open Checklists" value={4} subtitle="2 due today" />
-        <StatCard icon={CookingPot} label="Active Recipes" value={48} subtitle="Updated this week" />
-        <StatCard icon={Building2} label="Branches" value={2} subtitle="All operational" />
+        <StatCard icon={Users} label={t('dashboard.teamMembers')} value={12} subtitle={t('dashboard.onShift')} />
+        <StatCard icon={ClipboardCheck} label={t('dashboard.openChecklists')} value={4} subtitle={t('dashboard.dueToday')} />
+        <StatCard icon={CookingPot} label={t('dashboard.activeRecipes')} value={48} subtitle={t('dashboard.updatedWeek')} />
+        <StatCard icon={Building2} label={t('dashboard.branches')} value={2} subtitle={t('dashboard.allOperational')} />
       </div>
 
-      {/* Modules */}
-      <h2 className="text-lg font-heading font-semibold text-foreground mb-4">Modules</h2>
+      <h2 className="text-lg font-heading font-semibold text-foreground mb-4">{t('dashboard.modules')}</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <ModuleCard to="/training" icon={GraduationCap} title="Training" description="Staff training & certifications" stat="3 pending" />
-        <ModuleCard to="/checklists" icon={ClipboardCheck} title="Checklists" description="Daily opening & closing tasks" stat="4 active" />
-        <ModuleCard to="/recipes" icon={CookingPot} title="Recipes" description="Recipe book & costings" stat="48 recipes" />
-        <ModuleCard to="/inventory" icon={Package} title="Inventory" description="Stock levels & orders" stat="6 low stock" />
-        <ModuleCard to="/maintenance" icon={Wrench} title="Maintenance" description="Equipment & repairs" stat="1 open ticket" />
-        <ModuleCard to="/management" icon={Settings} title="Management" description="Team, branches & settings" stat="" />
+        <ModuleCard to="/training" icon={GraduationCap} title={t('nav.training')} description={t('dashboard.trainingDesc')} stat={t('dashboard.pending', { count: 3 })} />
+        <ModuleCard to="/checklists" icon={ClipboardCheck} title={t('nav.checklists')} description={t('dashboard.checklistsDesc')} stat={t('dashboard.active', { count: 4 })} />
+        <ModuleCard to="/recipes" icon={CookingPot} title={t('nav.recipes')} description={t('dashboard.recipesDesc')} stat={t('dashboard.recipesCount', { count: 48 })} />
+        <ModuleCard to="/inventory" icon={Package} title={t('nav.inventory')} description={t('dashboard.inventoryDesc')} stat={t('dashboard.lowStock', { count: 6 })} />
+        <ModuleCard to="/maintenance" icon={Wrench} title={t('nav.maintenance')} description={t('dashboard.maintenanceDesc')} stat={t('dashboard.openTicket', { count: 1 })} />
+        <ModuleCard to="/management" icon={Settings} title={t('nav.management')} description={t('dashboard.managementDesc')} stat="" />
       </div>
     </AppShell>
   );

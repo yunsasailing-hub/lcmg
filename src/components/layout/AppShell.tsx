@@ -1,25 +1,43 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   LayoutDashboard, GraduationCap, ClipboardCheck, CookingPot,
-  Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal,
+  Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal, Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const NAV_ITEMS = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/training', icon: GraduationCap, label: 'Training' },
-  { to: '/checklists', icon: ClipboardCheck, label: 'Checklists' },
-  { to: '/recipes', icon: CookingPot, label: 'Recipes' },
-  { to: '/inventory', icon: Package, label: 'Inventory' },
-  { to: '/maintenance', icon: Wrench, label: 'Maintenance' },
-  { to: '/management', icon: Settings, label: 'Management' },
+const NAV_KEYS = [
+  { to: '/', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
+  { to: '/training', icon: GraduationCap, labelKey: 'nav.training' },
+  { to: '/checklists', icon: ClipboardCheck, labelKey: 'nav.checklists' },
+  { to: '/recipes', icon: CookingPot, labelKey: 'nav.recipes' },
+  { to: '/inventory', icon: Package, labelKey: 'nav.inventory' },
+  { to: '/maintenance', icon: Wrench, labelKey: 'nav.maintenance' },
+  { to: '/management', icon: Settings, labelKey: 'nav.management' },
 ];
+
+function LanguageToggle({ collapsed = false }: { collapsed?: boolean }) {
+  const { i18n } = useTranslation();
+  const isVi = i18n.language === 'vi';
+
+  return (
+    <button
+      onClick={() => i18n.changeLanguage(isVi ? 'en' : 'vi')}
+      className={cn('nav-item w-full', collapsed && 'justify-center px-0')}
+      title={isVi ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+    >
+      <Globe className="h-5 w-5 shrink-0" />
+      {!collapsed && <span className="text-sm font-medium">{isVi ? 'EN' : 'VI'}</span>}
+    </button>
+  );
+}
 
 function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { signOut, profile } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <aside
@@ -30,7 +48,6 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
         borderColor: 'var(--sidebar-border)',
       }}
     >
-      {/* Header */}
       <div className="flex h-16 items-center justify-between px-4">
         {!collapsed && (
           <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
@@ -44,42 +61,37 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
         </button>
       </div>
 
-      {/* Nav items */}
       <nav className="flex-1 space-y-1 px-2 py-3">
-        {NAV_ITEMS.map(item => (
+        {NAV_KEYS.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              cn(
-                'nav-item',
-                isActive && 'nav-item-active',
-                collapsed && 'justify-center px-0',
-              )
+              cn('nav-item', isActive && 'nav-item-active', collapsed && 'justify-center px-0')
             }
-            title={collapsed ? item.label : undefined}
+            title={collapsed ? t(item.labelKey) : undefined}
           >
             <item.icon className="h-5 w-5 shrink-0" />
-            {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+            {!collapsed && <span className="text-sm font-medium">{t(item.labelKey)}</span>}
           </NavLink>
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t px-2 py-3" style={{ borderColor: 'var(--sidebar-border)' }}>
+      <div className="border-t px-2 py-3 space-y-1" style={{ borderColor: 'var(--sidebar-border)' }}>
         {!collapsed && profile?.full_name && (
           <p className="mb-2 truncate px-3 text-xs" style={{ color: 'var(--nav-muted)' }}>
             {profile.full_name}
           </p>
         )}
+        <LanguageToggle collapsed={collapsed} />
         <button
           onClick={() => signOut()}
           className={cn('nav-item w-full', collapsed && 'justify-center px-0')}
-          title={collapsed ? 'Sign out' : undefined}
+          title={collapsed ? t('nav.signOut') : undefined}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span className="text-sm font-medium">Sign Out</span>}
+          {!collapsed && <span className="text-sm font-medium">{t('nav.signOut')}</span>}
         </button>
       </div>
     </aside>
@@ -88,40 +100,45 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 
 function MobileNav() {
   const { signOut } = useAuth();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const [showMore, setShowMore] = useState(false);
 
-  const visibleItems = NAV_ITEMS.slice(0, 5);
-  const overflowItems = NAV_ITEMS.slice(5);
+  const visibleItems = NAV_KEYS.slice(0, 5);
+  const overflowItems = NAV_KEYS.slice(5);
 
-  // Close "more" menu on route change
   useEffect(() => setShowMore(false), [location.pathname]);
+
+  const isVi = i18n.language === 'vi';
 
   return (
     <>
-      {/* Top bar */}
       <header
         className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between px-4"
         style={{ background: 'var(--nav)' }}
       >
         <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
-        <button
-          onClick={() => signOut()}
-          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
-          style={{ color: 'var(--nav-foreground)' }}
-        >
-          <LogOut className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => i18n.changeLanguage(isVi ? 'en' : 'vi')}
+            className="flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium transition-colors hover:bg-nav-active"
+            style={{ color: 'var(--nav-foreground)' }}
+          >
+            {isVi ? 'EN' : 'VI'}
+          </button>
+          <button
+            onClick={() => signOut()}
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
+            style={{ color: 'var(--nav-foreground)' }}
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
-      {/* Bottom nav */}
       <nav
         className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t px-1 pb-[env(safe-area-inset-bottom)]"
-        style={{
-          background: 'var(--nav)',
-          borderColor: 'var(--sidebar-border)',
-          height: 64,
-        }}
+        style={{ background: 'var(--nav)', borderColor: 'var(--sidebar-border)', height: 64 }}
       >
         {visibleItems.map(item => {
           const isActive = item.to === '/'
@@ -140,12 +157,11 @@ function MobileNav() {
               >
                 <item.icon className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[10px] font-medium">{t(item.labelKey)}</span>
             </NavLink>
           );
         })}
 
-        {/* More button */}
         {overflowItems.length > 0 && (
           <div className="relative">
             <button
@@ -159,16 +175,13 @@ function MobileNav() {
               >
                 <MoreHorizontal className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-medium">More</span>
+              <span className="text-[10px] font-medium">{t('nav.more')}</span>
             </button>
 
             {showMore && (
               <div
                 className="absolute bottom-full right-0 mb-2 w-44 rounded-lg border p-1 shadow-lg"
-                style={{
-                  background: 'var(--nav)',
-                  borderColor: 'var(--sidebar-border)',
-                }}
+                style={{ background: 'var(--nav)', borderColor: 'var(--sidebar-border)' }}
               >
                 {overflowItems.map(item => {
                   const isActive = location.pathname.startsWith(item.to);
@@ -179,7 +192,7 @@ function MobileNav() {
                       className={cn('nav-item text-sm', isActive && 'nav-item-active')}
                     >
                       <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                      <span>{t(item.labelKey)}</span>
                     </NavLink>
                   );
                 })}
