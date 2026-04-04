@@ -321,7 +321,7 @@ export default function TemplateManager() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
                       <AssignDialog template={tpl} />
                     </div>
