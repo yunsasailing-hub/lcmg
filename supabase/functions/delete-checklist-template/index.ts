@@ -81,22 +81,38 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Template not found." }, 404);
     }
 
-    const { count: instanceCount, error: instanceError } = await supabaseAdmin
+    // Delete related completions for all instances of this template
+    const { data: instances, error: instanceFetchError } = await supabaseAdmin
       .from("checklist_instances")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("template_id", templateId);
 
-    if (instanceError) {
-      throw instanceError;
+    if (instanceFetchError) {
+      throw instanceFetchError;
     }
 
-    if ((instanceCount ?? 0) > 0) {
-      return jsonResponse(
-        {
-          error: `This template can't be deleted because it is already linked to ${instanceCount} checklist${instanceCount === 1 ? "" : "s"}. Delete those checklist records first if you want to remove it permanently.`,
-        },
-        409,
-      );
+    if (instances && instances.length > 0) {
+      const instanceIds = instances.map((i) => i.id);
+
+      // Delete task completions for those instances
+      const { error: deleteCompletionsError } = await supabaseAdmin
+        .from("checklist_task_completions")
+        .delete()
+        .in("instance_id", instanceIds);
+
+      if (deleteCompletionsError) {
+        throw deleteCompletionsError;
+      }
+
+      // Delete the instances themselves
+      const { error: deleteInstancesError } = await supabaseAdmin
+        .from("checklist_instances")
+        .delete()
+        .eq("template_id", templateId);
+
+      if (deleteInstancesError) {
+        throw deleteInstancesError;
+      }
     }
 
     const { error: deleteTasksError } = await supabaseAdmin
