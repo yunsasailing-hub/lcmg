@@ -1,25 +1,75 @@
 
 
-## Fix "Opening" Button and Checklist Code Review
+# Multi-Language System: English + Vietnamese
 
-### Problem identified
-In `TemplateManager.tsx`, the right side of each template card (containing the "opening"/"afternoon"/"closing" badge and the "Assign Today" button) has `onClick={e => e.stopPropagation()}` on line 324. This prevents the card from expanding when clicking anywhere near the badge or assign button area. When the user clicks the "Opening" badge, the click is swallowed and nothing happens.
+## Overview
+Implement app-wide internationalization (i18n) using `react-i18next`, the standard React translation library. Every piece of UI text across all pages and components will be translatable, with a simple EN/VI language switcher in the app shell.
 
-### Additional issues found
-1. **ModuleCard ref warning** — Console shows "Function components cannot be given refs" for `ModuleCard` and `MobileNav`. These need `React.forwardRef`.
-2. **Unused variable in `useAuth.tsx`** — Line 40 has an unused `data` variable in `fetchRoles`.
+## Architecture
 
-### Fix plan
+```text
+src/
+├── i18n/
+│   ├── index.ts              ← i18next config + init
+│   ├── en.json               ← English translations
+│   └── vi.json               ← Vietnamese translations
+├── components/
+│   └── layout/
+│       └── AppShell.tsx       ← Language switcher added here
+└── ... all pages/components   ← Replace hardcoded strings with t()
+```
 
-**1. `src/components/checklists/TemplateManager.tsx`**
-- Move `stopPropagation` from the wrapper div to only the `AssignDialog` button itself, so clicking the badge area still triggers card expansion
-- The AssignDialog already has `stopPropagation` on its trigger button (line 215), so the wrapper div's `stopPropagation` is redundant — just remove it from the wrapper
+## Implementation Steps
 
-**2. `src/components/shared/ModuleCard.tsx`**
-- Wrap with `React.forwardRef` to fix the console warning
+### 1. Install & Configure i18next
+- Add `react-i18next` and `i18next` packages
+- Create `src/i18n/index.ts` — initialize i18next with:
+  - Two language resources: `en` and `vi`
+  - Default language: `en`
+  - Language detection from `localStorage` (persists across sessions)
+  - Fallback to `en`
 
-**3. `src/components/layout/AppShell.tsx`**
-- Wrap `MobileNav` with `React.forwardRef` to fix the console warning
+### 2. Create Translation Files
+- `src/i18n/en.json` — all English strings organized by namespace:
+  - `nav` (Dashboard, Training, Checklists, Recipes, etc.)
+  - `dashboard` (welcome, stats, module cards)
+  - `checklists` (statuses, buttons, form labels, notes, templates)
+  - `login` (form fields, errors, success messages)
+  - `common` (Save, Cancel, Delete, Confirm, etc.)
+  - `management`, `inventory`, `maintenance`, `training`, `recipes`
+- `src/i18n/vi.json` — Vietnamese equivalents for all keys
 
-These are small targeted fixes — no structural changes needed.
+### 3. Add Language Switcher
+- In `AppShell.tsx`:
+  - Desktop sidebar footer: add EN/VI toggle button
+  - Mobile top bar: add EN/VI toggle button
+  - On click: call `i18n.changeLanguage()`, which auto-saves to `localStorage`
+- Also add a language toggle on the Login page (before user is authenticated)
+
+### 4. Replace Hardcoded Strings Across All Pages
+Every component with visible text will use `useTranslation()` hook and `t('key')`:
+- **Login.tsx** — form labels, buttons, errors, department names
+- **Dashboard.tsx** — welcome message, stat labels, module titles/descriptions
+- **AppShell.tsx** — nav labels, sign out
+- **Checklists.tsx** — all checklist UI (TemplateManager, StaffChecklistView, ManagerDashboard)
+- **Recipes.tsx, Inventory.tsx, Maintenance.tsx, Training.tsx, Management.tsx** — page headers, empty states
+- **Shared components** (PageHeader, EmptyState, StatCard, ModuleCard) — pass translated props
+- **Toast messages** — all success/error toasts throughout hooks
+
+### 5. Checklist Module (Special Attention)
+- Status labels (Pending, Done, Verified, Rejected) → translated
+- Template editor buttons (Save, Delete, Add Task) → translated
+- Staff view (Submit, Notes placeholder, photo labels) → translated
+- Manager dashboard (filters, counters, table headers) → translated
+
+### 6. Persistence
+- Language preference stored in `localStorage` under key `i18nextLng`
+- Survives page refresh and re-login
+- Future enhancement: save to user profile in database (optional, not in v1)
+
+## Technical Details
+- **Library**: `react-i18next` + `i18next` (industry standard, ~15KB)
+- **No backend changes needed** — translations are bundled client-side
+- **Extensible** — adding a third language = adding one JSON file + one line of config
+- **~15 files modified** to replace hardcoded strings with `t()` calls
 
