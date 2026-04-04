@@ -194,7 +194,6 @@ export function useDeleteTemplate() {
 
   return useMutation({
     mutationFn: async (templateId: string) => {
-      // Delete tasks first, then template
       const { error: tasksError } = await supabase
         .from('checklist_template_tasks')
         .delete()
@@ -223,6 +222,78 @@ export function useDeleteTemplateTask() {
         .delete()
         .eq('id', taskId);
       if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['template-tasks'] });
+    },
+  });
+}
+
+export function useUpdateTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ templateId, updates }: {
+      templateId: string;
+      updates: { title?: string; checklist_type?: ChecklistType; department?: Department };
+    }) => {
+      const { data, error } = await supabase
+        .from('checklist_templates')
+        .update(updates)
+        .eq('id', templateId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+    },
+  });
+}
+
+export function useAddTemplateTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (task: { template_id: string; title: string; sort_order: number; photo_requirement?: PhotoRequirement }) => {
+      const { data, error } = await supabase
+        .from('checklist_template_tasks')
+        .insert({
+          template_id: task.template_id,
+          title: task.title,
+          sort_order: task.sort_order,
+          photo_requirement: task.photo_requirement || 'none' as PhotoRequirement,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['template-tasks'] });
+    },
+  });
+}
+
+export function useUpdateTemplateTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ taskId, updates }: {
+      taskId: string;
+      updates: { title?: string; sort_order?: number; photo_requirement?: PhotoRequirement };
+    }) => {
+      const { data, error } = await supabase
+        .from('checklist_template_tasks')
+        .update(updates)
+        .eq('id', taskId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
