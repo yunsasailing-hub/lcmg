@@ -141,7 +141,7 @@ export function useAllChecklists(filters?: ChecklistFilters) {
     queryFn: async () => {
       let query = supabase
         .from('checklist_instances')
-        .select('*, template:checklist_templates(title, department, checklist_type), assignee:profiles!checklist_instances_assigned_to_fkey(full_name, avatar_url)')
+        .select('*, template:checklist_templates(title, department, checklist_type)')
         .order('scheduled_date', { ascending: false });
 
       if (filters?.date) query = query.eq('scheduled_date', filters.date);
@@ -152,7 +152,22 @@ export function useAllChecklists(filters?: ChecklistFilters) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+
+      // Fetch assignee profiles separately (no FK exists for assigned_to)
+      const userIds = [...new Set(data?.map(d => d.assigned_to).filter(Boolean) as string[])];
+      let profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, avatar_url')
+          .in('user_id', userIds);
+        profiles?.forEach(p => { profileMap[p.user_id] = { full_name: p.full_name, avatar_url: p.avatar_url }; });
+      }
+
+      return data?.map(d => ({
+        ...d,
+        assignee: d.assigned_to ? profileMap[d.assigned_to] || null : null,
+      })) || [];
     },
   });
 }

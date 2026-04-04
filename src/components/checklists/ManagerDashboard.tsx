@@ -289,7 +289,7 @@ export default function ManagerDashboard() {
   const { hasRole } = useAuth();
   const isOwner = hasRole('owner');
   const today = new Date().toISOString().split('T')[0];
-  const [filters, setFilters] = useState<ChecklistFilters>({ date: today });
+  const [filters, setFilters] = useState<ChecklistFilters>({});
   const { data: checklists, isLoading } = useAllChecklists(filters);
   const [selected, setSelected] = useState<any>(null);
 
