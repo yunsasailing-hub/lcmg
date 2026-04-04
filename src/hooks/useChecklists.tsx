@@ -194,20 +194,35 @@ export function useDeleteTemplate() {
 
   return useMutation({
     mutationFn: async (templateId: string) => {
-      const { error: tasksError } = await supabase
-        .from('checklist_template_tasks')
-        .delete()
-        .eq('template_id', templateId);
-      if (tasksError) throw tasksError;
+      const { data, error } = await supabase.functions.invoke('delete-checklist-template', {
+        body: { templateId },
+      });
 
-      const { error } = await supabase
-        .from('checklist_templates')
-        .update({ is_active: false })
-        .eq('id', templateId);
-      if (error) throw error;
+      if (error) {
+        let message = error.message || 'Failed to delete template';
+        const context = (error as any)?.context;
+
+        if (context && typeof context.json === 'function') {
+          try {
+            const payload = await context.json();
+            message = payload?.error || payload?.message || message;
+          } catch {
+            // Fall back to the function error message when the response body can't be parsed.
+          }
+        }
+
+        throw new Error(message);
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to delete template');
+      }
+
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
     },
   });
 }
