@@ -21,6 +21,7 @@ import {
   type Department,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
+import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 
 // ─── Create Template Dialog ───
 
