@@ -5,8 +5,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AuthGuard } from "@/hooks/useRequireAuth";
-import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
+import Dashboard from "./pages/Dashboard.tsx";
+import Training from "./pages/Training.tsx";
+import Checklists from "./pages/Checklists.tsx";
+import Recipes from "./pages/Recipes.tsx";
+import Inventory from "./pages/Inventory.tsx";
+import Maintenance from "./pages/Maintenance.tsx";
+import Management from "./pages/Management.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -20,8 +26,13 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/" element={<AuthGuard><Dashboard /></AuthGuard>} />
+            <Route path="/training" element={<AuthGuard><Training /></AuthGuard>} />
+            <Route path="/checklists" element={<AuthGuard><Checklists /></AuthGuard>} />
+            <Route path="/recipes" element={<AuthGuard><Recipes /></AuthGuard>} />
+            <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
+            <Route path="/maintenance" element={<AuthGuard><Maintenance /></AuthGuard>} />
+            <Route path="/management" element={<AuthGuard><Management /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
