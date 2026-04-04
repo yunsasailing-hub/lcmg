@@ -313,7 +313,7 @@ export default function TemplateManager() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
-                    <AssignDialog template={tpl} onAssigned={() => {}} />
+                    <AssignDialog template={tpl} />
                   </div>
                 </div>
               </div>
