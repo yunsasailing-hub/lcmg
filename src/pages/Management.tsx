@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import RoleManager from '@/components/management/RoleManager';
@@ -7,15 +8,16 @@ import { ShieldAlert } from 'lucide-react';
 
 export default function Management() {
   const { hasRole } = useAuth();
+  const { t } = useTranslation();
   const isOwner = hasRole('owner');
 
   return (
     <AppShell>
-      <PageHeader title="Management" description="Team, branches & system settings" />
+      <PageHeader title={t('management.title')} description={t('management.description')} />
       {isOwner ? (
         <RoleManager />
       ) : (
-        <EmptyState icon={ShieldAlert} title="Access restricted" description="Only owners can manage roles and settings." />
+        <EmptyState icon={ShieldAlert} title={t('management.restricted')} description={t('management.restrictedDesc')} />
       )}
     </AppShell>
   );
