@@ -249,8 +249,6 @@ export default function TemplateManager() {
   const createTemplate = useCreateTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const createTemplate = useCreateTemplate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
     if (!templates?.length) { toast.error('No templates to export'); return; }
