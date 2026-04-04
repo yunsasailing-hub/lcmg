@@ -8,6 +8,7 @@ import {
   Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal, Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LanguagePill, LanguageToggle } from '@/components/layout/LanguageSwitcher';
 
 const NAV_KEYS = [
   { to: '/', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
@@ -18,80 +19,6 @@ const NAV_KEYS = [
   { to: '/maintenance', icon: Wrench, labelKey: 'nav.maintenance' },
   { to: '/management', icon: Settings, labelKey: 'nav.management' },
 ];
-
-function LanguageToggle({ collapsed = false }: { collapsed?: boolean }) {
-  const { i18n } = useTranslation();
-  const isVi = i18n.language === 'vi';
-
-  return (
-    <button
-      onClick={() => i18n.changeLanguage(isVi ? 'en' : 'vi')}
-      className={cn('nav-item w-full', collapsed && 'justify-center px-0')}
-      title={isVi ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-    >
-      <Globe className="h-5 w-5 shrink-0" />
-      {!collapsed && <span className="text-sm font-medium">{isVi ? 'EN' : 'VI'}</span>}
-    </button>
-  );
-}
-
-function LanguagePill({ inMenu = false }: { inMenu?: boolean }) {
-  const { i18n, t } = useTranslation();
-  const currentLanguage = i18n.language === 'vi' ? 'vi' : 'en';
-
-  return (
-    <div
-      className={cn(
-        'flex items-center justify-between gap-3 rounded-full border p-1',
-        inMenu ? 'w-full' : 'w-full max-w-xs',
-      )}
-      style={{
-        background: 'var(--nav-active)',
-        borderColor: 'var(--sidebar-border)',
-      }}
-      aria-label={t('nav.language')}
-    >
-      <div className="flex items-center gap-2 px-3" style={{ color: 'var(--nav-foreground)' }}>
-        <Globe className="h-4 w-4 shrink-0" />
-        <span className="text-xs font-semibold uppercase tracking-[0.16em]">
-          {t('nav.language')}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-1">
-        {[
-          { value: 'en', label: 'EN' },
-          { value: 'vi', label: 'VI' },
-        ].map((language) => {
-          const isActive = currentLanguage === language.value;
-
-          return (
-            <button
-              key={language.value}
-              type="button"
-              onClick={() => i18n.changeLanguage(language.value)}
-              className="min-h-9 rounded-full px-3 text-xs font-bold tracking-[0.16em] transition-colors"
-              style={
-                isActive
-                  ? {
-                      background: 'var(--background)',
-                      color: 'var(--foreground)',
-                    }
-                  : {
-                      color: 'var(--nav-foreground)',
-                    }
-              }
-              aria-pressed={isActive}
-              aria-label={language.value === 'en' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-            >
-              {language.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { signOut, profile } = useAuth();
@@ -179,23 +106,22 @@ function MobileNav() {
       >
         <header className="flex h-14 items-center justify-between px-4">
           <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
-          <button
-            onClick={() => signOut()}
-            className="flex h-10 w-10 items-center justify-center rounded-full border transition-colors hover:bg-nav-active"
-            style={{
-              color: 'var(--nav-foreground)',
-              borderColor: 'var(--sidebar-border)',
-            }}
-            aria-label={t('nav.signOut')}
-            title={t('nav.signOut')}
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2 pl-3">
+            <LanguagePill compact />
+            <button
+              onClick={() => signOut()}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors hover:bg-nav-active"
+              style={{
+                color: 'var(--nav-foreground)',
+                borderColor: 'var(--sidebar-border)',
+              }}
+              aria-label={t('nav.signOut')}
+              title={t('nav.signOut')}
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
         </header>
-
-        <div className="px-4 pb-3">
-          <LanguagePill />
-        </div>
       </div>
 
       <nav
