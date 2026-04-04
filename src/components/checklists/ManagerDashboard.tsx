@@ -240,14 +240,14 @@ function ManagerDetail({ instanceId, templateId, instance, onBack }: {
             );
           })}
         </div>
+      )}
 
-        {/* Notes */}
-        {(instance as any).notes && (
-          <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">📝 Notes</p>
-            <p className="text-sm text-foreground">{(instance as any).notes}</p>
-          </div>
-        )}
+      {/* Notes */}
+      {(instance as any).notes && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">📝 Notes</p>
+          <p className="text-sm text-foreground">{(instance as any).notes}</p>
+        </div>
       )}
 
       {/* Verify / Reject actions */}
