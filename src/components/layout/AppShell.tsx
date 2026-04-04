@@ -121,9 +121,11 @@ function MobileNav() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => i18n.changeLanguage(isVi ? 'en' : 'vi')}
-            className="flex h-8 items-center justify-center rounded-md px-2 text-xs font-medium transition-colors hover:bg-nav-active"
-            style={{ color: 'var(--nav-foreground)' }}
+            className="flex h-8 items-center justify-center gap-1 rounded-md px-2.5 text-xs font-semibold transition-colors hover:bg-nav-active"
+            style={{ color: 'var(--nav-foreground)', background: 'var(--nav-active)' }}
+            title={isVi ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
           >
+            <Globe className="h-4 w-4" />
             {isVi ? 'EN' : 'VI'}
           </button>
           <button
