@@ -51,7 +51,10 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   ]);
 
   const { data: branches } = useBranches();
-  const { data: staff } = useStaffProfiles(branchId || undefined);
+  const { data: branchStaff } = useStaffProfiles(branchId || undefined);
+  const { data: allStaff } = useStaffProfiles();
+  // Use branch-filtered staff if available, otherwise fall back to all staff
+  const staff = (branchStaff && branchStaff.length > 0) ? branchStaff : allStaff;
   const create = useCreateTemplate();
 
   const addTask = () => setTasks(prev => [...prev, { title: '', photo_requirement: 'none' }]);
