@@ -308,9 +308,9 @@ export default function TemplateManager() {
         if (editingId === id) setEditingId(null);
         setDeleteDialogId(null);
       },
-      onError: () => {
-        toast.error('Failed to delete template. Please try again.');
-        setDeleteDialogId(null);
+      onError: (error: any) => {
+        console.error('Failed to delete template', error);
+        toast.error(error?.message || 'Failed to delete template. Please try again.');
       },
     });
   };
@@ -413,8 +413,12 @@ export default function TemplateManager() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteTemplate}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeleteTemplate();
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteTemplate.isPending}
             >
               {deleteTemplate.isPending ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
