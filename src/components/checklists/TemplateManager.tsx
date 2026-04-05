@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates, useCreateTemplate, useCreateInstance, useDeleteTemplate, useDeleteTemplateTask,
-  useUpdateTemplate, useAddTemplateTask, useUpdateTemplateTask, useBranches, useStaffProfiles,
+  useUpdateTemplate, useAddTemplateTask, useUpdateTemplateTask, useStaffProfiles,
   type PhotoRequirement, type ChecklistType, type Department,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
