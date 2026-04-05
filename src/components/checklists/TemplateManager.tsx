@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, CalendarIcon, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
@@ -149,47 +150,142 @@ function AssignDialog({ template }: { template: any }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [staffId, setStaffId] = useState('');
-  const { data: staff } = useStaffProfiles(template.branch_id || undefined);
+  const [periodicity, setPeriodicity] = useState<string>('one_time');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const { data: staff, isLoading: staffLoading, isError: staffError } = useStaffProfiles();
   const createInstance = useCreateInstance();
+
+  // Sort: same department first, then alphabetical
+  const sortedStaff = useMemo(() => {
+    if (!staff) return [];
+    return [...staff].sort((a, b) => {
+      const aDept = a.department === template.department ? 0 : 1;
+      const bDept = b.department === template.department ? 0 : 1;
+      if (aDept !== bDept) return aDept - bDept;
+      return (a.full_name || '').localeCompare(b.full_name || '');
+    });
+  }, [staff, template.department]);
 
   const handleAssign = () => {
     if (!staffId) { toast.error(t('checklists.selectStaffError')); return; }
+    if (!startDate) { toast.error(t('assign.startDateRequired')); return; }
     createInstance.mutate({
-      template_id: template.id, checklist_type: template.checklist_type,
-      department: template.department, branch_id: template.branch_id, assigned_to: staffId,
+      template_id: template.id,
+      checklist_type: template.checklist_type,
+      department: template.department,
+      branch_id: template.branch_id,
+      assigned_to: staffId,
+      scheduled_date: startDate,
+      notes: notes.trim() || null,
     }, {
-      onSuccess: () => { toast.success(t('checklists.assigned')); setOpen(false); setStaffId(''); },
+      onSuccess: () => {
+        toast.success(t('checklists.assigned'));
+        setOpen(false);
+        resetForm();
+      },
       onError: () => toast.error(t('checklists.failAssign')),
     });
   };
 
+  const resetForm = () => {
+    setStaffId('');
+    setPeriodicity('one_time');
+    setStartDate(new Date().toISOString().split('T')[0]);
+    setEndDate('');
+    setNotes('');
+  };
+
+  const formatUserLabel = (s: any) => {
+    const name = s.full_name || s.email || 'Unknown';
+    const dept = s.department ? t(`departments.${s.department}`) : '';
+    const pos = s.position || '';
+    const parts = [name, pos, dept].filter(Boolean);
+    return parts.join(' – ');
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" onClick={e => e.stopPropagation()}>
-          <Users className="h-3.5 w-3.5 mr-1" /> {t('checklists.assignToday')}
+          <Users className="h-3.5 w-3.5 mr-1" /> {t('assign.assignChecklist')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('checklists.assignChecklist')}</DialogTitle>
-          <DialogDescription>{t('checklists.assignDesc', { title: template.title })}</DialogDescription>
+          <DialogTitle>{t('assign.assignChecklist')}</DialogTitle>
+          <DialogDescription>{t('assign.assignDesc', { title: template.title })}</DialogDescription>
         </DialogHeader>
-        <div>
-          <Label>{t('checklists.staffMember')}</Label>
-          <Select value={staffId} onValueChange={setStaffId}>
-            <SelectTrigger><SelectValue placeholder={t('checklists.selectStaff')} /></SelectTrigger>
-            <SelectContent>
-              {staff?.map(s => (
-                <SelectItem key={s.id} value={s.user_id}>{s.full_name || s.email || 'Unknown'}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <div className="space-y-4">
+          {/* User dropdown */}
+          <div>
+            <Label>{t('assign.assignTo')}</Label>
+            {staffLoading ? (
+              <p className="text-sm text-muted-foreground py-2">{t('common.loading')}</p>
+            ) : staffError ? (
+              <p className="text-sm text-destructive py-2 flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5" /> {t('assign.loadError')}
+              </p>
+            ) : sortedStaff.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">{t('assign.noUsers')}</p>
+            ) : (
+              <Select value={staffId} onValueChange={setStaffId}>
+                <SelectTrigger><SelectValue placeholder={t('assign.selectUser')} /></SelectTrigger>
+                <SelectContent>
+                  {sortedStaff.map(s => (
+                    <SelectItem key={s.user_id} value={s.user_id}>
+                      {formatUserLabel(s)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Periodicity */}
+          <div>
+            <Label>{t('assign.periodicity')}</Label>
+            <Select value={periodicity} onValueChange={setPeriodicity}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="one_time">{t('assign.oneTime')}</SelectItem>
+                <SelectItem value="daily">{t('assign.daily')}</SelectItem>
+                <SelectItem value="weekly">{t('assign.weekly')}</SelectItem>
+                <SelectItem value="monthly">{t('assign.monthly')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Date row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>{t('assign.startDate')}</Label>
+              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>{t('assign.endDate')}</Label>
+              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate} />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <Label>{t('assign.notes')}</Label>
+            <Textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder={t('assign.notesPlaceholder')}
+              className="resize-none h-20"
+            />
+          </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t('checklists.cancel')}</Button>
-          <Button onClick={handleAssign} disabled={createInstance.isPending}>
-            {createInstance.isPending ? t('checklists.assigning') : t('checklists.assign')}
+          <Button onClick={handleAssign} disabled={createInstance.isPending || !staffId || !startDate}>
+            {createInstance.isPending ? t('checklists.assigning') : t('assign.assignChecklist')}
           </Button>
         </DialogFooter>
       </DialogContent>
