@@ -73,7 +73,7 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
           >
             <StatusIcon className={`h-5 w-5 shrink-0 ${instance.status === 'rejected' ? 'text-destructive' : instance.status === 'pending' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate">{tpl?.title ?? t('checklists.title')}</p>
+              <p className="font-medium text-foreground truncate">{tpl?.title ?? t('checklists.templateDeleted')}</p>
               <p className="text-xs text-muted-foreground capitalize">{instance.checklist_type} · {instance.department}</p>
             </div>
             <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>
@@ -163,7 +163,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-heading font-semibold truncate">{tpl?.title ?? t('checklists.title')}</h2>
+          <h2 className="text-lg font-heading font-semibold truncate">{tpl?.title ?? t('checklists.templateDeleted')}</h2>
           <p className="text-xs text-muted-foreground capitalize">{instance?.checklist_type} · {instance?.department}</p>
         </div>
       </div>
