@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
-  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User,
+  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,11 +13,15 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useAllChecklists, useTemplateTasks, useTaskCompletions, useVerifyChecklist, useBranches,
+  useAllChecklists, useTemplateTasks, useTaskCompletions, useVerifyChecklist, useDeleteInstance, useBranches,
   type ChecklistFilters, type ChecklistStatus, type Department,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
@@ -128,6 +132,9 @@ function ManagerDetail({ instanceId, templateId, instance, onBack }: {
   const { data: tasks } = useTemplateTasks(templateId);
   const { data: completions, isLoading } = useTaskCompletions(instanceId);
   const verify = useVerifyChecklist();
+  const deleteInstance = useDeleteInstance();
+  const { hasRole } = useAuth();
+  const isOwner = hasRole('owner');
   const { t } = useTranslation();
   const statusCfg = useStatusConfig();
   const [rejecting, setRejecting] = useState(false);
@@ -155,6 +162,13 @@ function ManagerDetail({ instanceId, templateId, instance, onBack }: {
     verify.mutate({ instanceId, action: 'rejected', rejectionNote: rejectionNote.trim() }, {
       onSuccess: () => { toast.success(t('checklists.rejected')); onBack(); },
       onError: () => toast.error(t('checklists.failReject')),
+    });
+  };
+
+  const handleDelete = () => {
+    deleteInstance.mutate(instanceId, {
+      onSuccess: () => { toast.success(t('checklists.instanceDeleted')); onBack(); },
+      onError: () => toast.error(t('checklists.failDeleteInstance')),
     });
   };
 
@@ -232,6 +246,29 @@ function ManagerDetail({ instanceId, templateId, instance, onBack }: {
             <Button variant="outline" onClick={() => { setRejecting(false); setRejectionNote(''); }}>{t('checklists.cancel')}</Button>
           </div>
         </div>
+      )}
+
+      {/* Owner-only: Delete checklist record */}
+      {isOwner && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/10">
+              <Trash2 className="h-4 w-4 mr-2" /> {t('checklists.deleteInstance')}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('checklists.deleteInstanceTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('checklists.deleteInstanceDesc')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('checklists.cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {deleteInstance.isPending ? t('checklists.deleting') : t('checklists.delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
