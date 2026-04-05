@@ -24,7 +24,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify the caller is an owner
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -55,19 +54,20 @@ Deno.serve(async (req) => {
     const { action, ...params } = await req.json();
 
     if (action === "list") {
-      // Get all roles with profile info
       const { data: roles, error } = await supabaseAdmin
         .from("user_roles")
         .select("id, user_id, role");
       if (error) throw error;
 
-      // Get profiles for context
       const { data: profiles } = await supabaseAdmin
         .from("profiles")
-        .select("user_id, full_name, email, avatar_url")
-        .eq("is_active", true);
+        .select("user_id, full_name, email, avatar_url, phone, position, department, branch_id, is_active, created_at");
 
-      return new Response(JSON.stringify({ roles, profiles }), {
+      const { data: branches } = await supabaseAdmin
+        .from("branches")
+        .select("id, name");
+
+      return new Response(JSON.stringify({ roles, profiles, branches }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -87,7 +87,6 @@ Deno.serve(async (req) => {
 
     if (action === "remove") {
       const { user_id, role } = params;
-      // Prevent removing your own owner role
       if (user_id === user.id && role === "owner") {
         return new Response(JSON.stringify({ error: "Cannot remove your own owner role" }), {
           status: 400,
@@ -99,6 +98,31 @@ Deno.serve(async (req) => {
         .delete()
         .eq("user_id", user_id)
         .eq("role", role);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "update_profile") {
+      const { user_id, updates } = params;
+      const allowedFields = ["full_name", "email", "phone", "position", "department", "branch_id", "is_active"];
+      const sanitized: Record<string, unknown> = {};
+      for (const key of allowedFields) {
+        if (updates && key in updates) {
+          sanitized[key] = updates[key];
+        }
+      }
+      if (Object.keys(sanitized).length === 0) {
+        return new Response(JSON.stringify({ error: "No valid fields to update" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error } = await supabaseAdmin
+        .from("profiles")
+        .update(sanitized)
+        .eq("user_id", user_id);
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
