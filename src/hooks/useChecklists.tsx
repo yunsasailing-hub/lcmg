@@ -491,6 +491,112 @@ export function useCreateInstance() {
   });
 }
 
+export function useCreateAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (assignment: {
+      template_id: string;
+      assigned_to: string;
+      branch_id?: string | null;
+      periodicity: string;
+      start_date: string;
+      end_date?: string | null;
+      notes?: string | null;
+      created_by?: string | null;
+    }) => {
+      // Save the assignment rule
+      const { data: rule, error: ruleErr } = await supabase
+        .from('checklist_assignments')
+        .insert({
+          template_id: assignment.template_id,
+          assigned_to: assignment.assigned_to,
+          branch_id: assignment.branch_id || null,
+          periodicity: assignment.periodicity as any,
+          start_date: assignment.start_date,
+          end_date: assignment.end_date || null,
+          notes: assignment.notes || null,
+          created_by: assignment.created_by || null,
+          status: 'active' as any,
+        })
+        .select()
+        .single();
+      if (ruleErr) throw ruleErr;
+
+      // For one-time assignments, also create the instance immediately
+      if (assignment.periodicity === 'once') {
+        // Fetch template details for the instance
+        const { data: tpl } = await supabase
+          .from('checklist_templates')
+          .select('checklist_type, department')
+          .eq('id', assignment.template_id)
+          .single();
+
+        if (tpl) {
+          const { error: instErr } = await supabase
+            .from('checklist_instances')
+            .insert({
+              template_id: assignment.template_id,
+              checklist_type: tpl.checklist_type,
+              department: tpl.department,
+              branch_id: assignment.branch_id || null,
+              assigned_to: assignment.assigned_to,
+              scheduled_date: assignment.start_date,
+              notes: assignment.notes || null,
+            });
+          if (instErr) throw instErr;
+        }
+
+        // Mark as ended since it's one-time
+        await supabase
+          .from('checklist_assignments')
+          .update({ status: 'ended' as any, last_generated_date: assignment.start_date })
+          .eq('id', rule.id);
+      }
+
+      return rule;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+}
+
+export function useAssignments() {
+  return useQuery({
+    queryKey: ['assignments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('checklist_assignments')
+        .select('*, template:checklist_templates(title, checklist_type, department)')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useUpdateAssignmentStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase
+        .from('checklist_assignments')
+        .update({ status: status as any })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+}
+
 export function useBranches() {
   return useQuery({
     queryKey: ['branches'],

@@ -250,6 +250,7 @@
     "oneTime": "One-time",
     "daily": "Daily",
     "weekly": "Weekly",
+    "biweekly": "Biweekly",
     "monthly": "Monthly",
     "startDate": "Start Date",
     "endDate": "End Date (optional)",
