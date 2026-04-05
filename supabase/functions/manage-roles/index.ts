@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "No auth header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -24,23 +24,28 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Use getClaims to validate JWT without a server round-trip
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: { user } } = await supabaseUser.auth.getUser();
-    if (!user) {
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const userId = claimsData.claims.sub as string;
+
     const { data: isOwner } = await supabaseAdmin
       .from("user_roles")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("role", "owner")
       .maybeSingle();
 
@@ -87,7 +92,7 @@ Deno.serve(async (req) => {
 
     if (action === "remove") {
       const { user_id, role } = params;
-      if (user_id === user.id && role === "owner") {
+      if (user_id === userId && role === "owner") {
         return new Response(JSON.stringify({ error: "Cannot remove your own owner role" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
