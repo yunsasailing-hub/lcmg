@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguagePill, LanguageToggle } from '@/components/layout/LanguageSwitcher';
+import UserIdentityBadge from '@/components/layout/UserIdentityBadge';
 
 const NAV_KEYS = [
   { to: '/', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
@@ -33,17 +34,20 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
         borderColor: 'var(--sidebar-border)',
       }}
     >
-      <div className="flex h-16 items-center justify-between px-4">
-        {!collapsed && (
-          <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
-        )}
-        <button
-          onClick={onToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
-          style={{ color: 'var(--nav-foreground)' }}
-        >
-          {collapsed ? <Menu className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-        </button>
+      <div className="flex flex-col">
+        <div className="flex h-16 items-center justify-between px-4">
+          {!collapsed && (
+            <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
+          )}
+          <button
+            onClick={onToggle}
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
+            style={{ color: 'var(--nav-foreground)' }}
+          >
+            {collapsed ? <Menu className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          </button>
+        </div>
+        {!collapsed && <UserIdentityBadge />}
       </div>
 
       <nav className="flex-1 space-y-1 px-2 py-3">
@@ -105,8 +109,11 @@ function MobileNav() {
         }}
       >
         <header className="flex h-14 items-center justify-between px-4">
-          <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
-          <div className="flex items-center gap-2 pl-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-lg font-heading font-bold text-primary-foreground shrink-0">La Cala</span>
+            <UserIdentityBadge compact />
+          </div>
+          <div className="flex items-center gap-2 pl-2 shrink-0">
             <LanguagePill compact />
             <button
               onClick={() => signOut()}
