@@ -204,6 +204,39 @@ export function useVerifyChecklist() {
 
 // ─── Template Management Hooks ───
 
+export function useDeleteInstance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (instanceId: string) => {
+      const { data, error } = await supabase.functions.invoke('delete-checklist-instance', {
+        body: { instanceId },
+      });
+
+      if (error) {
+        let message = error.message || 'Failed to delete checklist';
+        const context = (error as any)?.context;
+        if (context && typeof context.json === 'function') {
+          try {
+            const payload = await context.json();
+            message = payload?.error || payload?.message || message;
+          } catch {}
+        }
+        throw new Error(message);
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to delete checklist');
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+    },
+  });
+}
+
 export function useDeleteTemplate() {
   const queryClient = useQueryClient();
 
