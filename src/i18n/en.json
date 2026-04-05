@@ -221,6 +221,24 @@
     "loading": "Loading...",
     "noRoles": "No roles assigned yet."
   },
+  "userMgmt": {
+    "title": "Team Members",
+    "searchPlaceholder": "Search by name, email or phone...",
+    "allRoles": "All roles",
+    "allStatus": "All status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "noUsers": "No users found.",
+    "noRole": "No role",
+    "changeRole": "Change Role",
+    "editUser": "Edit User",
+    "profileUpdated": "Profile updated",
+    "branch": "Branch",
+    "selectBranch": "Select branch",
+    "currentRoles": "Current roles",
+    "addRole": "Add role",
+    "quickRoles": "Quick Roles"
+  },
   "common": {
     "cancel": "Cancel",
     "save": "Save",

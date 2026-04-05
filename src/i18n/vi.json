@@ -221,6 +221,24 @@
     "loading": "Đang tải...",
     "noRoles": "Chưa có vai trò nào được phân."
   },
+  "userMgmt": {
+    "title": "Thành viên",
+    "searchPlaceholder": "Tìm theo tên, email hoặc SĐT...",
+    "allRoles": "Tất cả vai trò",
+    "allStatus": "Tất cả trạng thái",
+    "active": "Hoạt động",
+    "inactive": "Ngưng hoạt động",
+    "noUsers": "Không tìm thấy người dùng.",
+    "noRole": "Chưa có vai trò",
+    "changeRole": "Đổi vai trò",
+    "editUser": "Sửa người dùng",
+    "profileUpdated": "Đã cập nhật hồ sơ",
+    "branch": "Chi nhánh",
+    "selectBranch": "Chọn chi nhánh",
+    "currentRoles": "Vai trò hiện tại",
+    "addRole": "Thêm vai trò",
+    "quickRoles": "Vai trò nhanh"
+  },
   "common": {
     "cancel": "Hủy",
     "save": "Lưu",
