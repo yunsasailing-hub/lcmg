@@ -523,37 +523,39 @@ export function useCreateAssignment() {
         .single();
       if (ruleErr) throw ruleErr;
 
-      // For one-time assignments, also create the instance immediately
-      if (assignment.periodicity === 'once') {
-        // Fetch template details for the instance
-        const { data: tpl } = await supabase
-          .from('checklist_templates')
-          .select('checklist_type, department')
-          .eq('id', assignment.template_id)
-          .single();
+      // Fetch template details for creating the first instance
+      const { data: tpl } = await supabase
+        .from('checklist_templates')
+        .select('checklist_type, department')
+        .eq('id', assignment.template_id)
+        .single();
 
-        if (tpl) {
-          const { error: instErr } = await supabase
-            .from('checklist_instances')
-            .insert({
-              template_id: assignment.template_id,
-              assignment_id: rule.id,
-              checklist_type: tpl.checklist_type,
-              department: tpl.department,
-              branch_id: assignment.branch_id || null,
-              assigned_to: assignment.assigned_to,
-              scheduled_date: assignment.start_date,
-              notes: assignment.notes || null,
-            } as any);
-          if (instErr) throw instErr;
-        }
-
-        // Mark as ended since it's one-time
-        await supabase
-          .from('checklist_assignments')
-          .update({ status: 'ended' as any, last_generated_date: assignment.start_date })
-          .eq('id', rule.id);
+      if (tpl) {
+        // Create the first checklist instance immediately for ALL periodicity types
+        const { error: instErr } = await supabase
+          .from('checklist_instances')
+          .insert({
+            template_id: assignment.template_id,
+            assignment_id: rule.id,
+            checklist_type: tpl.checklist_type,
+            department: tpl.department,
+            branch_id: assignment.branch_id || null,
+            assigned_to: assignment.assigned_to,
+            scheduled_date: assignment.start_date,
+            notes: assignment.notes || null,
+          } as any);
+        if (instErr) throw instErr;
       }
+
+      // Update last_generated_date so the cron job knows where to continue
+      await supabase
+        .from('checklist_assignments')
+        .update({
+          last_generated_date: assignment.start_date,
+          // Mark one-time assignments as ended immediately
+          ...(assignment.periodicity === 'once' ? { status: 'ended' as any } : {}),
+        })
+        .eq('id', rule.id);
 
       return rule;
     },
