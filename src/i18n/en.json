@@ -165,7 +165,14 @@
     "newTaskPlaceholder": "New task title…",
     "noTasks": "No tasks in this template.",
     "task": "task",
-    "tasks_plural": "tasks"
+    "tasks_plural": "tasks",
+    "myChecklists": "My Checklists",
+    "deleteInstance": "Delete Record",
+    "deleteInstanceTitle": "Delete this checklist record?",
+    "deleteInstanceDesc": "This will permanently remove this submitted checklist and all its task completions from the database.",
+    "instanceDeleted": "Checklist record deleted",
+    "failDeleteInstance": "Failed to delete checklist record",
+    "permissionDenied": "Permission denied"
   },
   "status": {
     "pending": "Pending",

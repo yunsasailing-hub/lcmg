@@ -165,7 +165,14 @@
     "newTaskPlaceholder": "Tên nhiệm vụ mới…",
     "noTasks": "Không có nhiệm vụ trong mẫu này.",
     "task": "nhiệm vụ",
-    "tasks_plural": "nhiệm vụ"
+    "tasks_plural": "nhiệm vụ",
+    "myChecklists": "Danh sách của tôi",
+    "deleteInstance": "Xóa bản ghi",
+    "deleteInstanceTitle": "Xóa bản ghi danh sách này?",
+    "deleteInstanceDesc": "Thao tác này sẽ xóa vĩnh viễn danh sách đã gửi và tất cả kết quả nhiệm vụ khỏi cơ sở dữ liệu.",
+    "instanceDeleted": "Đã xóa bản ghi danh sách",
+    "failDeleteInstance": "Xóa bản ghi thất bại",
+    "permissionDenied": "Không có quyền"
   },
   "status": {
     "pending": "Đang chờ",
