@@ -14,6 +14,51 @@ export type ChecklistTemplate = Tables<'checklist_templates'>;
 export type ChecklistInstance = Tables<'checklist_instances'>;
 export type TaskCompletion = Tables<'checklist_task_completions'>;
 
+async function invokeProtectedFunction<T>(functionName: string, body: Record<string, unknown>, fallbackMessage: string) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+
+  let accessToken = session.access_token;
+  const { data: refreshed } = await supabase.auth.refreshSession();
+  if (refreshed.session?.access_token) {
+    accessToken = refreshed.session.access_token;
+  }
+
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (error) {
+    let message = error.message || fallbackMessage;
+    const context = (error as any)?.context;
+
+    if (context && typeof context.json === 'function') {
+      try {
+        const payload = await context.json();
+        message = payload?.error || payload?.message || message;
+      } catch {
+        // Ignore body parsing errors and use the fallback message.
+      }
+    }
+
+    if ((context as { status?: number } | undefined)?.status === 401) {
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+
+    throw new Error(message);
+  }
+
+  return data as T;
+}
+
 // ─── Staff Hooks ───
 
 export function useMyChecklists(date?: string) {
@@ -209,21 +254,11 @@ export function useDeleteInstance() {
 
   return useMutation({
     mutationFn: async (instanceId: string) => {
-      const { data, error } = await supabase.functions.invoke('delete-checklist-instance', {
-        body: { instanceId },
-      });
-
-      if (error) {
-        let message = error.message || 'Failed to delete checklist';
-        const context = (error as any)?.context;
-        if (context && typeof context.json === 'function') {
-          try {
-            const payload = await context.json();
-            message = payload?.error || payload?.message || message;
-          } catch {}
-        }
-        throw new Error(message);
-      }
+      const data = await invokeProtectedFunction<{ success?: boolean; error?: string }>(
+        'delete-checklist-instance',
+        { instanceId },
+        'Failed to delete checklist',
+      );
 
       if (!data?.success) {
         throw new Error(data?.error || 'Failed to delete checklist');
