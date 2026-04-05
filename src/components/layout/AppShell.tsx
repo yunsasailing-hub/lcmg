@@ -109,8 +109,11 @@ function MobileNav() {
         }}
       >
         <header className="flex h-14 items-center justify-between px-4">
-          <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
-          <div className="flex items-center gap-2 pl-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-lg font-heading font-bold text-primary-foreground shrink-0">La Cala</span>
+            <UserIdentityBadge compact />
+          </div>
+          <div className="flex items-center gap-2 pl-2 shrink-0">
             <LanguagePill compact />
             <button
               onClick={() => signOut()}
