@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, CalendarIcon, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useTemplates, useCreateTemplate, useCreateInstance, useDeleteTemplate, useDeleteTemplateTask,
+  useTemplates, useCreateTemplate, useDeleteTemplate, useDeleteTemplateTask,
   useUpdateTemplate, useAddTemplateTask, useUpdateTemplateTask, useStaffProfiles, useCreateAssignment,
   type PhotoRequirement, type ChecklistType, type Department,
 } from '@/hooks/useChecklists';
