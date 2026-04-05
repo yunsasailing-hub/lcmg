@@ -239,6 +239,24 @@
     "addRole": "Thêm vai trò",
     "quickRoles": "Vai trò nhanh"
   },
+  "assign": {
+    "assignChecklist": "Phân công danh sách",
+    "assignDesc": "Phân công \"{{title}}\" cho thành viên.",
+    "assignTo": "Phân công cho",
+    "selectUser": "Chọn người dùng...",
+    "noUsers": "Không có người dùng hoạt động",
+    "loadError": "Không thể tải người dùng",
+    "periodicity": "Chu kỳ",
+    "oneTime": "Một lần",
+    "daily": "Hàng ngày",
+    "weekly": "Hàng tuần",
+    "monthly": "Hàng tháng",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc (tùy chọn)",
+    "notes": "Ghi chú (tùy chọn)",
+    "notesPlaceholder": "Thêm ghi chú cho phân công này...",
+    "startDateRequired": "Cần chọn ngày bắt đầu"
+  },
   "common": {
     "cancel": "Hủy",
     "save": "Lưu",

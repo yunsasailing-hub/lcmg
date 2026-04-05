@@ -239,6 +239,24 @@
     "addRole": "Add role",
     "quickRoles": "Quick Roles"
   },
+  "assign": {
+    "assignChecklist": "Assign Checklist",
+    "assignDesc": "Assign \"{{title}}\" to a team member.",
+    "assignTo": "Assign to User",
+    "selectUser": "Select user...",
+    "noUsers": "No active users available",
+    "loadError": "Failed to load users",
+    "periodicity": "Periodicity",
+    "oneTime": "One-time",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "startDate": "Start Date",
+    "endDate": "End Date (optional)",
+    "notes": "Notes (optional)",
+    "notesPlaceholder": "Add any notes about this assignment...",
+    "startDateRequired": "Start date is required"
+  },
   "common": {
     "cancel": "Cancel",
     "save": "Save",
