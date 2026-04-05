@@ -29,12 +29,10 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ChecklistType>('opening');
   const [department, setDepartment] = useState<Department>('kitchen');
-  const [branchId, setBranchId] = useState<string>('');
   const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
     { title: '', photo_requirement: 'none' },
   ]);
 
-  const { data: branches } = useBranches();
   const create = useCreateTemplate();
 
   const addTask = () => setTasks(prev => [...prev, { title: '', photo_requirement: 'none' }]);
@@ -48,7 +46,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
     if (!validTasks.length) { toast.error(t('checklists.addOneTask')); return; }
 
     create.mutate({
-      template: { title: title.trim(), checklist_type: type, department, branch_id: branchId || null },
+      template: { title: title.trim(), checklist_type: type, department, branch_id: null },
       tasks: validTasks.map((t, i) => ({ title: t.title.trim(), sort_order: i, photo_requirement: t.photo_requirement })),
     }, {
       onSuccess: () => { toast.success(t('checklists.created')); setOpen(false); resetForm(); onCreated(); },
@@ -57,7 +55,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   };
 
   const resetForm = () => {
-    setTitle(''); setType('opening'); setDepartment('kitchen'); setBranchId('');
+    setTitle(''); setType('opening'); setDepartment('kitchen');
     setTasks([{ title: '', photo_requirement: 'none' }]);
   };
 
@@ -101,17 +99,6 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div>
-            <Label>{t('checklists.branch')}</Label>
-            <Select value={branchId || 'none'} onValueChange={v => setBranchId(v === 'none' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder={t('checklists.allBranches')} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t('checklists.allBranches')}</SelectItem>
-                {branches?.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
 
           <div>
