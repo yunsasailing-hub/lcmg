@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ROLE_STYLES: Record<string, { bg: string; label: string }> = {
   owner: { bg: 'bg-red-600', label: 'Owner' },
@@ -9,10 +9,20 @@ const ROLE_STYLES: Record<string, { bg: string; label: string }> = {
 };
 
 export default function UserIdentityBadge({ compact = false }: { compact?: boolean }) {
-  const { profile, roles } = useAuth();
-  const { t } = useTranslation();
+  const { profile, roles, isLoading, isAuthenticated } = useAuth();
 
-  if (!profile?.full_name) return null;
+  // Show skeleton while auth is loading
+  if (isLoading) {
+    return (
+      <div className={cn('flex items-center gap-2 truncate', compact ? 'px-4' : 'px-3')}>
+        <Skeleton className="h-3 w-20" style={{ background: 'var(--nav-active)' }} />
+        <Skeleton className="h-4 w-14 rounded-full" style={{ background: 'var(--nav-active)' }} />
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) return null;
 
   const topRole = roles.includes('owner')
     ? 'owner'
@@ -22,13 +32,16 @@ export default function UserIdentityBadge({ compact = false }: { compact?: boole
 
   const style = ROLE_STYLES[topRole] ?? ROLE_STYLES.staff;
 
+  // Use full_name, fall back to email, then to 'User'
+  const displayName = profile?.full_name || profile?.email || 'User';
+
   return (
     <div className={cn('flex items-center gap-2 truncate', compact ? 'px-4' : 'px-3')}>
       <span
         className="truncate text-xs font-medium"
         style={{ color: 'var(--nav-muted)' }}
       >
-        {profile.full_name}
+        {displayName}
       </span>
       <span
         className={cn(
