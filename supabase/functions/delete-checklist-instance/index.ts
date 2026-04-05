@@ -19,7 +19,9 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401);
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
 
     const { instanceId } = await req.json();
     if (!instanceId || typeof instanceId !== "string") {
@@ -32,12 +34,29 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError || !user) return jsonResponse({ error: "Unauthorized" }, 401);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user) {
+      console.error("delete-checklist-instance auth failed", userError?.message ?? userError);
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
 
     // Only owners can delete checklist instances
-    const { data: isOwner } = await supabaseAdmin.rpc("has_role", { _user_id: user.id, _role: "owner" });
-    if (!isOwner) {
+    const { data: ownerRole, error: roleError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "owner")
+      .maybeSingle();
+
+    if (roleError) {
+      throw roleError;
+    }
+
+    if (!ownerRole) {
       return jsonResponse({ error: "Permission denied. Only owners can delete checklist records." }, 403);
     }
 
