@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguagePill, LanguageToggle } from '@/components/layout/LanguageSwitcher';
+import UserIdentityBadge from '@/components/layout/UserIdentityBadge';
 
 const NAV_KEYS = [
   { to: '/', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
