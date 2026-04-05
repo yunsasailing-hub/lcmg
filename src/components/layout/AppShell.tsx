@@ -68,11 +68,6 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
       </nav>
 
       <div className="border-t px-2 py-3 space-y-1" style={{ borderColor: 'var(--sidebar-border)' }}>
-        {!collapsed && profile?.full_name && (
-          <p className="mb-2 truncate px-3 text-xs" style={{ color: 'var(--nav-muted)' }}>
-            {profile.full_name}
-          </p>
-        )}
         <LanguageToggle collapsed={collapsed} />
         <button
           onClick={() => signOut()}
