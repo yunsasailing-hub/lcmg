@@ -537,13 +537,14 @@ export function useCreateAssignment() {
             .from('checklist_instances')
             .insert({
               template_id: assignment.template_id,
+              assignment_id: rule.id,
               checklist_type: tpl.checklist_type,
               department: tpl.department,
               branch_id: assignment.branch_id || null,
               assigned_to: assignment.assigned_to,
               scheduled_date: assignment.start_date,
               notes: assignment.notes || null,
-            });
+            } as any);
           if (instErr) throw instErr;
         }
 
