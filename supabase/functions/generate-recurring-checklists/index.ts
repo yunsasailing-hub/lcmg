@@ -44,7 +44,6 @@ function getNextDates(
   const dates: string[] = [];
   let cursor = lastGenerated ? new Date(lastGenerated) : new Date(startDate);
 
-  // If lastGenerated exists, move one step forward; otherwise start from startDate
   if (lastGenerated) {
     cursor =
       periodicity === "monthly"
@@ -52,7 +51,6 @@ function getNextDates(
         : addDays(cursor, intervalDays[periodicity]!);
   }
 
-  // Generate all dates up to today (max 90 to prevent runaway)
   let safety = 0;
   while (cursor <= today && safety < 90) {
     if (endDate && cursor > endDate) break;
@@ -81,7 +79,7 @@ Deno.serve(async (req) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Fetch active recurring assignments
+    // Only fetch active assignments (skip paused and ended)
     const { data: assignments, error: fetchErr } = await supabaseAdmin
       .from("checklist_assignments")
       .select("*, template:checklist_templates(checklist_type, department)")
@@ -89,21 +87,24 @@ Deno.serve(async (req) => {
 
     if (fetchErr) throw fetchErr;
     if (!assignments?.length) {
-      return new Response(JSON.stringify({ created: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ created: 0, skipped: 0, ended: 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     let totalCreated = 0;
+    let totalSkipped = 0;
+    let totalEnded = 0;
 
     for (const assignment of assignments) {
-      // Check end date
+      // Auto-end expired assignments
       if (assignment.end_date && new Date(assignment.end_date) < today) {
-        // Auto-end expired assignments
         await supabaseAdmin
           .from("checklist_assignments")
           .update({ status: "ended" })
           .eq("id", assignment.id);
+        totalEnded++;
         continue;
       }
 
@@ -120,40 +121,68 @@ Deno.serve(async (req) => {
       if (!dates.length) continue;
 
       const template = assignment.template as any;
-      const instances = dates.map((d) => ({
-        template_id: assignment.template_id,
-        checklist_type: template?.checklist_type || "opening",
-        department: template?.department || "kitchen",
-        branch_id: assignment.branch_id,
-        assigned_to: assignment.assigned_to,
-        scheduled_date: d,
-        notes: assignment.notes,
-      }));
 
-      const { error: insertErr } = await supabaseAdmin
-        .from("checklist_instances")
-        .insert(instances);
+      // Insert one at a time to handle duplicates gracefully
+      let createdCount = 0;
+      for (const d of dates) {
+        // Check for existing instance (duplicate prevention)
+        const { data: existing } = await supabaseAdmin
+          .from("checklist_instances")
+          .select("id")
+          .eq("template_id", assignment.template_id)
+          .eq("assigned_to", assignment.assigned_to)
+          .eq("scheduled_date", d)
+          .maybeSingle();
 
-      if (insertErr) {
-        console.error(
-          `Failed to create instances for assignment ${assignment.id}:`,
-          insertErr
-        );
-        continue;
+        if (existing) {
+          totalSkipped++;
+          continue;
+        }
+
+        const { error: insertErr } = await supabaseAdmin
+          .from("checklist_instances")
+          .insert({
+            template_id: assignment.template_id,
+            assignment_id: assignment.id,
+            checklist_type: template?.checklist_type || "opening",
+            department: template?.department || "kitchen",
+            branch_id: assignment.branch_id,
+            assigned_to: assignment.assigned_to,
+            scheduled_date: d,
+            notes: assignment.notes,
+          });
+
+        if (insertErr) {
+          // Unique constraint violation = duplicate, skip silently
+          if (insertErr.code === "23505") {
+            totalSkipped++;
+            continue;
+          }
+          console.error(
+            `Failed to create instance for assignment ${assignment.id} date ${d}:`,
+            insertErr
+          );
+          continue;
+        }
+
+        createdCount++;
       }
 
-      totalCreated += instances.length;
+      totalCreated += createdCount;
 
-      // Update last_generated_date
-      await supabaseAdmin
-        .from("checklist_assignments")
-        .update({ last_generated_date: dates[dates.length - 1] })
-        .eq("id", assignment.id);
+      // Update last_generated_date to the latest date we processed
+      if (dates.length > 0) {
+        await supabaseAdmin
+          .from("checklist_assignments")
+          .update({ last_generated_date: dates[dates.length - 1] })
+          .eq("id", assignment.id);
+      }
     }
 
-    return new Response(JSON.stringify({ created: totalCreated }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ created: totalCreated, skipped: totalSkipped, ended: totalEnded }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
