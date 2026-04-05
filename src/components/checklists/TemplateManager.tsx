@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates, useCreateTemplate, useCreateInstance, useDeleteTemplate, useDeleteTemplateTask,
-  useUpdateTemplate, useAddTemplateTask, useUpdateTemplateTask, useStaffProfiles,
+  useUpdateTemplate, useAddTemplateTask, useUpdateTemplateTask, useStaffProfiles, useCreateAssignment,
   type PhotoRequirement, type ChecklistType, type Department,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
@@ -148,16 +148,16 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
 function AssignDialog({ template }: { template: any }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [staffId, setStaffId] = useState('');
-  const [periodicity, setPeriodicity] = useState<string>('one_time');
+  const [periodicity, setPeriodicity] = useState('once');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState('');
   const [notes, setNotes] = useState('');
   const { data: staff, isLoading: staffLoading, isError: staffError } = useStaffProfiles();
-  const createInstance = useCreateInstance();
+  const createAssignment = useCreateAssignment();
 
-  // Sort: same department first, then alphabetical
   const sortedStaff = useMemo(() => {
     if (!staff) return [];
     return [...staff].sort((a, b) => {
@@ -171,14 +171,15 @@ function AssignDialog({ template }: { template: any }) {
   const handleAssign = () => {
     if (!staffId) { toast.error(t('checklists.selectStaffError')); return; }
     if (!startDate) { toast.error(t('assign.startDateRequired')); return; }
-    createInstance.mutate({
+    createAssignment.mutate({
       template_id: template.id,
-      checklist_type: template.checklist_type,
-      department: template.department,
-      branch_id: template.branch_id,
       assigned_to: staffId,
-      scheduled_date: startDate,
+      branch_id: template.branch_id,
+      periodicity,
+      start_date: startDate,
+      end_date: endDate || null,
       notes: notes.trim() || null,
+      created_by: user?.id || null,
     }, {
       onSuccess: () => {
         toast.success(t('checklists.assigned'));
@@ -190,19 +191,16 @@ function AssignDialog({ template }: { template: any }) {
   };
 
   const resetForm = () => {
-    setStaffId('');
-    setPeriodicity('one_time');
+    setStaffId(''); setPeriodicity('once');
     setStartDate(new Date().toISOString().split('T')[0]);
-    setEndDate('');
-    setNotes('');
+    setEndDate(''); setNotes('');
   };
 
   const formatUserLabel = (s: any) => {
     const name = s.full_name || s.email || 'Unknown';
     const dept = s.department ? t(`departments.${s.department}`) : '';
     const pos = s.position || '';
-    const parts = [name, pos, dept].filter(Boolean);
-    return parts.join(' – ');
+    return [name, pos, dept].filter(Boolean).join(' – ');
   };
 
   return (
@@ -219,7 +217,6 @@ function AssignDialog({ template }: { template: any }) {
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* User dropdown */}
           <div>
             <Label>{t('assign.assignTo')}</Label>
             {staffLoading ? (
@@ -235,30 +232,27 @@ function AssignDialog({ template }: { template: any }) {
                 <SelectTrigger><SelectValue placeholder={t('assign.selectUser')} /></SelectTrigger>
                 <SelectContent>
                   {sortedStaff.map(s => (
-                    <SelectItem key={s.user_id} value={s.user_id}>
-                      {formatUserLabel(s)}
-                    </SelectItem>
+                    <SelectItem key={s.user_id} value={s.user_id}>{formatUserLabel(s)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
           </div>
 
-          {/* Periodicity */}
           <div>
             <Label>{t('assign.periodicity')}</Label>
             <Select value={periodicity} onValueChange={setPeriodicity}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="one_time">{t('assign.oneTime')}</SelectItem>
+                <SelectItem value="once">{t('assign.oneTime')}</SelectItem>
                 <SelectItem value="daily">{t('assign.daily')}</SelectItem>
                 <SelectItem value="weekly">{t('assign.weekly')}</SelectItem>
+                <SelectItem value="biweekly">{t('assign.biweekly')}</SelectItem>
                 <SelectItem value="monthly">{t('assign.monthly')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Date row */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>{t('assign.startDate')}</Label>
@@ -270,22 +264,17 @@ function AssignDialog({ template }: { template: any }) {
             </div>
           </div>
 
-          {/* Notes */}
           <div>
             <Label>{t('assign.notes')}</Label>
-            <Textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder={t('assign.notesPlaceholder')}
-              className="resize-none h-20"
-            />
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder={t('assign.notesPlaceholder')} className="resize-none h-20" />
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>{t('checklists.cancel')}</Button>
-          <Button onClick={handleAssign} disabled={createInstance.isPending || !staffId || !startDate}>
-            {createInstance.isPending ? t('checklists.assigning') : t('assign.assignChecklist')}
+          <Button onClick={handleAssign} disabled={createAssignment.isPending || !staffId || !startDate}>
+            {createAssignment.isPending ? t('checklists.assigning') : t('assign.assignChecklist')}
           </Button>
         </DialogFooter>
       </DialogContent>
