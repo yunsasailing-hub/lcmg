@@ -34,17 +34,20 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
         borderColor: 'var(--sidebar-border)',
       }}
     >
-      <div className="flex h-16 items-center justify-between px-4">
-        {!collapsed && (
-          <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
-        )}
-        <button
-          onClick={onToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
-          style={{ color: 'var(--nav-foreground)' }}
-        >
-          {collapsed ? <Menu className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-        </button>
+      <div className="flex flex-col">
+        <div className="flex h-16 items-center justify-between px-4">
+          {!collapsed && (
+            <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
+          )}
+          <button
+            onClick={onToggle}
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
+            style={{ color: 'var(--nav-foreground)' }}
+          >
+            {collapsed ? <Menu className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          </button>
+        </div>
+        {!collapsed && <UserIdentityBadge />}
       </div>
 
       <nav className="flex-1 space-y-1 px-2 py-3">
