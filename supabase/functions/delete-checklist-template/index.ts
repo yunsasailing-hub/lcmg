@@ -8,10 +8,7 @@ const corsHeaders = {
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
@@ -22,13 +19,11 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-
     if (!authHeader) {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
     const { templateId } = await req.json();
-
     if (!templateId || typeof templateId !== "string") {
       return jsonResponse({ error: "A valid template id is required." }, 400);
     }
@@ -59,82 +54,36 @@ Deno.serve(async (req) => {
       .eq("user_id", user.id)
       .in("role", ["owner", "manager"]);
 
-    if (roleError) {
-      throw roleError;
-    }
-
+    if (roleError) throw roleError;
     if (!roles?.length) {
       return jsonResponse({ error: "Only managers or owners can delete templates." }, 403);
     }
 
+    // Fetch template title before deletion (for the response)
     const { data: template, error: templateError } = await supabaseAdmin
       .from("checklist_templates")
       .select("id, title")
       .eq("id", templateId)
       .maybeSingle();
 
-    if (templateError) {
-      throw templateError;
-    }
-
+    if (templateError) throw templateError;
     if (!template) {
       return jsonResponse({ error: "Template not found." }, 404);
     }
 
-    // Delete related completions for all instances of this template
-    const { data: instances, error: instanceFetchError } = await supabaseAdmin
-      .from("checklist_instances")
-      .select("id")
-      .eq("template_id", templateId);
-
-    if (instanceFetchError) {
-      throw instanceFetchError;
-    }
-
-    if (instances && instances.length > 0) {
-      const instanceIds = instances.map((i) => i.id);
-
-      // Delete task completions for those instances
-      const { error: deleteCompletionsError } = await supabaseAdmin
-        .from("checklist_task_completions")
-        .delete()
-        .in("instance_id", instanceIds);
-
-      if (deleteCompletionsError) {
-        throw deleteCompletionsError;
-      }
-
-      // Delete the instances themselves
-      const { error: deleteInstancesError } = await supabaseAdmin
-        .from("checklist_instances")
-        .delete()
-        .eq("template_id", templateId);
-
-      if (deleteInstancesError) {
-        throw deleteInstancesError;
-      }
-    }
-
-    const { error: deleteTasksError } = await supabaseAdmin
-      .from("checklist_template_tasks")
-      .delete()
-      .eq("template_id", templateId);
-
-    if (deleteTasksError) {
-      throw deleteTasksError;
-    }
-
-    const { data: deletedTemplate, error: deleteTemplateError } = await supabaseAdmin
+    // Delete ONLY the template.
+    // FK cascades handle:
+    //   - checklist_template_tasks: CASCADE (deleted with template)
+    //   - checklist_instances: SET NULL (template_id becomes null, records preserved)
+    //   - checklist_assignments: SET NULL + trigger ends active assignments
+    const { data: deletedTemplate, error: deleteError } = await supabaseAdmin
       .from("checklist_templates")
       .delete()
       .eq("id", templateId)
       .select("id")
       .maybeSingle();
 
-    if (deleteTemplateError) {
-      throw deleteTemplateError;
-    }
-
+    if (deleteError) throw deleteError;
     if (!deletedTemplate) {
       return jsonResponse({ error: "Template could not be deleted." }, 500);
     }
@@ -142,11 +91,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ success: true, templateId: deletedTemplate.id, title: template.title });
   } catch (error) {
     console.error("delete-checklist-template failed", error);
-
     return jsonResponse(
-      {
-        error: error instanceof Error ? error.message : "Unexpected error while deleting template.",
-      },
+      { error: error instanceof Error ? error.message : "Unexpected error while deleting template." },
       500,
     );
   }

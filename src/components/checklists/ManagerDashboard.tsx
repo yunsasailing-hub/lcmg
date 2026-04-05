@@ -177,7 +177,7 @@ function ManagerDetail({ instanceId, templateId, instance, onBack }: {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-heading font-semibold truncate">{tpl?.title ?? t('checklists.title')}</h2>
+          <h2 className="text-lg font-heading font-semibold truncate">{tpl?.title ?? t('checklists.templateDeleted')}</h2>
           <p className="text-xs text-muted-foreground capitalize">
             {instance.checklist_type} · {instance.department} · {format(new Date(instance.scheduled_date + 'T00:00:00'), 'PP')}
           </p>
@@ -321,7 +321,7 @@ export default function ManagerDashboard() {
               >
                 <StatusIcon className={cn('h-5 w-5 shrink-0', overdue ? 'text-destructive' : instance.status === 'rejected' ? 'text-destructive' : instance.status === 'pending' ? 'text-muted-foreground' : 'text-success')} />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{tpl?.title ?? t('checklists.title')}</p>
+                  <p className="font-medium text-foreground truncate">{tpl?.title ?? t('checklists.templateDeleted')}</p>
                   <p className="text-xs text-muted-foreground capitalize">
                     {assignee?.full_name || t('checklists.unassigned')} · {instance.department}
                     {overdue && <span className="text-destructive font-semibold ml-1">{t('checklists.overdue')}</span>}

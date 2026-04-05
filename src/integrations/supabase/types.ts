@@ -63,7 +63,7 @@ export type Database = {
           periodicity: Database["public"]["Enums"]["assignment_periodicity"]
           start_date: string
           status: Database["public"]["Enums"]["assignment_status"]
-          template_id: string
+          template_id: string | null
           updated_at: string
         }
         Insert: {
@@ -78,7 +78,7 @@ export type Database = {
           periodicity?: Database["public"]["Enums"]["assignment_periodicity"]
           start_date?: string
           status?: Database["public"]["Enums"]["assignment_status"]
-          template_id: string
+          template_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -93,7 +93,7 @@ export type Database = {
           periodicity?: Database["public"]["Enums"]["assignment_periodicity"]
           start_date?: string
           status?: Database["public"]["Enums"]["assignment_status"]
-          template_id?: string
+          template_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -127,7 +127,7 @@ export type Database = {
           scheduled_date: string
           status: Database["public"]["Enums"]["checklist_status"]
           submitted_at: string | null
-          template_id: string
+          template_id: string | null
           updated_at: string
           verified_at: string | null
           verified_by: string | null
@@ -145,7 +145,7 @@ export type Database = {
           scheduled_date?: string
           status?: Database["public"]["Enums"]["checklist_status"]
           submitted_at?: string | null
-          template_id: string
+          template_id?: string | null
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
@@ -163,7 +163,7 @@ export type Database = {
           scheduled_date?: string
           status?: Database["public"]["Enums"]["checklist_status"]
           submitted_at?: string | null
-          template_id?: string
+          template_id?: string | null
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
