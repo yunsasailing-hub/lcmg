@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2 } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +33,8 @@ import {
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
-
+import { useAssignmentCountByTemplate } from '@/hooks/useAssignments';
+import AssignmentManager from '@/components/checklists/AssignmentManager';
 // ─── Create Template Dialog ───
 
 function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
@@ -351,8 +352,10 @@ export default function TemplateManager() {
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
+  const { data: assignmentCounts } = useAssignmentCountByTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string } | null>(null);
 
   const handleExport = () => {
     if (!templates?.length) { toast.error('No templates to export'); return; }
@@ -425,6 +428,7 @@ export default function TemplateManager() {
             const tasks = (tpl as any).tasks || [];
             const taskCount = tasks.length;
             const isExpanded = expandedId === tpl.id;
+            const aCount = assignmentCounts?.[tpl.id] || 0;
 
             return (
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
@@ -439,11 +443,17 @@ export default function TemplateManager() {
                         <p className="font-medium text-foreground truncate">{tpl.title}</p>
                         <p className="text-xs text-muted-foreground capitalize mt-0.5">
                           {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
+                          {aCount > 0 && ` · ${aCount} assignment${aCount !== 1 ? 's' : ''}`}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
+                      {aCount > 0 && (
+                        <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title }); }}>
+                          <Eye className="h-3.5 w-3.5 mr-1" /> {aCount} Assignment{aCount !== 1 ? 's' : ''}
+                        </Button>
+                      )}
                       <AssignDialog template={tpl} />
                     </div>
                   </div>
@@ -505,6 +515,15 @@ export default function TemplateManager() {
             );
           })}
         </div>
+      )}
+
+      {assignmentManagerTemplate && (
+        <AssignmentManager
+          templateId={assignmentManagerTemplate.id}
+          templateTitle={assignmentManagerTemplate.title}
+          open={!!assignmentManagerTemplate}
+          onOpenChange={(open) => { if (!open) setAssignmentManagerTemplate(null); }}
+        />
       )}
     </div>
   );
