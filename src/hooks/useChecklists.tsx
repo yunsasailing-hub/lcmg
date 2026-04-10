@@ -434,7 +434,7 @@ export function useCreateAssignment() {
 
       const { data: template, error: templateError } = await supabase
         .from('checklist_templates')
-        .select('checklist_type, department')
+        .select('checklist_type, department, default_due_time')
         .eq('id', assignment.template_id)
         .single();
 
@@ -454,6 +454,9 @@ export function useCreateAssignment() {
         throw assignmentError;
       }
 
+      const dueTime = (template as any).default_due_time || '10:00:00';
+      const dueDatetime = `${assignment.start_date}T${dueTime}Z`;
+
       const firstInstancePayload = {
         template_id: assignment.template_id,
         assignment_id: createdAssignment.id,
@@ -462,6 +465,7 @@ export function useCreateAssignment() {
         department: template.department,
         branch_id: assignment.branch_id || null,
         scheduled_date: assignment.start_date,
+        due_datetime: dueDatetime,
       };
 
       const { error: firstInstanceError } = await supabase
