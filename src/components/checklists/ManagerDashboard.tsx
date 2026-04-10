@@ -538,7 +538,8 @@ export default function ManagerDashboard() {
                                 </p>
                               </div>
                               <Badge variant={cfg.variant} className={cn(cfg.className, 'text-[10px]')}>{cfg.label}</Badge>
-                            </button>
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
