@@ -300,7 +300,7 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this checklist record?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently remove this checklist record from the database. This action cannot be undone.
+                  This will remove only this submitted checklist record from history. The original template and other records will not be affected.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
