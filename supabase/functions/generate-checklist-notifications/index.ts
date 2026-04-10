@@ -18,11 +18,12 @@ Deno.serve(async (req) => {
   const now = new Date();
   let createdNotices = 0;
   let createdWarnings = 0;
+  let createdEscalations = 0;
 
   // Fetch all pending/late checklists with due_datetime set
   const { data: pendingInstances, error: fetchErr } = await supabase
     .from("checklist_instances")
-    .select("id, assigned_to, checklist_type, department, scheduled_date, branch_id, template_id, assignment_id, due_datetime, status")
+    .select("id, assigned_to, assigned_manager_user_id, checklist_type, department, scheduled_date, branch_id, template_id, due_datetime, status")
     .in("status", ["pending", "late"])
     .not("assigned_to", "is", null)
     .not("due_datetime", "is", null);
@@ -36,31 +37,43 @@ Deno.serve(async (req) => {
 
   if (!pendingInstances || pendingInstances.length === 0) {
     return new Response(
-      JSON.stringify({ ok: true, notices: 0, warnings: 0, message: "No pending instances" }),
+      JSON.stringify({ ok: true, notices: 0, warnings: 0, escalations: 0, message: "No pending instances" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 
-  // Fetch template titles for notification messages
-  const templateIds = [...new Set(pendingInstances.map(i => i.template_id).filter(Boolean))];
-  let templateMap: Record<string, string> = {};
-  if (templateIds.length > 0) {
-    const { data: templates } = await supabase
-      .from("checklist_templates")
-      .select("id, title")
-      .in("id", templateIds);
-    if (templates) {
-      templateMap = Object.fromEntries(templates.map(t => [t.id, t.title]));
+  // Fetch branch names for messages
+  const branchIds = [...new Set(pendingInstances.map(i => i.branch_id).filter(Boolean))];
+  let branchMap: Record<string, string> = {};
+  if (branchIds.length > 0) {
+    const { data: branches } = await supabase
+      .from("branches")
+      .select("id, name")
+      .in("id", branchIds);
+    if (branches) {
+      branchMap = Object.fromEntries(branches.map(b => [b.id, b.name]));
     }
   }
 
-  // Fetch managers/owners for warning escalation
+  // Fetch staff profiles for escalation messages
+  const staffIds = [...new Set(pendingInstances.map(i => i.assigned_to).filter(Boolean))];
+  let profileMap: Record<string, string> = {};
+  if (staffIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .in("user_id", staffIds);
+    if (profiles) {
+      profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p.full_name || "Unknown"]));
+    }
+  }
+
+  // Fetch managers/owners for warning escalation (fallback when assigned_manager_user_id is not set)
   const { data: managerRoles } = await supabase
     .from("user_roles")
     .select("user_id, role")
     .in("role", ["owner", "manager"]);
-
-  const managerUserIds = managerRoles?.map(r => r.user_id) || [];
+  const allManagerIds = managerRoles?.map(r => r.user_id) || [];
 
   // Process each pending instance
   for (const instance of pendingInstances) {
@@ -69,47 +82,20 @@ Deno.serve(async (req) => {
 
     if (hoursSinceDue < 2) continue;
 
-    const templateTitle = instance.template_id ? (templateMap[instance.template_id] || "Checklist") : "Checklist";
-    const typeLabel = instance.checklist_type.charAt(0).toUpperCase() + instance.checklist_type.slice(1);
-    const dateLabel = instance.scheduled_date;
+    const branchName = instance.branch_id ? (branchMap[instance.branch_id] || "the branch") : "the branch";
+    const staffName = profileMap[instance.assigned_to] || "Unknown";
+    const typeLabel = instance.checklist_type; // opening, afternoon, closing
 
-    // 2h+ overdue → Notice (late status)
-    if (hoursSinceDue >= 2) {
+    // ─── Rule 1: Notice at 2h+ ───
+    if (hoursSinceDue >= 2 && instance.status === "pending") {
       const { error } = await supabase
         .from("in_app_notifications")
         .upsert({
           instance_id: instance.id,
           user_id: instance.assigned_to,
           notification_type: "notice",
-          title: `Overdue: ${templateTitle}`,
-          message: `${typeLabel} checklist "${templateTitle}" for ${dateLabel} is overdue. Please complete it as soon as possible.`,
-          sender_type: "system",
-          related_module: "checklist",
-          related_entity_type: "checklist_occurrence",
-          priority: "normal",
-          status: "unread",
-        }, { onConflict: "instance_id,user_id,notification_type" });
-
-      if (!error) createdNotices++;
-
-      // Update instance status to 'late' and record notice_sent_at
-      await supabase
-        .from("checklist_instances")
-        .update({ status: "late", notice_sent_at: now.toISOString() })
-        .eq("id", instance.id)
-        .in("status", ["pending"]);
-    }
-
-    // 4h+ overdue → Warning (escalated status)
-    if (hoursSinceDue >= 4) {
-      const { error: staffErr } = await supabase
-        .from("in_app_notifications")
-        .upsert({
-          instance_id: instance.id,
-          user_id: instance.assigned_to,
-          notification_type: "warning",
-          title: `Urgent: ${templateTitle}`,
-          message: `${typeLabel} checklist "${templateTitle}" for ${dateLabel} is critically overdue (4+ hours). Immediate action required.`,
+          title: "Checklist Notice",
+          message: `Notice: Your ${typeLabel} checklist for ${branchName} has not been completed yet.`,
           sender_type: "system",
           related_module: "checklist",
           related_entity_type: "checklist_occurrence",
@@ -117,38 +103,92 @@ Deno.serve(async (req) => {
           status: "unread",
         }, { onConflict: "instance_id,user_id,notification_type" });
 
+      if (!error) createdNotices++;
+
+      await supabase
+        .from("checklist_instances")
+        .update({ status: "late", notice_sent_at: now.toISOString() })
+        .eq("id", instance.id)
+        .eq("status", "pending");
+    }
+
+    // ─── Rule 2: Warning at 4h+ ───
+    if (hoursSinceDue >= 4) {
+      // Staff warning
+      const { error: staffErr } = await supabase
+        .from("in_app_notifications")
+        .upsert({
+          instance_id: instance.id,
+          user_id: instance.assigned_to,
+          notification_type: "warning",
+          title: "Checklist Warning",
+          message: `Warning: Your ${typeLabel} checklist for ${branchName} is still incomplete 4 hours after the due time. Please complete it immediately.`,
+          sender_type: "system",
+          related_module: "checklist",
+          related_entity_type: "checklist_occurrence",
+          priority: "critical",
+          status: "unread",
+        }, { onConflict: "instance_id,user_id,notification_type" });
+
       if (!staffErr) createdWarnings++;
 
-      for (const managerId of managerUserIds) {
+      // Manager escalation — use assigned_manager_user_id if set, otherwise all managers/owners
+      const escalationTargets = instance.assigned_manager_user_id
+        ? [instance.assigned_manager_user_id]
+        : allManagerIds;
+
+      for (const managerId of escalationTargets) {
         if (managerId === instance.assigned_to) continue;
 
-        await supabase
+        const { error: escErr } = await supabase
           .from("in_app_notifications")
           .upsert({
             instance_id: instance.id,
             user_id: managerId,
             notification_type: "escalation",
-            title: `Escalation: ${templateTitle}`,
-            message: `${typeLabel} checklist "${templateTitle}" for ${dateLabel} has not been completed by the assigned staff (4+ hours overdue).`,
+            title: "Checklist Escalation",
+            message: `Warning: The ${typeLabel} checklist for ${branchName}, assigned to ${staffName}, is still incomplete 4 hours after the due time.`,
             sender_type: "system",
             related_module: "checklist",
             related_entity_type: "checklist_occurrence",
             priority: "critical",
             status: "unread",
           }, { onConflict: "instance_id,user_id,notification_type" });
+
+        if (!escErr) createdEscalations++;
       }
 
-      // Update instance status to 'escalated' and record warning_sent_at
+      // Also create the notice if it wasn't created yet (handles edge case where
+      // first run catches a 4h+ overdue checklist that was never marked as late)
+      await supabase
+        .from("in_app_notifications")
+        .upsert({
+          instance_id: instance.id,
+          user_id: instance.assigned_to,
+          notification_type: "notice",
+          title: "Checklist Notice",
+          message: `Notice: Your ${typeLabel} checklist for ${branchName} has not been completed yet.`,
+          sender_type: "system",
+          related_module: "checklist",
+          related_entity_type: "checklist_occurrence",
+          priority: "high",
+          status: "unread",
+        }, { onConflict: "instance_id,user_id,notification_type" });
+
       await supabase
         .from("checklist_instances")
-        .update({ status: "escalated", warning_sent_at: now.toISOString() })
+        .update({
+          status: "escalated",
+          warning_sent_at: now.toISOString(),
+          notice_sent_at: now.toISOString(), // ensure notice timestamp is also set
+        })
         .eq("id", instance.id)
         .in("status", ["pending", "late"]);
     }
   }
 
   return new Response(
-    JSON.stringify({ ok: true, notices: createdNotices, warnings: createdWarnings, processed: pendingInstances.length }),
+    JSON.stringify({ ok: true, notices: createdNotices, warnings: createdWarnings, escalations: createdEscalations, processed: pendingInstances.length }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
   );
 });
