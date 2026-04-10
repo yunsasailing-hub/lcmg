@@ -149,15 +149,17 @@ function Filters({
 
 // ─── Checklist Detail (read-only) ───
 
-function ManagerDetail({ instanceId, templateId, instance, onBack }: {
+function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
   instanceId: string;
   templateId: string;
   instance: any;
   onBack: () => void;
+  isOwner: boolean;
 }) {
   const { data: tasks } = useTemplateTasks(templateId);
   const { data: completions, isLoading } = useTaskCompletions(instanceId);
   const verify = useVerifyChecklist();
+  const deleteInstance = useDeleteInstance();
   const [rejecting, setRejecting] = useState(false);
   const [rejectionNote, setRejectionNote] = useState('');
 
