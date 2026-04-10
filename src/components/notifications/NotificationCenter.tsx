@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { AlertTriangle, Info, CheckCheck, X } from 'lucide-react';
+import { AlertTriangle, Bell, Info, CheckCheck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -114,5 +114,3 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   );
 }
 
-// Re-use Bell from lucide at the empty state
-import { Bell } from 'lucide-react';
