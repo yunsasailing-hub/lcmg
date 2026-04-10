@@ -415,8 +415,11 @@ export default function ManagerDashboard() {
           {groups.map(group => (
             <div key={group.department} className="space-y-3">
               {/* Department header */}
-              <h3 className="text-sm font-heading font-semibold uppercase tracking-wider text-foreground border-b pb-1">
+              <h3 className="text-sm font-heading font-semibold uppercase tracking-wider text-foreground border-b pb-1 flex items-center gap-2">
                 {group.department}
+                <Badge variant="outline" className="text-[10px] px-1.5 font-normal normal-case tracking-normal">
+                  {group.months.reduce((sum, m) => sum + m.items.length, 0)}
+                </Badge>
               </h3>
 
               {group.months.map(month => {
