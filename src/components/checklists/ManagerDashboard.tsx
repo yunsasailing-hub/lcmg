@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
   Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2,
 } from 'lucide-react';
+import GroupedChecklistList from '@/components/checklists/GroupedChecklistList';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
