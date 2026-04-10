@@ -102,7 +102,11 @@ export function useSubmitChecklist() {
     mutationFn: async (instanceId: string) => {
       const { data, error } = await supabase
         .from('checklist_instances')
-        .update({ status: 'completed' as ChecklistStatus, submitted_at: new Date().toISOString() })
+        .update({
+          status: 'completed' as ChecklistStatus,
+          submitted_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+        } as any)
         .eq('id', instanceId)
         .select()
         .single();
