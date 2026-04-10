@@ -352,8 +352,10 @@ export default function TemplateManager() {
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
+  const { data: assignmentCounts } = useAssignmentCountByTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string } | null>(null);
 
   const handleExport = () => {
     if (!templates?.length) { toast.error('No templates to export'); return; }
