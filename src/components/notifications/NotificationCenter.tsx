@@ -395,6 +395,19 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
                 onNavigate={handleNavigate}
               />
             ))}
+            {hasNextPage && (
+              <div className="p-3 text-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? 'Loading...' : 'Load more'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>
