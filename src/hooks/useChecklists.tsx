@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { invokeManageRoles } from '@/lib/manageRoles';
 import type { Database, Tables, TablesInsert } from '@/integrations/supabase/types';
 
 // Type exports
@@ -383,6 +384,92 @@ export function useStaffProfiles(branchId?: string) {
       const { data, error } = await query.order('full_name');
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+// ─── Active Users with Roles (for assignment dropdowns) ───
+
+export interface ActiveUser {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  department: string | null;
+  position: string | null;
+  branch_id: string | null;
+  roles: string[];
+}
+
+export function useActiveUsersForAssignment() {
+  return useQuery<ActiveUser[]>({
+    queryKey: ['active-users-assignment'],
+    queryFn: async () => {
+      const result = await invokeManageRoles('list_active_users');
+      return result.users || [];
+    },
+    retry: 1,
+  });
+}
+
+// ─── Create Assignment ───
+
+export function useCreateAssignment() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (assignment: {
+      template_id: string;
+      assigned_to: string;
+      periodicity: Database['public']['Enums']['assignment_periodicity'];
+      start_date: string;
+      end_date?: string | null;
+      notes?: string | null;
+      branch_id?: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from('checklist_assignments')
+        .insert({
+          ...assignment,
+          created_by: user!.id,
+          end_date: assignment.end_date || null,
+          notes: assignment.notes || null,
+          branch_id: assignment.branch_id || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      // If periodicity is 'once' or start_date is today, also create instance
+      const today = new Date().toISOString().split('T')[0];
+      if (assignment.start_date <= today) {
+        // Fetch template info for instance creation
+        const { data: tpl } = await supabase
+          .from('checklist_templates')
+          .select('checklist_type, department')
+          .eq('id', assignment.template_id)
+          .single();
+
+        if (tpl) {
+          await supabase
+            .from('checklist_instances')
+            .insert({
+              template_id: assignment.template_id,
+              assignment_id: data.id,
+              assigned_to: assignment.assigned_to,
+              checklist_type: tpl.checklist_type,
+              department: tpl.department,
+              branch_id: assignment.branch_id || null,
+              scheduled_date: today,
+            });
+        }
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 }
