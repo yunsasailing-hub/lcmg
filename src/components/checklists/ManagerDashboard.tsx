@@ -375,7 +375,33 @@ export default function ManagerDashboard() {
   const { data: checklists, isLoading } = useAllChecklists(filters);
   const [selected, setSelected] = useState<any>(null);
   const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const groups = useMemo(() => groupByDepartmentAndMonth(checklists || []), [checklists]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const allVisibleIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const g of groups) for (const m of g.months) for (const item of m.items) ids.push(item.id);
+    return ids;
+  }, [groups]);
+
+  const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedIds.has(id));
+  const someSelected = allVisibleIds.some(id => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleIds));
+    }
+  };
 
   if (selected) {
     return (
