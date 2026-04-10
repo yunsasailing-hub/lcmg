@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
+import { invokeManageRoles } from '@/lib/manageRoles';
 
 type AppRole = Database['public']['Enums']['app_role'];
 type Department = Database['public']['Enums']['department'];
@@ -44,14 +45,7 @@ interface Branch {
 }
 
 async function callManageRoles(action: string, params: Record<string, unknown> = {}) {
-  // Refresh session for fresh token
-  await supabase.auth.refreshSession();
-  const res = await supabase.functions.invoke('manage-roles', {
-    body: { action, ...params },
-  });
-  if (res.error) throw new Error(res.error.message);
-  if (res.data?.error) throw new Error(res.data.error);
-  return res.data;
+  return invokeManageRoles(action, params);
 }
 
 const ROLE_BADGE: Record<AppRole, { label: string; className: string }> = {
@@ -223,9 +217,10 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<EnrichedProfile | null>(null);
   const [changingRole, setChangingRole] = useState<EnrichedProfile | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['user-management'],
     queryFn: () => callManageRoles('list_full'),
+    retry: false,
   });
 
   const toggleActiveMutation = useMutation({
@@ -349,6 +344,10 @@ export default function UserManagement() {
       {/* User List */}
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div>
+      ) : isError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error instanceof Error ? error.message : 'Failed to load team members.'}</AlertDescription>
+        </Alert>
       ) : filtered.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">No users match your criteria.</div>
       ) : (
