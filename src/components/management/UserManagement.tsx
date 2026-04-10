@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
@@ -94,6 +94,7 @@ function EditUserDialog({
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
+          <DialogDescription>Update profile details for {user.full_name || 'this user'}.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -179,6 +180,7 @@ function ChangeRoleDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Change Role for {user.full_name || 'User'}</DialogTitle>
+          <DialogDescription>Select a new role for this team member.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
@@ -216,6 +218,7 @@ export default function UserManagement() {
   const [filters, setFilters] = useState<{ department?: string; branch_id?: string; role?: string; status?: string }>({});
   const [editingUser, setEditingUser] = useState<EnrichedProfile | null>(null);
   const [changingRole, setChangingRole] = useState<EnrichedProfile | null>(null);
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['user-management'],
@@ -224,13 +227,16 @@ export default function UserManagement() {
   });
 
   const toggleActiveMutation = useMutation({
-    mutationFn: ({ user_id, is_active }: { user_id: string; is_active: boolean }) =>
-      callManageRoles('toggle_active', { user_id, is_active }),
+    mutationFn: ({ user_id, is_active }: { user_id: string; is_active: boolean }) => {
+      setTogglingUserId(user_id);
+      return callManageRoles('toggle_active', { user_id, is_active });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-management'] });
       toast.success('User status updated');
     },
     onError: (err: Error) => toast.error(err.message),
+    onSettled: () => setTogglingUserId(null),
   });
 
   const profiles: EnrichedProfile[] = data?.profiles || [];
@@ -421,7 +427,7 @@ export default function UserManagement() {
                       className="h-8 w-8"
                       title={user.is_active ? 'Deactivate' : 'Activate'}
                       onClick={() => toggleActiveMutation.mutate({ user_id: user.user_id, is_active: !user.is_active })}
-                      disabled={toggleActiveMutation.isPending}
+                      disabled={togglingUserId === user.user_id}
                     >
                       {user.is_active
                         ? <UserX className="h-4 w-4 text-destructive" />
@@ -439,6 +445,7 @@ export default function UserManagement() {
       {/* Dialogs */}
       {editingUser && (
         <EditUserDialog
+          key={editingUser.user_id}
           user={editingUser}
           branches={branches}
           open
@@ -447,6 +454,7 @@ export default function UserManagement() {
       )}
       {changingRole && (
         <ChangeRoleDialog
+          key={changingRole.user_id}
           user={changingRole}
           open
           onClose={() => setChangingRole(null)}
