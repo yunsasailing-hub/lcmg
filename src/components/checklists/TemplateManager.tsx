@@ -35,6 +35,13 @@ import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 import { useAssignmentCountByTemplate } from '@/hooks/useAssignments';
 import AssignmentManager from '@/components/checklists/AssignmentManager';
+
+const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
+  opening: '10:00',
+  afternoon: '16:00',
+  closing: '22:30',
+};
+
 // ─── Create Template Dialog ───
 
 function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
@@ -42,6 +49,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ChecklistType>('opening');
   const [department, setDepartment] = useState<Department>('kitchen');
+  const [dueTime, setDueTime] = useState(DEFAULT_DUE_TIMES['opening']);
   const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
     { title: '', photo_requirement: 'none' },
   ]);
@@ -64,6 +72,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
         checklist_type: type,
         department,
         branch_id: null,
+        default_due_time: dueTime + ':00',
       },
       tasks: validTasks.map((t, i) => ({
         title: t.title.trim(),
@@ -85,6 +94,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
     setTitle('');
     setType('opening');
     setDepartment('kitchen');
+    setDueTime(DEFAULT_DUE_TIMES['opening']);
     setTasks([{ title: '', photo_requirement: 'none' }]);
   };
 
@@ -108,7 +118,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Type</Label>
-              <Select value={type} onValueChange={v => setType(v as ChecklistType)}>
+              <Select value={type} onValueChange={v => { setType(v as ChecklistType); setDueTime(DEFAULT_DUE_TIMES[v as ChecklistType]); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Constants.public.Enums.checklist_type.map(t => (
@@ -128,6 +138,11 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <Label>Default Due Time</Label>
+            <Input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-36" />
           </div>
 
           {/* Tasks */}
