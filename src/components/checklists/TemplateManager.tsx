@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, AlertCircle, Eye, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, AlertCircle, Eye, CalendarDays, Pause, Play, Square, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
