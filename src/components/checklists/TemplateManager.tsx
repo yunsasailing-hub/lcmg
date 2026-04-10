@@ -369,6 +369,7 @@ export default function TemplateManager() {
   const updateTemplate = useUpdateTemplate();
   const addTask = useAddTemplateTask();
   const updateTask = useUpdateTemplateTask();
+  const { data: assignmentCounts } = useAllTemplateAssignmentCounts();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
@@ -508,6 +509,7 @@ export default function TemplateManager() {
             const taskCount = tasks.length;
             const isExpanded = expandedId === tpl.id;
             const isEditing = editingId === tpl.id;
+            const activeCount = assignmentCounts?.get(tpl.id) || 0;
 
             return (
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
@@ -520,10 +522,17 @@ export default function TemplateManager() {
                         <p className="text-xs text-muted-foreground capitalize mt-0.5">
                           {tpl.checklist_type} · {tpl.department} · {taskCount} {taskCount !== 1 ? t('checklists.tasks_plural') : t('checklists.task')}
                         </p>
+                        {activeCount > 0 && (
+                          <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            {t('assign.activeAssignments', { count: activeCount })}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                       <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
+                      <ViewAssignmentsDialog templateId={tpl.id} templateTitle={tpl.title} />
                       <AssignDialog template={tpl} />
                     </div>
                   </div>
