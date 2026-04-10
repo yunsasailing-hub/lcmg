@@ -430,6 +430,20 @@ export default function ManagerDashboard() {
       {/* Filters */}
       <Filters filters={filters} setFilters={setFilters} isOwner={isOwner} />
 
+      {/* Select All (owner only) */}
+      {isOwner && !isLoading && !!checklists?.length && (
+        <div className="flex items-center gap-2 px-1">
+          <Checkbox
+            checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+            onCheckedChange={toggleSelectAll}
+            aria-label="Select all"
+          />
+          <span className="text-xs text-muted-foreground">
+            {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+          </span>
+        </div>
+      )}
+
       {/* Grouped List */}
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div>
