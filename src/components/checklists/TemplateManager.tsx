@@ -283,8 +283,84 @@ function AssignDialog({ template }: { template: any }) {
     </Dialog>
   );
 }
+function ViewAssignmentsDialog({ templateId, templateTitle }: { templateId: string; templateTitle: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const { data: assignments, isLoading } = useTemplateAssignments(open ? templateId : null);
 
-export default function TemplateManager() {
+  const statusColor = (s: string) => {
+    if (s === 'active') return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    if (s === 'paused') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+    return 'bg-muted text-muted-foreground';
+  };
+
+  const periodicityLabel = (p: string) => {
+    const map: Record<string, string> = { once: t('assign.oneTime'), daily: t('assign.daily'), weekly: t('assign.weekly'), biweekly: t('assign.biweekly'), monthly: t('assign.monthly') };
+    return map[p] || p;
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={e => e.stopPropagation()}>
+          <Eye className="h-3.5 w-3.5 mr-1" /> {t('assign.viewAssignments')}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t('assign.manageAssignments')}</DialogTitle>
+          <DialogDescription>{templateTitle}</DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">{t('common.loading')}</div>
+        ) : !assignments?.length ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">{t('assign.noAssignments')}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('assign.assignedUser')}</TableHead>
+                  <TableHead>{t('assign.periodicity')}</TableHead>
+                  <TableHead>{t('assign.startDate')}</TableHead>
+                  <TableHead>{t('assign.endDate')}</TableHead>
+                  <TableHead>{t('assign.statusLabel')}</TableHead>
+                  <TableHead>{t('assign.createdBy')}</TableHead>
+                  <TableHead>{t('assign.createdAt')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assignments.map((a: any) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">
+                      {a.assigned_profile?.full_name || '—'}
+                      {a.assigned_profile?.position && (
+                        <span className="block text-xs text-muted-foreground">{a.assigned_profile.position}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="capitalize">{periodicityLabel(a.periodicity)}</TableCell>
+                    <TableCell>{a.start_date}</TableCell>
+                    <TableCell>{a.end_date || '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={`text-xs capitalize ${statusColor(a.status)}`}>
+                        {a.status === 'active' ? t('assign.active') : a.status === 'paused' ? t('assign.paused') : t('assign.ended')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{a.created_by_profile?.full_name || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{new Date(a.created_at).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
   const { t } = useTranslation();
   const { data: templates, isLoading, refetch } = useTemplates();
   const createTemplate = useCreateTemplate();
