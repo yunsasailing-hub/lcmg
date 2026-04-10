@@ -323,15 +323,58 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
   );
 }
 
+// ─── Grouping Helpers ───
+
+interface DeptMonthGroup {
+  department: string;
+  months: { key: string; label: string; items: any[] }[];
+}
+
+function groupByDepartmentAndMonth(checklists: any[]): DeptMonthGroup[] {
+  // Build dept → monthKey → items
+  const deptMap: Record<string, Record<string, any[]>> = {};
+
+  for (const c of checklists) {
+    const dept = (c.department as string) || 'unknown';
+    const submittedDate = c.submitted_at || c.scheduled_date;
+    const d = new Date(submittedDate);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    if (!deptMap[dept]) deptMap[dept] = {};
+    if (!deptMap[dept][monthKey]) deptMap[dept][monthKey] = [];
+    deptMap[dept][monthKey].push(c);
+  }
+
+  // Sort departments alphabetically
+  const departments = Object.keys(deptMap).sort();
+
+  return departments.map(dept => {
+    const monthKeys = Object.keys(deptMap[dept]).sort().reverse(); // newest first
+    const months = monthKeys.map(key => {
+      const [y, m] = key.split('-');
+      const label = format(new Date(Number(y), Number(m) - 1, 1), 'MMMM yyyy');
+      const items = deptMap[dept][key].sort((a: any, b: any) => {
+        const da = a.submitted_at || a.scheduled_date;
+        const db = b.submitted_at || b.scheduled_date;
+        return new Date(db).getTime() - new Date(da).getTime();
+      });
+      return { key, label, items };
+    });
+    return { department: dept, months };
+  });
+}
+
 // ─── Main ───
 
 export default function ManagerDashboard() {
   const { hasRole } = useAuth();
   const isOwner = hasRole('owner');
   const today = new Date().toISOString().split('T')[0];
-  const [filters, setFilters] = useState<ChecklistFilters>({ date: today });
+  const [filters, setFilters] = useState<ChecklistFilters>({});
   const { data: checklists, isLoading } = useAllChecklists(filters);
   const [selected, setSelected] = useState<any>(null);
+  const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
+  const groups = useMemo(() => groupByDepartmentAndMonth(checklists || []), [checklists]);
 
   if (selected) {
     return (
@@ -348,6 +391,10 @@ export default function ManagerDashboard() {
   const isOverdue = (instance: any) =>
     instance.status === 'pending' && instance.scheduled_date < today;
 
+
+  const toggleMonth = (key: string) =>
+    setCollapsedMonths(prev => ({ ...prev, [key]: !prev[key] }));
+
   return (
     <div className="space-y-4">
       {/* Stats */}
@@ -356,7 +403,7 @@ export default function ManagerDashboard() {
       {/* Filters */}
       <Filters filters={filters} setFilters={setFilters} isOwner={isOwner} />
 
-      {/* List */}
+      {/* Grouped List */}
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div>
       ) : !checklists?.length ? (
@@ -364,41 +411,84 @@ export default function ManagerDashboard() {
           <p className="text-muted-foreground text-sm">No checklists match your filters.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {checklists.map(instance => {
-            const tpl = instance.template as any;
-            const assignee = instance.assignee as any;
-            const cfg = statusConfig[instance.status as ChecklistStatus];
-            const overdue = isOverdue(instance);
-            const StatusIcon = instance.status === 'pending' ? (overdue ? AlertTriangle : Clock)
-              : instance.status === 'rejected' ? AlertTriangle
-              : instance.status === 'verified' ? ShieldCheck
-              : CheckCircle2;
+        <div className="space-y-6">
+          {groups.map(group => (
+            <div key={group.department} className="space-y-3">
+              {/* Department header */}
+              <h3 className="text-sm font-heading font-semibold uppercase tracking-wider text-foreground border-b pb-1">
+                {group.department}
+              </h3>
 
-            return (
-              <button
-                key={instance.id}
-                onClick={() => setSelected(instance)}
-                className={cn(
-                  'w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent active:bg-accent',
-                  overdue && 'border-destructive/60',
-                )}
-              >
-                <StatusIcon className={cn(
-                  'h-5 w-5 shrink-0',
-                  overdue ? 'text-destructive' : instance.status === 'rejected' ? 'text-destructive' : instance.status === 'pending' ? 'text-muted-foreground' : 'text-success',
-                )} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {assignee?.full_name || 'Unassigned'} · {instance.department}
-                    {overdue && <span className="text-destructive font-semibold ml-1">OVERDUE</span>}
-                  </p>
-                </div>
-                <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>
-              </button>
-            );
-          })}
+              {group.months.map(month => {
+                const collapseKey = `${group.department}-${month.key}`;
+                const isCollapsed = !!collapsedMonths[collapseKey];
+
+                return (
+                  <div key={month.key} className="space-y-1.5">
+                    {/* Month sub-header */}
+                    <button
+                      onClick={() => toggleMonth(collapseKey)}
+                      className="flex items-center gap-2 w-full text-left py-1 px-1 rounded hover:bg-accent/50 transition-colors"
+                    >
+                      {isCollapsed
+                        ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        : <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />}
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {month.label}
+                      </span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 ml-1">
+                        {month.items.length}
+                      </Badge>
+                    </button>
+
+                    {/* Checklist items */}
+                    {!isCollapsed && (
+                      <div className="space-y-1.5 pl-5">
+                        {month.items.map((instance: any) => {
+                          const tpl = instance.template as any;
+                          const assignee = instance.assignee as any;
+                          const cfg = statusConfig[instance.status as ChecklistStatus];
+                          const overdue = isOverdue(instance);
+                          const StatusIcon = instance.status === 'pending' ? (overdue ? AlertTriangle : Clock)
+                            : instance.status === 'rejected' ? AlertTriangle
+                            : instance.status === 'verified' ? ShieldCheck
+                            : CheckCircle2;
+
+                          return (
+                            <button
+                              key={instance.id}
+                              onClick={() => setSelected(instance)}
+                              className={cn(
+                                'w-full flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-accent active:bg-accent',
+                                overdue && 'border-destructive/60',
+                              )}
+                            >
+                              <StatusIcon className={cn(
+                                'h-4 w-4 shrink-0',
+                                overdue ? 'text-destructive' : instance.status === 'rejected' ? 'text-destructive' : instance.status === 'pending' ? 'text-muted-foreground' : 'text-success',
+                              )} />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm text-foreground truncate">
+                                  {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {assignee?.full_name || 'Unassigned'}
+                                  {instance.submitted_at && ` · ${format(new Date(instance.submitted_at), 'PP p')}`}
+                                  {!instance.submitted_at && ` · ${format(new Date(instance.scheduled_date + 'T00:00:00'), 'PP')}`}
+                                  {overdue && <span className="text-destructive font-semibold ml-1">OVERDUE</span>}
+                                </p>
+                              </div>
+                              <Badge variant={cfg.variant} className={cn(cfg.className, 'text-[10px]')}>{cfg.label}</Badge>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
     </div>
