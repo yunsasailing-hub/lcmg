@@ -20,7 +20,6 @@ import {
   useCreateInstance,
   useDeleteTemplate,
   useDeleteTemplateTask,
-  useBranches,
   useStaffProfiles,
   type PhotoRequirement,
   type ChecklistType,
@@ -36,12 +35,10 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ChecklistType>('opening');
   const [department, setDepartment] = useState<Department>('kitchen');
-  const [branchId, setBranchId] = useState<string>('');
   const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
     { title: '', photo_requirement: 'none' },
   ]);
 
-  const { data: branches } = useBranches();
   const create = useCreateTemplate();
 
   const addTask = () => setTasks(prev => [...prev, { title: '', photo_requirement: 'none' }]);
@@ -59,7 +56,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
         title: title.trim(),
         checklist_type: type,
         department,
-        branch_id: branchId || null,
+        branch_id: null,
       },
       tasks: validTasks.map((t, i) => ({
         title: t.title.trim(),
@@ -81,7 +78,6 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
     setTitle('');
     setType('opening');
     setDepartment('kitchen');
-    setBranchId('');
     setTasks([{ title: '', photo_requirement: 'none' }]);
   };
 
@@ -125,17 +121,6 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div>
-            <Label>Branch (optional)</Label>
-            <Select value={branchId || 'none'} onValueChange={v => setBranchId(v === 'none' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="All branches" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">All branches</SelectItem>
-                {branches?.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Tasks */}
