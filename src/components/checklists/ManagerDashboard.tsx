@@ -403,6 +403,27 @@ export default function ManagerDashboard() {
     }
   };
 
+  const deleteInstance = useDeleteInstance();
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    const ids = Array.from(selectedIds);
+    try {
+      for (const id of ids) {
+        await new Promise<void>((resolve, reject) => {
+          deleteInstance.mutate(id, { onSuccess: () => resolve(), onError: (e) => reject(e) });
+        });
+      }
+      toast.success(`${ids.length} checklist record${ids.length !== 1 ? 's' : ''} deleted successfully.`);
+      setSelectedIds(new Set());
+    } catch {
+      toast.error('Failed to delete some records');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   if (selected) {
     return (
       <ManagerDetail
@@ -418,7 +439,6 @@ export default function ManagerDashboard() {
   const isOverdue = (instance: any) =>
     instance.status === 'pending' && instance.scheduled_date < today;
 
-
   const toggleMonth = (key: string) =>
     setCollapsedMonths(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -430,9 +450,9 @@ export default function ManagerDashboard() {
       {/* Filters */}
       <Filters filters={filters} setFilters={setFilters} isOwner={isOwner} />
 
-      {/* Select All (owner only) */}
+      {/* Selection bar (owner only) */}
       {isOwner && !isLoading && !!checklists?.length && (
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-3 px-1 flex-wrap">
           <Checkbox
             checked={allSelected ? true : someSelected ? 'indeterminate' : false}
             onCheckedChange={toggleSelectAll}
@@ -441,6 +461,38 @@ export default function ManagerDashboard() {
           <span className="text-xs text-muted-foreground">
             {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
           </span>
+          {selectedIds.size > 0 && (
+            <>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="h-7 text-xs">
+                    <Trash2 className="h-3 w-3 mr-1" /> Delete Selected
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {selectedIds.size} checklist record{selectedIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove only the selected submitted checklists and will not affect templates or assignments.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleBulkDelete}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={bulkDeleting}
+                    >
+                      {bulkDeleting ? 'Deleting…' : 'Confirm Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+                Cancel Selection
+              </Button>
+            </>
+          )}
         </div>
       )}
 
