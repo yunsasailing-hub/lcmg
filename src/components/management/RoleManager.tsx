@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Shield, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { invokeManageRoles } from '@/lib/manageRoles';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -26,12 +26,7 @@ interface ProfileEntry {
 }
 
 async function callManageRoles(action: string, params: Record<string, unknown> = {}) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await supabase.functions.invoke('manage-roles', {
-    body: { action, ...params },
-  });
-  if (res.error) throw new Error(res.error.message);
-  return res.data;
+  return invokeManageRoles(action, params);
 }
 
 const roleBadgeVariant: Record<AppRole, 'default' | 'secondary' | 'outline'> = {
