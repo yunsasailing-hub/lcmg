@@ -94,7 +94,7 @@ export function useOverdueWarnings() {
       const { data, error } = await supabase
         .from('in_app_notifications')
         .select('*')
-        .eq('notification_type', 'warning')
+        .in('notification_type', ['warning', 'escalation'])
         .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(20);
