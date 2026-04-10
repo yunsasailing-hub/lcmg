@@ -374,6 +374,7 @@ export default function ManagerDashboard() {
   const { data: checklists, isLoading } = useAllChecklists(filters);
   const [selected, setSelected] = useState<any>(null);
   const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
+  const groups = useMemo(() => groupByDepartmentAndMonth(checklists || []), [checklists]);
 
   if (selected) {
     return (
@@ -390,7 +391,6 @@ export default function ManagerDashboard() {
   const isOverdue = (instance: any) =>
     instance.status === 'pending' && instance.scheduled_date < today;
 
-  const groups = useMemo(() => groupByDepartmentAndMonth(checklists || []), [checklists]);
 
   const toggleMonth = (key: string) =>
     setCollapsedMonths(prev => ({ ...prev, [key]: !prev[key] }));
