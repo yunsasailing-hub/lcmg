@@ -286,6 +286,39 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
           </div>
         </div>
       )}
+
+      {/* Owner-only: Delete checklist record */}
+      {isOwner && (
+        <div className="pt-2 border-t">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full">
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Record
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this checklist record?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove this checklist record from the database. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteInstance.mutate(instanceId, {
+                    onSuccess: () => { toast.success('Record deleted'); onBack(); },
+                    onError: () => toast.error('Failed to delete record'),
+                  })}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
     </div>
   );
 }
@@ -307,6 +340,7 @@ export default function ManagerDashboard() {
         templateId={selected.template_id}
         instance={selected}
         onBack={() => setSelected(null)}
+        isOwner={isOwner}
       />
     );
   }
