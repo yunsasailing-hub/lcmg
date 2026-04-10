@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
-  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User,
+  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,12 +21,17 @@ import {
   useTemplateTasks,
   useTaskCompletions,
   useVerifyChecklist,
+  useDeleteInstance,
   useBranches,
   type ChecklistFilters,
   type ChecklistStatus,
   type Department,
   type ChecklistType,
 } from '@/hooks/useChecklists';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Constants } from '@/integrations/supabase/types';
 
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
