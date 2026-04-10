@@ -1,0 +1,458 @@
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Search, Filter, ChevronDown, ChevronUp, Pencil, Shield, UserCheck, UserX,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { Constants } from '@/integrations/supabase/types';
+import type { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
+type Department = Database['public']['Enums']['department'];
+
+interface EnrichedProfile {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  position: string | null;
+  department: Department | null;
+  branch_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  roles: AppRole[];
+}
+
+interface Branch {
+  id: string;
+  name: string;
+}
+
+async function callManageRoles(action: string, params: Record<string, unknown> = {}) {
+  // Refresh session for fresh token
+  await supabase.auth.refreshSession();
+  const res = await supabase.functions.invoke('manage-roles', {
+    body: { action, ...params },
+  });
+  if (res.error) throw new Error(res.error.message);
+  if (res.data?.error) throw new Error(res.data.error);
+  return res.data;
+}
+
+const ROLE_BADGE: Record<AppRole, { label: string; className: string }> = {
+  owner: { label: 'Owner', className: 'bg-red-600 text-white hover:bg-red-600/90' },
+  manager: { label: 'Manager', className: 'bg-orange-500 text-white hover:bg-orange-500/90' },
+  staff: { label: 'Staff', className: 'bg-gray-500 text-white hover:bg-gray-500/90' },
+};
+
+// ─── Edit User Dialog ───
+
+function EditUserDialog({
+  user,
+  branches,
+  open,
+  onClose,
+}: {
+  user: EnrichedProfile;
+  branches: Branch[];
+  open: boolean;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({
+    full_name: user.full_name || '',
+    email: user.email || '',
+    phone: user.phone || '',
+    position: user.position || '',
+    department: user.department || '',
+    branch_id: user.branch_id || '',
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () => callManageRoles('update_profile', { user_id: user.user_id, ...form, branch_id: form.branch_id || null, department: form.department || null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-management'] });
+      toast.success('User updated');
+      onClose();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit User</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Full Name</Label>
+            <Input value={form.full_name} onChange={e => update('full_name', e.target.value)} />
+          </div>
+          <div>
+            <Label>Email</Label>
+            <Input value={form.email} onChange={e => update('email', e.target.value)} />
+          </div>
+          <div>
+            <Label>Phone</Label>
+            <Input value={form.phone} onChange={e => update('phone', e.target.value)} />
+          </div>
+          <div>
+            <Label>Position</Label>
+            <Input value={form.position} onChange={e => update('position', e.target.value)} />
+          </div>
+          <div>
+            <Label>Department</Label>
+            <Select value={form.department || 'none'} onValueChange={v => update('department', v === 'none' ? '' : v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No department</SelectItem>
+                {Constants.public.Enums.department.map(d => (
+                  <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Branch</Label>
+            <Select value={form.branch_id || 'none'} onValueChange={v => update('branch_id', v === 'none' ? '' : v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No branch</SelectItem>
+                {branches.map(b => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Change Role Dialog ───
+
+function ChangeRoleDialog({
+  user,
+  open,
+  onClose,
+}: {
+  user: EnrichedProfile;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const currentRole = user.roles[0] || 'staff';
+  const [newRole, setNewRole] = useState<AppRole>(currentRole);
+
+  const mutation = useMutation({
+    mutationFn: () => callManageRoles('set_role', { user_id: user.user_id, role: newRole }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-management'] });
+      queryClient.invalidateQueries({ queryKey: ['role-management'] });
+      toast.success(`Role changed to ${newRole}`);
+      onClose();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Change Role for {user.full_name || 'User'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Current role: <Badge className={ROLE_BADGE[currentRole]?.className}>{ROLE_BADGE[currentRole]?.label || currentRole}</Badge>
+          </p>
+          <div>
+            <Label>New Role</Label>
+            <Select value={newRole} onValueChange={v => setNewRole(v as AppRole)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="owner">Owner / Administrator</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || newRole === currentRole}>
+            {mutation.isPending ? 'Saving…' : 'Change Role'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Component ───
+
+export default function UserManagement() {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<{ department?: string; branch_id?: string; role?: string; status?: string }>({});
+  const [editingUser, setEditingUser] = useState<EnrichedProfile | null>(null);
+  const [changingRole, setChangingRole] = useState<EnrichedProfile | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['user-management'],
+    queryFn: () => callManageRoles('list_full'),
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ user_id, is_active }: { user_id: string; is_active: boolean }) =>
+      callManageRoles('toggle_active', { user_id, is_active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-management'] });
+      toast.success('User status updated');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const profiles: EnrichedProfile[] = data?.profiles || [];
+  const branches: Branch[] = data?.branches || [];
+
+  const branchMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    branches.forEach(b => { map[b.id] = b.name; });
+    return map;
+  }, [branches]);
+
+  const filtered = useMemo(() => {
+    let result = profiles;
+
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(p =>
+        (p.full_name || '').toLowerCase().includes(q) ||
+        (p.email || '').toLowerCase().includes(q) ||
+        (p.phone || '').toLowerCase().includes(q) ||
+        (p.position || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Filters
+    if (filters.department) result = result.filter(p => p.department === filters.department);
+    if (filters.branch_id) result = result.filter(p => p.branch_id === filters.branch_id);
+    if (filters.role) result = result.filter(p => p.roles.includes(filters.role as AppRole));
+    if (filters.status === 'active') result = result.filter(p => p.is_active);
+    if (filters.status === 'inactive') result = result.filter(p => !p.is_active);
+
+    return result;
+  }, [profiles, search, filters]);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-heading font-semibold">Team Members</h3>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, email, phone, position..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Filters */}
+      <Collapsible open={filterOpen} onOpenChange={setFilterOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full justify-between">
+            <span className="flex items-center gap-2"><Filter className="h-4 w-4" /> Filters</span>
+            {filterOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Select value={filters.department || 'all'} onValueChange={v => setFilters(f => ({ ...f, department: v === 'all' ? undefined : v }))}>
+              <SelectTrigger><SelectValue placeholder="All departments" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All departments</SelectItem>
+                {Constants.public.Enums.department.map(d => (
+                  <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.branch_id || 'all'} onValueChange={v => setFilters(f => ({ ...f, branch_id: v === 'all' ? undefined : v }))}>
+              <SelectTrigger><SelectValue placeholder="All branches" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All branches</SelectItem>
+                {branches.map(b => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.role || 'all'} onValueChange={v => setFilters(f => ({ ...f, role: v === 'all' ? undefined : v }))}>
+              <SelectTrigger><SelectValue placeholder="All roles" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.status || 'all'} onValueChange={v => setFilters(f => ({ ...f, status: v === 'all' ? undefined : v }))}>
+              <SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {Object.values(filters).some(Boolean) && (
+            <Button variant="ghost" size="sm" className="mt-2" onClick={() => setFilters({})}>Clear filters</Button>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Stats */}
+      <p className="text-sm text-muted-foreground">
+        {filtered.length} user{filtered.length !== 1 ? 's' : ''} found
+      </p>
+
+      {/* User List */}
+      {isLoading ? (
+        <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div>
+      ) : filtered.length === 0 ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">No users match your criteria.</div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(user => {
+            const initials = (user.full_name || '?').slice(0, 2).toUpperCase();
+            const primaryRole = user.roles[0];
+            const roleBadge = primaryRole ? ROLE_BADGE[primaryRole] : null;
+
+            return (
+              <div
+                key={user.user_id}
+                className={cn(
+                  'rounded-lg border bg-card p-4 transition-colors',
+                  !user.is_active && 'opacity-60',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarFallback className="text-xs font-semibold">{initials}</AvatarFallback>
+                  </Avatar>
+
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-foreground truncate">{user.full_name || 'Unnamed'}</p>
+                      {roleBadge && (
+                        <Badge className={cn('text-[10px] px-1.5 py-0', roleBadge.className)}>
+                          {roleBadge.label}
+                        </Badge>
+                      )}
+                      {!user.is_active && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-destructive text-destructive">
+                          Inactive
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      {user.email && <p>{user.email}</p>}
+                      <p className="capitalize">
+                        {[user.position, user.department, user.branch_id ? branchMap[user.branch_id] : null]
+                          .filter(Boolean)
+                          .join(' · ') || 'No details'}
+                      </p>
+                      {user.phone && <p>{user.phone}</p>}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Edit user"
+                      onClick={() => setEditingUser(user)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Change role"
+                      onClick={() => setChangingRole(user)}
+                    >
+                      <Shield className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title={user.is_active ? 'Deactivate' : 'Activate'}
+                      onClick={() => toggleActiveMutation.mutate({ user_id: user.user_id, is_active: !user.is_active })}
+                      disabled={toggleActiveMutation.isPending}
+                    >
+                      {user.is_active
+                        ? <UserX className="h-4 w-4 text-destructive" />
+                        : <UserCheck className="h-4 w-4 text-success" />
+                      }
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Dialogs */}
+      {editingUser && (
+        <EditUserDialog
+          user={editingUser}
+          branches={branches}
+          open
+          onClose={() => setEditingUser(null)}
+        />
+      )}
+      {changingRole && (
+        <ChangeRoleDialog
+          user={changingRole}
+          open
+          onClose={() => setChangingRole(null)}
+        />
+      )}
+    </div>
+  );
+}
