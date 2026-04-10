@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, AlertCircle, Eye, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, AlertCircle, Eye, CalendarDays, Pause, Play, Square, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -19,10 +19,11 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates, useCreateTemplate, useDeleteTemplate, useDeleteTemplateTask,
   useUpdateTemplate, useAddTemplateTask, useUpdateTemplateTask, useStaffProfiles, useCreateAssignment,
-  useTemplateAssignments, useAllTemplateAssignmentCounts,
+  useTemplateAssignments, useAllTemplateAssignmentCounts, useUpdateAssignmentStatus, useUpdateAssignment, useDeleteAssignment,
   type PhotoRequirement, type ChecklistType, type Department,
 } from '@/hooks/useChecklists';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Constants } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 
@@ -286,7 +287,13 @@ function AssignDialog({ template }: { template: any }) {
 function ViewAssignmentsDialog({ templateId, templateTitle }: { templateId: string; templateTitle: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [removeId, setRemoveId] = useState<string | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState<any | null>(null);
   const { data: assignments, isLoading } = useTemplateAssignments(open ? templateId : null);
+  const { data: staff } = useStaffProfiles();
+  const updateStatus = useUpdateAssignmentStatus();
+  const updateAssignment = useUpdateAssignment();
+  const deleteAssignment = useDeleteAssignment();
 
   const statusColor = (s: string) => {
     if (s === 'active') return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -299,64 +306,190 @@ function ViewAssignmentsDialog({ templateId, templateTitle }: { templateId: stri
     return map[p] || p;
   };
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={e => e.stopPropagation()}>
-          <Eye className="h-3.5 w-3.5 mr-1" /> {t('assign.viewAssignments')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{t('assign.manageAssignments')}</DialogTitle>
-          <DialogDescription>{templateTitle}</DialogDescription>
-        </DialogHeader>
+  const handleStatusChange = (id: string, status: string, successMsg: string) => {
+    updateStatus.mutate({ id, status }, {
+      onSuccess: () => toast.success(successMsg),
+      onError: () => toast.error(t('assign.failUpdateAssignment')),
+    });
+  };
 
-        {isLoading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">{t('common.loading')}</div>
-        ) : !assignments?.length ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">{t('assign.noAssignments')}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('assign.assignedUser')}</TableHead>
-                  <TableHead>{t('assign.periodicity')}</TableHead>
-                  <TableHead>{t('assign.startDate')}</TableHead>
-                  <TableHead>{t('assign.endDate')}</TableHead>
-                  <TableHead>{t('assign.statusLabel')}</TableHead>
-                  <TableHead>{t('assign.createdBy')}</TableHead>
-                  <TableHead>{t('assign.createdAt')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assignments.map((a: any) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">
-                      {a.assigned_profile?.full_name || '—'}
-                      {a.assigned_profile?.position && (
-                        <span className="block text-xs text-muted-foreground">{a.assigned_profile.position}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="capitalize">{periodicityLabel(a.periodicity)}</TableCell>
-                    <TableCell>{a.start_date}</TableCell>
-                    <TableCell>{a.end_date || '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={`text-xs capitalize ${statusColor(a.status)}`}>
-                        {a.status === 'active' ? t('assign.active') : a.status === 'paused' ? t('assign.paused') : t('assign.ended')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{a.created_by_profile?.full_name || '—'}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{new Date(a.created_at).toLocaleDateString()}</TableCell>
+  const handleRemove = () => {
+    if (!removeId) return;
+    deleteAssignment.mutate(removeId, {
+      onSuccess: () => { toast.success(t('assign.assignmentRemoved')); setRemoveId(null); },
+      onError: () => toast.error(t('assign.failRemoveAssignment')),
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingAssignment) return;
+    updateAssignment.mutate({
+      id: editingAssignment.id,
+      updates: {
+        assigned_to: editingAssignment.assigned_to,
+        periodicity: editingAssignment.periodicity,
+        start_date: editingAssignment.start_date,
+        end_date: editingAssignment.end_date || null,
+      },
+    }, {
+      onSuccess: () => { toast.success(t('assign.assignmentUpdated')); setEditingAssignment(null); },
+      onError: () => toast.error(t('assign.failUpdateAssignment')),
+    });
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingAssignment(null); } }}>
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={e => e.stopPropagation()}>
+            <Eye className="h-3.5 w-3.5 mr-1" /> {t('assign.viewAssignments')}
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('assign.manageAssignments')}</DialogTitle>
+            <DialogDescription>{templateTitle}</DialogDescription>
+          </DialogHeader>
+
+          {/* Edit form */}
+          {editingAssignment && (
+            <div className="rounded-md border bg-muted/30 p-4 space-y-3">
+              <p className="text-sm font-medium">{t('assign.editAssignment')}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">{t('assign.assignTo')}</Label>
+                  <Select value={editingAssignment.assigned_to} onValueChange={v => setEditingAssignment({ ...editingAssignment, assigned_to: v })}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(staff || []).map((s: any) => (
+                        <SelectItem key={s.user_id} value={s.user_id}>{s.full_name || s.email || 'Unknown'}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">{t('assign.periodicity')}</Label>
+                  <Select value={editingAssignment.periodicity} onValueChange={v => setEditingAssignment({ ...editingAssignment, periodicity: v })}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="once">{t('assign.oneTime')}</SelectItem>
+                      <SelectItem value="daily">{t('assign.daily')}</SelectItem>
+                      <SelectItem value="weekly">{t('assign.weekly')}</SelectItem>
+                      <SelectItem value="biweekly">{t('assign.biweekly')}</SelectItem>
+                      <SelectItem value="monthly">{t('assign.monthly')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">{t('assign.startDate')}</Label>
+                  <Input type="date" className="h-8 text-sm" value={editingAssignment.start_date} onChange={e => setEditingAssignment({ ...editingAssignment, start_date: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">{t('assign.endDate')}</Label>
+                  <Input type="date" className="h-8 text-sm" value={editingAssignment.end_date || ''} onChange={e => setEditingAssignment({ ...editingAssignment, end_date: e.target.value })} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditingAssignment(null)}>{t('checklists.cancel')}</Button>
+                <Button size="sm" onClick={handleSaveEdit} disabled={updateAssignment.isPending}>
+                  <Save className="h-3.5 w-3.5 mr-1" /> {t('assign.saveChanges')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">{t('common.loading')}</div>
+          ) : !assignments?.length ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">{t('assign.noAssignments')}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('assign.assignedUser')}</TableHead>
+                    <TableHead>{t('assign.periodicity')}</TableHead>
+                    <TableHead>{t('assign.startDate')}</TableHead>
+                    <TableHead>{t('assign.endDate')}</TableHead>
+                    <TableHead>{t('assign.statusLabel')}</TableHead>
+                    <TableHead>{t('assign.actions')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+                </TableHeader>
+                <TableBody>
+                  {assignments.map((a: any) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">
+                        {a.assigned_profile?.full_name || '—'}
+                        {a.assigned_profile?.position && (
+                          <span className="block text-xs text-muted-foreground">{a.assigned_profile.position}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="capitalize">{periodicityLabel(a.periodicity)}</TableCell>
+                      <TableCell>{a.start_date}</TableCell>
+                      <TableCell>{a.end_date || '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={`text-xs capitalize ${statusColor(a.status)}`}>
+                          {a.status === 'active' ? t('assign.active') : a.status === 'paused' ? t('assign.paused') : t('assign.ended')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditingAssignment({ ...a })}>
+                              <Pencil className="h-3.5 w-3.5 mr-2" /> {t('assign.editAssignment')}
+                            </DropdownMenuItem>
+                            {a.status === 'active' && (
+                              <DropdownMenuItem onClick={() => handleStatusChange(a.id, 'paused', t('assign.assignmentPaused'))}>
+                                <Pause className="h-3.5 w-3.5 mr-2" /> {t('assign.pauseAssignment')}
+                              </DropdownMenuItem>
+                            )}
+                            {a.status === 'paused' && (
+                              <DropdownMenuItem onClick={() => handleStatusChange(a.id, 'active', t('assign.assignmentResumed'))}>
+                                <Play className="h-3.5 w-3.5 mr-2" /> {t('assign.resumeAssignment')}
+                              </DropdownMenuItem>
+                            )}
+                            {a.status !== 'ended' && (
+                              <DropdownMenuItem onClick={() => handleStatusChange(a.id, 'ended', t('assign.assignmentEnded'))}>
+                                <Square className="h-3.5 w-3.5 mr-2" /> {t('assign.endAssignment')}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setRemoveId(a.id)}>
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('assign.removeAssignment')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove confirmation */}
+      <AlertDialog open={!!removeId} onOpenChange={(v) => { if (!v) setRemoveId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('assign.removeConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('assign.removeConfirmDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('checklists.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleRemove(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteAssignment.isPending}>
+              {deleteAssignment.isPending ? t('common.loading') : t('assign.removeAssignment')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
