@@ -421,59 +421,76 @@ export function useCreateAssignment() {
       notes?: string | null;
       branch_id?: string | null;
     }) => {
-      // 1. Create the assignment rule
-      const { data, error } = await supabase
-        .from('checklist_assignments')
-        .insert({
-          template_id: assignment.template_id,
-          assigned_to: assignment.assigned_to,
-          periodicity: assignment.periodicity,
-          start_date: assignment.start_date,
-          end_date: assignment.end_date || null,
-          notes: assignment.notes || null,
-          branch_id: assignment.branch_id || null,
-          created_by: user!.id,
-        })
-        .select()
+      const normalizedAssignment = {
+        template_id: assignment.template_id,
+        assigned_to: assignment.assigned_to,
+        periodicity: assignment.periodicity,
+        start_date: assignment.start_date,
+        end_date: assignment.end_date || null,
+        notes: assignment.notes || null,
+        branch_id: assignment.branch_id || null,
+        created_by: user!.id,
+      };
+
+      const { data: template, error: templateError } = await supabase
+        .from('checklist_templates')
+        .select('checklist_type, department')
+        .eq('id', assignment.template_id)
         .single();
-      if (error) {
-        console.error('Assignment creation failed:', error);
-        throw error;
+
+      if (templateError || !template) {
+        console.error('Template fetch for assignment failed:', templateError);
+        throw templateError ?? new Error('Template not found');
       }
 
-      // 2. Create the first checklist instance if start_date <= today
-      const today = new Date().toISOString().split('T')[0];
-      if (assignment.start_date <= today) {
-        const { data: tpl, error: tplErr } = await supabase
-          .from('checklist_templates')
-          .select('checklist_type, department')
-          .eq('id', assignment.template_id)
-          .single();
+      const { data: createdAssignment, error: assignmentError } = await supabase
+        .from('checklist_assignments')
+        .insert(normalizedAssignment)
+        .select()
+        .single();
 
-        if (tplErr) {
-          console.error('Template fetch for instance failed:', tplErr);
-        } else if (tpl) {
-          const { error: insErr } = await supabase
-            .from('checklist_instances')
-            .insert({
-              template_id: assignment.template_id,
-              assignment_id: data.id,
-              assigned_to: assignment.assigned_to,
-              checklist_type: tpl.checklist_type,
-              department: tpl.department,
-              branch_id: assignment.branch_id || null,
-              scheduled_date: assignment.start_date,
-            });
-          if (insErr) {
-            // Duplicate is OK (unique constraint), log others
-            if (insErr.code !== '23505') {
-              console.error('First instance creation failed:', insErr);
-            }
-          }
+      if (assignmentError) {
+        console.error('Assignment creation failed:', assignmentError);
+        throw assignmentError;
+      }
+
+      const firstInstancePayload = {
+        template_id: assignment.template_id,
+        assignment_id: createdAssignment.id,
+        assigned_to: assignment.assigned_to,
+        checklist_type: template.checklist_type,
+        department: template.department,
+        branch_id: assignment.branch_id || null,
+        scheduled_date: assignment.start_date,
+      };
+
+      const { error: firstInstanceError } = await supabase
+        .from('checklist_instances')
+        .insert(firstInstancePayload);
+
+      if (firstInstanceError && firstInstanceError.code !== '23505') {
+        console.error('First instance creation failed:', firstInstanceError);
+        await supabase.from('checklist_assignments').delete().eq('id', createdAssignment.id);
+        throw firstInstanceError;
+      }
+
+      await supabase
+        .from('checklist_assignments')
+        .update({ last_generated_date: assignment.start_date })
+        .eq('id', createdAssignment.id);
+
+      const today = new Date().toISOString().split('T')[0];
+      if (assignment.periodicity !== 'once' && assignment.start_date < today) {
+        const { error: generationError } = await supabase.functions.invoke('generate-recurring-checklists', {
+          body: {},
+        });
+
+        if (generationError) {
+          console.error('Recurring backfill generation failed:', generationError);
         }
       }
 
-      return data;
+      return createdAssignment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checklists'] });

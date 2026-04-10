@@ -204,6 +204,7 @@ function AssignDialog({ template }: { template: any }) {
   const handleAssign = () => {
     if (!userId) { toast.error('Select a user'); return; }
     if (!startDate) { toast.error('Select a start date'); return; }
+    if (endDate && endDate < startDate) { toast.error('End date cannot be before start date'); return; }
 
     createAssignment.mutate({
       template_id: template.id,
@@ -214,11 +215,14 @@ function AssignDialog({ template }: { template: any }) {
       notes: notes.trim() || null,
     }, {
       onSuccess: () => {
-        toast.success('Checklist assigned!');
+        toast.success(periodicity === 'once' ? 'Checklist assigned!' : 'Recurring checklist assigned and first checklist created!');
         setOpen(false);
         resetForm();
       },
-      onError: (err: any) => toast.error(err.message || 'Failed to assign checklist'),
+      onError: (err: any) => {
+        console.error('Checklist assignment failed:', err);
+        toast.error(err.message || 'Failed to assign checklist');
+      },
     });
   };
 
