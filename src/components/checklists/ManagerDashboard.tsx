@@ -4,6 +4,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
   Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2, Square, CheckSquare,
 } from 'lucide-react';
+import { useOverdueWarnings, type AppNotification } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -365,6 +366,44 @@ function groupByDepartmentAndMonth(checklists: any[]): DeptMonthGroup[] {
   });
 }
 
+// ─── Overdue Warning Cards ───
+
+function OverdueWarningCards() {
+  const { data: warnings = [] } = useOverdueWarnings();
+
+  if (warnings.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      {warnings.slice(0, 5).map(w => (
+        <div
+          key={w.id}
+          className={cn(
+            'flex items-start gap-3 rounded-lg border p-3',
+            w.notification_type === 'warning'
+              ? 'border-destructive/40 bg-destructive/5'
+              : 'border-warning/40 bg-warning/5'
+          )}
+        >
+          <AlertTriangle className={cn(
+            'h-4 w-4 shrink-0 mt-0.5',
+            w.notification_type === 'warning' ? 'text-destructive' : 'text-warning-foreground'
+          )} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">{w.title}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{w.message}</p>
+          </div>
+        </div>
+      ))}
+      {warnings.length > 5 && (
+        <p className="text-xs text-muted-foreground text-center">
+          +{warnings.length - 5} more overdue alerts
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Main ───
 
 export default function ManagerDashboard() {
@@ -444,6 +483,9 @@ export default function ManagerDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Overdue Warning Cards */}
+      <OverdueWarningCards />
+
       {/* Stats */}
       <StatsRow checklists={checklists || []} />
 

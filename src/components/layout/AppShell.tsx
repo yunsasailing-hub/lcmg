@@ -7,6 +7,7 @@ import {
   Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -63,13 +64,16 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
         {!collapsed && (
           <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
         )}
-        <button
-          onClick={onToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
-          style={{ color: 'var(--nav-foreground)' }}
-        >
-          {collapsed ? <Menu className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell collapsed={collapsed} />
+          <button
+            onClick={onToggle}
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
+            style={{ color: 'var(--nav-foreground)' }}
+          >
+            {collapsed ? <Menu className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {/* User identity */}
@@ -144,13 +148,16 @@ function MobileNav() {
             )}
           </div>
         </div>
-        <button
-          onClick={() => signOut()}
-          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
-          style={{ color: 'var(--nav-foreground)' }}
-        >
-          <LogOut className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button
+            onClick={() => signOut()}
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
+            style={{ color: 'var(--nav-foreground)' }}
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Bottom nav */}
