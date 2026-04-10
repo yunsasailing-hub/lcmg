@@ -298,41 +298,12 @@ export default function ManagerDashboard() {
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div>
-      ) : !checklists?.length ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground text-sm">{t('checklists.noMatch')}</p>
-        </div>
       ) : (
-        <div className="space-y-2">
-          {checklists.map(instance => {
-            const tpl = instance.template as any;
-            const assignee = instance.assignee as any;
-            const cfg = statusCfg[instance.status as ChecklistStatus];
-            const overdue = isOverdue(instance);
-            const StatusIcon = instance.status === 'pending' ? (overdue ? AlertTriangle : Clock)
-              : instance.status === 'rejected' ? AlertTriangle
-              : instance.status === 'verified' ? ShieldCheck
-              : CheckCircle2;
-
-            return (
-              <button
-                key={instance.id}
-                onClick={() => setSelected(instance)}
-                className={cn('w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent active:bg-accent', overdue && 'border-destructive/60')}
-              >
-                <StatusIcon className={cn('h-5 w-5 shrink-0', overdue ? 'text-destructive' : instance.status === 'rejected' ? 'text-destructive' : instance.status === 'pending' ? 'text-muted-foreground' : 'text-success')} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{tpl?.title ?? t('checklists.templateDeleted')}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {assignee?.full_name || t('checklists.unassigned')} · {instance.department}
-                    {overdue && <span className="text-destructive font-semibold ml-1">{t('checklists.overdue')}</span>}
-                  </p>
-                </div>
-                <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>
-              </button>
-            );
-          })}
-        </div>
+        <GroupedChecklistList
+          checklists={checklists || []}
+          statusCfg={statusCfg}
+          onSelect={setSelected}
+        />
       )}
     </div>
   );
