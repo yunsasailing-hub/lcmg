@@ -83,6 +83,11 @@ Deno.serve(async (req) => {
           notification_type: "notice",
           title: `Overdue: ${templateTitle}`,
           message: `${typeLabel} checklist "${templateTitle}" for ${dateLabel} is overdue. Please complete it as soon as possible.`,
+          sender_type: "system",
+          related_module: "checklist",
+          related_entity_type: "checklist_occurrence",
+          priority: "normal",
+          status: "unread",
         }, { onConflict: "instance_id,user_id,notification_type" });
 
       if (!error) createdNotices++;
@@ -105,6 +110,11 @@ Deno.serve(async (req) => {
           notification_type: "warning",
           title: `Urgent: ${templateTitle}`,
           message: `${typeLabel} checklist "${templateTitle}" for ${dateLabel} is critically overdue (4+ hours). Immediate action required.`,
+          sender_type: "system",
+          related_module: "checklist",
+          related_entity_type: "checklist_occurrence",
+          priority: "high",
+          status: "unread",
         }, { onConflict: "instance_id,user_id,notification_type" });
 
       if (!staffErr) createdWarnings++;
@@ -120,6 +130,11 @@ Deno.serve(async (req) => {
             notification_type: "escalation",
             title: `Escalation: ${templateTitle}`,
             message: `${typeLabel} checklist "${templateTitle}" for ${dateLabel} has not been completed by the assigned staff (4+ hours overdue).`,
+            sender_type: "system",
+            related_module: "checklist",
+            related_entity_type: "checklist_occurrence",
+            priority: "critical",
+            status: "unread",
           }, { onConflict: "instance_id,user_id,notification_type" });
       }
 
