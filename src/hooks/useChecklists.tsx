@@ -212,13 +212,7 @@ export function useDeleteTemplate() {
 
   return useMutation({
     mutationFn: async (templateId: string) => {
-      // Delete tasks first, then template
-      const { error: tasksError } = await supabase
-        .from('checklist_template_tasks')
-        .delete()
-        .eq('template_id', templateId);
-      if (tasksError) throw tasksError;
-
+      // Soft delete: deactivate template only. Historical instances/assignments are preserved.
       const { error } = await supabase
         .from('checklist_templates')
         .update({ is_active: false })
