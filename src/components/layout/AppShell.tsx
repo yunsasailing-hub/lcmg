@@ -143,7 +143,6 @@ function MobileNav() {
               </span>
             )}
           </div>
-          )}
         </div>
         <button
           onClick={() => signOut()}
