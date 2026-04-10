@@ -257,7 +257,18 @@
     "endDate": "End Date (optional)",
     "notes": "Notes (optional)",
     "notesPlaceholder": "Add any notes about this assignment...",
-    "startDateRequired": "Start date is required"
+    "startDateRequired": "Start date is required",
+    "viewAssignments": "Assignments",
+    "manageAssignments": "Manage Assignments",
+    "activeAssignments": "{{count}} active assignment(s)",
+    "noAssignments": "No assignments for this template.",
+    "assignedUser": "Assigned User",
+    "createdBy": "Created By",
+    "createdAt": "Created",
+    "statusLabel": "Status",
+    "active": "Active",
+    "paused": "Paused",
+    "ended": "Ended"
   },
   "common": {
     "cancel": "Cancel",

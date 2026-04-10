@@ -580,6 +580,57 @@ export function useAssignments() {
   });
 }
 
+export function useTemplateAssignments(templateId: string | null) {
+  return useQuery({
+    queryKey: ['template-assignments', templateId],
+    enabled: !!templateId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('checklist_assignments')
+        .select('*')
+        .eq('template_id', templateId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      // Enrich with profile names
+      if (!data?.length) return [];
+      const userIds = [...new Set(data.map(a => a.assigned_to).concat(data.map(a => a.created_by).filter(Boolean) as string[]))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, position, department')
+        .in('user_id', userIds);
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+
+      return data.map(a => ({
+        ...a,
+        assigned_profile: profileMap.get(a.assigned_to) || null,
+        created_by_profile: a.created_by ? profileMap.get(a.created_by) || null : null,
+      }));
+    },
+  });
+}
+
+export function useAllTemplateAssignmentCounts() {
+  return useQuery({
+    queryKey: ['template-assignment-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('checklist_assignments')
+        .select('template_id, status, periodicity, assigned_to')
+        .eq('status', 'active');
+      if (error) throw error;
+
+      // Group by template_id
+      const counts = new Map<string, number>();
+      for (const row of data || []) {
+        if (!row.template_id) continue;
+        counts.set(row.template_id, (counts.get(row.template_id) || 0) + 1);
+      }
+      return counts;
+    },
+  });
+}
+
 export function useUpdateAssignmentStatus() {
   const queryClient = useQueryClient();
 
