@@ -385,7 +385,7 @@ export default function TemplateManager() {
       const parsed = await parseTemplatesFromXlsx(file);
       for (const tpl of parsed) {
         await createTemplate.mutateAsync({
-          template: { title: tpl.title, checklist_type: tpl.checklist_type, department: tpl.department, branch_id: null },
+          template: { title: tpl.title, checklist_type: tpl.checklist_type, department: tpl.department, branch_id: null, default_due_time: DEFAULT_DUE_TIMES[tpl.checklist_type] + ':00' },
           tasks: tpl.tasks,
         });
       }
