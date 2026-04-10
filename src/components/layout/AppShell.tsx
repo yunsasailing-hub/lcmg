@@ -18,8 +18,35 @@ const NAV_ITEMS = [
   { to: '/management', icon: Settings, label: 'Management' },
 ];
 
+const ROLE_BADGE: Record<string, { label: string; color: string }> = {
+  owner: { label: 'Owner', color: 'bg-red-500/20 text-red-300' },
+  manager: { label: 'Manager', color: 'bg-orange-500/20 text-orange-300' },
+  staff: { label: 'Staff', color: 'bg-gray-500/20 text-gray-300' },
+};
+
+function UserIdentity({ collapsed }: { collapsed?: boolean }) {
+  const { profile, roles } = useAuth();
+  const primaryRole = roles[0];
+  const badge = primaryRole ? ROLE_BADGE[primaryRole] : null;
+
+  if (collapsed || !profile?.full_name) return null;
+
+  return (
+    <div className="px-3 pb-2">
+      <p className="text-xs font-medium truncate" style={{ color: 'var(--primary-foreground)' }}>
+        {profile.full_name}
+      </p>
+      {badge && (
+        <span className={cn('inline-block mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
+          {badge.label}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  const { signOut, profile } = useAuth();
+  const { signOut } = useAuth();
 
   return (
     <aside
@@ -43,6 +70,9 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
           {collapsed ? <Menu className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
       </div>
+
+      {/* User identity */}
+      <UserIdentity collapsed={collapsed} />
 
       {/* Nav items */}
       <nav className="flex-1 space-y-1 px-2 py-3">
@@ -68,11 +98,6 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 
       {/* Footer */}
       <div className="border-t px-2 py-3" style={{ borderColor: 'var(--sidebar-border)' }}>
-        {!collapsed && profile?.full_name && (
-          <p className="mb-2 truncate px-3 text-xs" style={{ color: 'var(--nav-muted)' }}>
-            {profile.full_name}
-          </p>
-        )}
         <button
           onClick={() => signOut()}
           className={cn('nav-item w-full', collapsed && 'justify-center px-0')}
@@ -87,12 +112,14 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 }
 
 function MobileNav() {
-  const { signOut } = useAuth();
+  const { signOut, profile, roles } = useAuth();
   const location = useLocation();
   const [showMore, setShowMore] = useState(false);
 
   const visibleItems = NAV_ITEMS.slice(0, 5);
   const overflowItems = NAV_ITEMS.slice(5);
+  const primaryRole = roles[0];
+  const badge = primaryRole ? ROLE_BADGE[primaryRole] : null;
 
   // Close "more" menu on route change
   useEffect(() => setShowMore(false), [location.pathname]);
@@ -104,7 +131,19 @@ function MobileNav() {
         className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between px-4"
         style={{ background: 'var(--nav)' }}
       >
-        <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-lg font-heading font-bold text-primary-foreground shrink-0">La Cala</span>
+          {profile?.full_name && (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs truncate" style={{ color: 'var(--nav-muted)' }}>{profile.full_name}</span>
+              {badge && (
+                <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
+                  {badge.label}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
         <button
           onClick={() => signOut()}
           className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
