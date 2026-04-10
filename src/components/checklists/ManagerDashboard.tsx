@@ -498,15 +498,30 @@ export default function ManagerDashboard() {
                             : instance.status === 'verified' ? ShieldCheck
                             : CheckCircle2;
 
+                          const isItemSelected = selectedIds.has(instance.id);
+
                           return (
-                            <button
+                            <div
                               key={instance.id}
-                              onClick={() => setSelected(instance)}
                               className={cn(
-                                'w-full flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-accent active:bg-accent',
+                                'w-full flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-accent',
                                 overdue && 'border-destructive/60',
+                                isOwner && isItemSelected && 'ring-1 ring-primary/40 bg-primary/5',
                               )}
                             >
+                              {isOwner && (
+                                <Checkbox
+                                  checked={isItemSelected}
+                                  onCheckedChange={() => toggleSelect(instance.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Select ${tpl?.title || 'checklist'}`}
+                                  className="shrink-0"
+                                />
+                              )}
+                              <button
+                                onClick={() => setSelected(instance)}
+                                className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                              >
                               <StatusIcon className={cn(
                                 'h-4 w-4 shrink-0',
                                 overdue ? 'text-destructive' : instance.status === 'rejected' ? 'text-destructive' : instance.status === 'pending' ? 'text-muted-foreground' : 'text-success',
