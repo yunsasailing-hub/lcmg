@@ -422,6 +422,27 @@ export default function ManagerDashboard() {
   const toggleMonth = (key: string) =>
     setCollapsedMonths(prev => ({ ...prev, [key]: !prev[key] }));
 
+  const deleteInstance = useDeleteInstance();
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    const ids = Array.from(selectedIds);
+    try {
+      for (const id of ids) {
+        await new Promise<void>((resolve, reject) => {
+          deleteInstance.mutate(id, { onSuccess: () => resolve(), onError: (e) => reject(e) });
+        });
+      }
+      toast.success(`${ids.length} checklist record${ids.length !== 1 ? 's' : ''} deleted successfully.`);
+      setSelectedIds(new Set());
+    } catch {
+      toast.error('Failed to delete some records');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Stats */}
