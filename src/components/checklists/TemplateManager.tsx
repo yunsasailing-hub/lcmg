@@ -124,17 +124,6 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
             </div>
           </div>
 
-          <div>
-            <Label>Branch (optional)</Label>
-            <Select value={branchId || 'none'} onValueChange={v => setBranchId(v === 'none' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="All branches" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">All branches</SelectItem>
-                {branches?.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Tasks */}
           <div>
             <div className="flex items-center justify-between mb-2">
