@@ -19,10 +19,11 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates, useCreateTemplate, useDeleteTemplate, useDeleteTemplateTask,
   useUpdateTemplate, useAddTemplateTask, useUpdateTemplateTask, useStaffProfiles, useCreateAssignment,
-  useTemplateAssignments, useAllTemplateAssignmentCounts,
+  useTemplateAssignments, useAllTemplateAssignmentCounts, useUpdateAssignmentStatus, useUpdateAssignment, useDeleteAssignment,
   type PhotoRequirement, type ChecklistType, type Department,
 } from '@/hooks/useChecklists';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Constants } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 
