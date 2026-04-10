@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
   // Fetch all active assignments that need generation
   const { data: assignments, error: fetchErr } = await supabase
     .from("checklist_assignments")
-    .select("*, template:checklist_templates(checklist_type, department)")
+    .select("*, template:checklist_templates(checklist_type, department, default_due_time)")
     .eq("status", "active")
     .lte("start_date", today);
 
@@ -35,20 +35,18 @@ Deno.serve(async (req) => {
   let skipped = 0;
 
   for (const a of assignments || []) {
-    // Skip if no template info
     if (!a.template) { skipped++; continue; }
-
-    // Skip if past end_date
     if (a.end_date && a.end_date < today) { skipped++; continue; }
 
-    // Calculate dates to generate
     const datesToGenerate = getDatesToGenerate(a, today);
 
     for (const date of datesToGenerate) {
-      // Skip if past end_date
       if (a.end_date && date > a.end_date) continue;
 
-      // Insert instance, ON CONFLICT do nothing (unique index handles duplicates)
+      // Compute due_datetime from scheduled_date + template due time
+      const dueTime = a.template.default_due_time || "10:00:00";
+      const dueDatetime = `${date}T${dueTime}Z`;
+
       const { error: insErr } = await supabase
         .from("checklist_instances")
         .insert({
@@ -59,10 +57,10 @@ Deno.serve(async (req) => {
           department: a.template.department,
           branch_id: a.branch_id,
           scheduled_date: date,
+          due_datetime: dueDatetime,
         });
 
       if (insErr) {
-        // Duplicate = unique constraint violation, skip silently
         if (insErr.code === "23505") { skipped++; continue; }
         console.error(`Insert error for assignment ${a.id}, date ${date}:`, insErr.message);
         skipped++;
@@ -71,7 +69,6 @@ Deno.serve(async (req) => {
       created++;
     }
 
-    // Update last_generated_date
     if (datesToGenerate.length > 0) {
       const maxDate = datesToGenerate.sort().pop()!;
       await supabase
@@ -98,7 +95,6 @@ function getDatesToGenerate(
     return [];
   }
 
-  // Start from next occurrence after last generated, or from start_date
   let cursor = last_generated_date
     ? getNextOccurrence(last_generated_date, periodicity)
     : start_date;

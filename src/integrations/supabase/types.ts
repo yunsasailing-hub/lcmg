@@ -121,6 +121,7 @@ export type Database = {
           checklist_type: Database["public"]["Enums"]["checklist_type"]
           created_at: string
           department: Database["public"]["Enums"]["department"]
+          due_datetime: string | null
           id: string
           notes: string | null
           rejection_note: string | null
@@ -139,6 +140,7 @@ export type Database = {
           checklist_type: Database["public"]["Enums"]["checklist_type"]
           created_at?: string
           department: Database["public"]["Enums"]["department"]
+          due_datetime?: string | null
           id?: string
           notes?: string | null
           rejection_note?: string | null
@@ -157,6 +159,7 @@ export type Database = {
           checklist_type?: Database["public"]["Enums"]["checklist_type"]
           created_at?: string
           department?: Database["public"]["Enums"]["department"]
+          due_datetime?: string | null
           id?: string
           notes?: string | null
           rejection_note?: string | null
@@ -285,6 +288,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           default_assigned_to: string | null
+          default_due_time: string
           department: Database["public"]["Enums"]["department"]
           frequency: Database["public"]["Enums"]["checklist_frequency"]
           id: string
@@ -300,6 +304,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           default_assigned_to?: string | null
+          default_due_time: string
           department: Database["public"]["Enums"]["department"]
           frequency?: Database["public"]["Enums"]["checklist_frequency"]
           id?: string
@@ -315,6 +320,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           default_assigned_to?: string | null
+          default_due_time?: string
           department?: Database["public"]["Enums"]["department"]
           frequency?: Database["public"]["Enums"]["checklist_frequency"]
           id?: string
