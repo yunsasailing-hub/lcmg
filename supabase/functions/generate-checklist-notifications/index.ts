@@ -5,13 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Due-time defaults per checklist type (local restaurant time, UTC+1 assumed)
-const DUE_HOURS: Record<string, number> = {
-  opening: 10,
-  afternoon: 14,
-  closing: 22,
-};
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -26,12 +19,13 @@ Deno.serve(async (req) => {
   let createdNotices = 0;
   let createdWarnings = 0;
 
-  // Fetch all pending checklists (not yet completed/verified/rejected)
+  // Fetch all pending checklists with due_datetime set
   const { data: pendingInstances, error: fetchErr } = await supabase
     .from("checklist_instances")
-    .select("id, assigned_to, checklist_type, department, scheduled_date, branch_id, template_id, assignment_id")
+    .select("id, assigned_to, checklist_type, department, scheduled_date, branch_id, template_id, assignment_id, due_datetime")
     .eq("status", "pending")
-    .not("assigned_to", "is", null);
+    .not("assigned_to", "is", null)
+    .not("due_datetime", "is", null);
 
   if (fetchErr) {
     return new Response(JSON.stringify({ ok: false, error: fetchErr.message }), {
@@ -70,13 +64,10 @@ Deno.serve(async (req) => {
 
   // Process each pending instance
   for (const instance of pendingInstances) {
-    const dueHour = DUE_HOURS[instance.checklist_type] ?? 10;
-    const dueTime = new Date(instance.scheduled_date + "T00:00:00Z");
-    dueTime.setUTCHours(dueHour);
-
+    const dueTime = new Date(instance.due_datetime);
     const hoursSinceDue = (now.getTime() - dueTime.getTime()) / (1000 * 60 * 60);
 
-    if (hoursSinceDue < 2) continue; // Not overdue enough yet
+    if (hoursSinceDue < 2) continue;
 
     const templateTitle = instance.template_id ? (templateMap[instance.template_id] || "Checklist") : "Checklist";
     const typeLabel = instance.checklist_type.charAt(0).toUpperCase() + instance.checklist_type.slice(1);
@@ -99,7 +90,6 @@ Deno.serve(async (req) => {
 
     // 4h+ overdue → Warning to assigned staff + all managers/owners
     if (hoursSinceDue >= 4) {
-      // Warning to assigned user
       const { error: staffErr } = await supabase
         .from("in_app_notifications")
         .upsert({
@@ -112,7 +102,6 @@ Deno.serve(async (req) => {
 
       if (!staffErr) createdWarnings++;
 
-      // Warning to managers/owners (excluding the assigned user if they're also a manager)
       for (const managerId of managerUserIds) {
         if (managerId === instance.assigned_to) continue;
 
