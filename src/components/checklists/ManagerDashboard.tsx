@@ -205,9 +205,15 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
         <Button variant="ghost" size="icon" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-heading font-semibold truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</h2>
-          <p className="text-xs text-muted-foreground capitalize">
-            {instance.checklist_type} · {instance.department} · {format(new Date(instance.scheduled_date + 'T00:00:00'), 'PP')}
-          </p>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground capitalize flex-wrap">
+            <span>{instance.checklist_type} · {instance.department} · {format(new Date(instance.scheduled_date + 'T00:00:00'), 'PP')}</span>
+            {instance.due_datetime && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal normal-case">
+                <Clock className="h-3 w-3 mr-0.5" />
+                Due {formatDueTime(instance.due_datetime)}
+              </Badge>
+            )}
+          </div>
         </div>
         <Badge variant={statusConfig[instance.status as ChecklistStatus].variant} className={statusConfig[instance.status as ChecklistStatus].className}>
           {statusConfig[instance.status as ChecklistStatus].label}
@@ -634,6 +640,9 @@ export default function ManagerDashboard() {
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {assignee?.full_name || 'Unassigned'}
+                                  {instance.due_datetime && (
+                                    <span className="ml-1">· Due {formatDueTime(instance.due_datetime)}</span>
+                                  )}
                                   {instance.submitted_at && ` · ${format(new Date(instance.submitted_at), 'PP p')}`}
                                   {!instance.submitted_at && ` · ${format(new Date(instance.scheduled_date + 'T00:00:00'), 'PP')}`}
                                   {overdue && <span className="text-destructive font-semibold ml-1">OVERDUE</span>}
