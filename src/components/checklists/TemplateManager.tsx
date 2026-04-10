@@ -428,6 +428,7 @@ export default function TemplateManager() {
             const tasks = (tpl as any).tasks || [];
             const taskCount = tasks.length;
             const isExpanded = expandedId === tpl.id;
+            const aCount = assignmentCounts?.[tpl.id] || 0;
 
             return (
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
@@ -442,11 +443,17 @@ export default function TemplateManager() {
                         <p className="font-medium text-foreground truncate">{tpl.title}</p>
                         <p className="text-xs text-muted-foreground capitalize mt-0.5">
                           {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
+                          {aCount > 0 && ` · ${aCount} assignment${aCount !== 1 ? 's' : ''}`}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
+                      {aCount > 0 && (
+                        <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title }); }}>
+                          <Eye className="h-3.5 w-3.5 mr-1" /> {aCount} Assignment{aCount !== 1 ? 's' : ''}
+                        </Button>
+                      )}
                       <AssignDialog template={tpl} />
                     </div>
                   </div>
