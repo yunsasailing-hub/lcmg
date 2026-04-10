@@ -50,9 +50,73 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_assignments: {
+        Row: {
+          assigned_to: string
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          last_generated_date: string | null
+          notes: string | null
+          periodicity: Database["public"]["Enums"]["assignment_periodicity"]
+          start_date: string
+          status: Database["public"]["Enums"]["assignment_status"]
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          last_generated_date?: string | null
+          notes?: string | null
+          periodicity?: Database["public"]["Enums"]["assignment_periodicity"]
+          start_date?: string
+          status?: Database["public"]["Enums"]["assignment_status"]
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          last_generated_date?: string | null
+          notes?: string | null
+          periodicity?: Database["public"]["Enums"]["assignment_periodicity"]
+          start_date?: string
+          status?: Database["public"]["Enums"]["assignment_status"]
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_assignments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_assignments_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_instances: {
         Row: {
           assigned_to: string | null
+          assignment_id: string | null
           branch_id: string | null
           checklist_type: Database["public"]["Enums"]["checklist_type"]
           created_at: string
@@ -63,13 +127,14 @@ export type Database = {
           scheduled_date: string
           status: Database["public"]["Enums"]["checklist_status"]
           submitted_at: string | null
-          template_id: string
+          template_id: string | null
           updated_at: string
           verified_at: string | null
           verified_by: string | null
         }
         Insert: {
           assigned_to?: string | null
+          assignment_id?: string | null
           branch_id?: string | null
           checklist_type: Database["public"]["Enums"]["checklist_type"]
           created_at?: string
@@ -80,13 +145,14 @@ export type Database = {
           scheduled_date?: string
           status?: Database["public"]["Enums"]["checklist_status"]
           submitted_at?: string | null
-          template_id: string
+          template_id?: string | null
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
         }
         Update: {
           assigned_to?: string | null
+          assignment_id?: string | null
           branch_id?: string | null
           checklist_type?: Database["public"]["Enums"]["checklist_type"]
           created_at?: string
@@ -97,12 +163,19 @@ export type Database = {
           scheduled_date?: string
           status?: Database["public"]["Enums"]["checklist_status"]
           submitted_at?: string | null
-          template_id?: string
+          template_id?: string | null
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "checklist_instances_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_assignments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "checklist_instances_branch_id_fkey"
             columns: ["branch_id"]
@@ -211,9 +284,13 @@ export type Database = {
           checklist_type: Database["public"]["Enums"]["checklist_type"]
           created_at: string
           created_by: string | null
+          default_assigned_to: string | null
           department: Database["public"]["Enums"]["department"]
+          frequency: Database["public"]["Enums"]["checklist_frequency"]
           id: string
           is_active: boolean
+          last_generated_date: string | null
+          specific_date: string | null
           title: string
           updated_at: string
         }
@@ -222,9 +299,13 @@ export type Database = {
           checklist_type: Database["public"]["Enums"]["checklist_type"]
           created_at?: string
           created_by?: string | null
+          default_assigned_to?: string | null
           department: Database["public"]["Enums"]["department"]
+          frequency?: Database["public"]["Enums"]["checklist_frequency"]
           id?: string
           is_active?: boolean
+          last_generated_date?: string | null
+          specific_date?: string | null
           title: string
           updated_at?: string
         }
@@ -233,9 +314,13 @@ export type Database = {
           checklist_type?: Database["public"]["Enums"]["checklist_type"]
           created_at?: string
           created_by?: string | null
+          default_assigned_to?: string | null
           department?: Database["public"]["Enums"]["department"]
+          frequency?: Database["public"]["Enums"]["checklist_frequency"]
           id?: string
           is_active?: boolean
+          last_generated_date?: string | null
+          specific_date?: string | null
           title?: string
           updated_at?: string
         }
@@ -381,6 +466,14 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "manager" | "staff"
+      assignment_periodicity:
+        | "once"
+        | "daily"
+        | "weekly"
+        | "biweekly"
+        | "monthly"
+      assignment_status: "active" | "paused" | "ended"
+      checklist_frequency: "daily" | "weekly" | "monthly" | "determinate_date"
       checklist_status: "pending" | "completed" | "verified" | "rejected"
       checklist_type: "opening" | "afternoon" | "closing"
       department:
@@ -519,6 +612,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "manager", "staff"],
+      assignment_periodicity: [
+        "once",
+        "daily",
+        "weekly",
+        "biweekly",
+        "monthly",
+      ],
+      assignment_status: ["active", "paused", "ended"],
+      checklist_frequency: ["daily", "weekly", "monthly", "determinate_date"],
       checklist_status: ["pending", "completed", "verified", "rejected"],
       checklist_type: ["opening", "afternoon", "closing"],
       department: [
