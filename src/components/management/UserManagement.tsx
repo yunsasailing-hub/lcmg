@@ -68,6 +68,7 @@ function EditUserDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const currentRole: AppRole = user.roles[0] || 'staff';
   const [form, setForm] = useState({
     full_name: user.full_name || '',
     email: user.email || '',
@@ -75,12 +76,27 @@ function EditUserDialog({
     position: user.position || '',
     department: user.department || '',
     branch_id: user.branch_id || '',
+    role: currentRole as string,
   });
 
   const updateMutation = useMutation({
-    mutationFn: () => callManageRoles('update_profile', { user_id: user.user_id, ...form, branch_id: form.branch_id || null, department: form.department || null }),
+    mutationFn: async () => {
+      const { role, ...profileFields } = form;
+      // Update profile fields
+      await callManageRoles('update_profile', {
+        user_id: user.user_id,
+        ...profileFields,
+        branch_id: profileFields.branch_id || null,
+        department: profileFields.department || null,
+      });
+      // Update role only if changed
+      if (role && role !== currentRole) {
+        await callManageRoles('set_role', { user_id: user.user_id, role });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-management'] });
+      queryClient.invalidateQueries({ queryKey: ['role-management'] });
       toast.success('User updated');
       onClose();
     },
