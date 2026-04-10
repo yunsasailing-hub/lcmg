@@ -421,31 +421,39 @@ export function useCreateAssignment() {
       notes?: string | null;
       branch_id?: string | null;
     }) => {
+      // 1. Create the assignment rule
       const { data, error } = await supabase
         .from('checklist_assignments')
         .insert({
-          ...assignment,
-          created_by: user!.id,
+          template_id: assignment.template_id,
+          assigned_to: assignment.assigned_to,
+          periodicity: assignment.periodicity,
+          start_date: assignment.start_date,
           end_date: assignment.end_date || null,
           notes: assignment.notes || null,
           branch_id: assignment.branch_id || null,
+          created_by: user!.id,
         })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error('Assignment creation failed:', error);
+        throw error;
+      }
 
-      // If periodicity is 'once' or start_date is today, also create instance
+      // 2. Create the first checklist instance if start_date <= today
       const today = new Date().toISOString().split('T')[0];
       if (assignment.start_date <= today) {
-        // Fetch template info for instance creation
-        const { data: tpl } = await supabase
+        const { data: tpl, error: tplErr } = await supabase
           .from('checklist_templates')
           .select('checklist_type, department')
           .eq('id', assignment.template_id)
           .single();
 
-        if (tpl) {
-          await supabase
+        if (tplErr) {
+          console.error('Template fetch for instance failed:', tplErr);
+        } else if (tpl) {
+          const { error: insErr } = await supabase
             .from('checklist_instances')
             .insert({
               template_id: assignment.template_id,
@@ -454,8 +462,14 @@ export function useCreateAssignment() {
               checklist_type: tpl.checklist_type,
               department: tpl.department,
               branch_id: assignment.branch_id || null,
-              scheduled_date: today,
+              scheduled_date: assignment.start_date,
             });
+          if (insErr) {
+            // Duplicate is OK (unique constraint), log others
+            if (insErr.code !== '23505') {
+              console.error('First instance creation failed:', insErr);
+            }
+          }
         }
       }
 
