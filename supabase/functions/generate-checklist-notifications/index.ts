@@ -23,10 +23,11 @@ Deno.serve(async (req) => {
   // Fetch all pending/late checklists with due_datetime set
   const { data: pendingInstances, error: fetchErr } = await supabase
     .from("checklist_instances")
-    .select("id, assigned_to, assigned_manager_user_id, checklist_type, department, scheduled_date, branch_id, template_id, due_datetime, status")
+    .select("id, assigned_to, assigned_manager_user_id, checklist_type, department, scheduled_date, branch_id, template_id, due_datetime, status, notice_sent_at, warning_sent_at, completed_at")
     .in("status", ["pending", "late"])
     .not("assigned_to", "is", null)
-    .not("due_datetime", "is", null);
+    .not("due_datetime", "is", null)
+    .is("completed_at", null);
 
   if (fetchErr) {
     return new Response(JSON.stringify({ ok: false, error: fetchErr.message }), {
