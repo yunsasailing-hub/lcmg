@@ -115,10 +115,12 @@ export type Database = {
       }
       checklist_instances: {
         Row: {
+          assigned_manager_user_id: string | null
           assigned_to: string | null
           assignment_id: string | null
           branch_id: string | null
           checklist_type: Database["public"]["Enums"]["checklist_type"]
+          completed_at: string | null
           created_at: string
           department: Database["public"]["Enums"]["department"]
           due_datetime: string | null
@@ -136,10 +138,12 @@ export type Database = {
           warning_sent_at: string | null
         }
         Insert: {
+          assigned_manager_user_id?: string | null
           assigned_to?: string | null
           assignment_id?: string | null
           branch_id?: string | null
           checklist_type: Database["public"]["Enums"]["checklist_type"]
+          completed_at?: string | null
           created_at?: string
           department: Database["public"]["Enums"]["department"]
           due_datetime?: string | null
@@ -157,10 +161,12 @@ export type Database = {
           warning_sent_at?: string | null
         }
         Update: {
+          assigned_manager_user_id?: string | null
           assigned_to?: string | null
           assignment_id?: string | null
           branch_id?: string | null
           checklist_type?: Database["public"]["Enums"]["checklist_type"]
+          completed_at?: string | null
           created_at?: string
           department?: Database["public"]["Enums"]["department"]
           due_datetime?: string | null
@@ -348,34 +354,55 @@ export type Database = {
       }
       in_app_notifications: {
         Row: {
+          archived_at: string | null
           created_at: string
           id: string
           instance_id: string | null
           is_read: boolean
           message: string
           notification_type: Database["public"]["Enums"]["notification_type"]
+          priority: Database["public"]["Enums"]["notification_priority"]
+          read_at: string | null
+          related_entity_type: string
+          related_module: string
+          sender_type: string
+          status: Database["public"]["Enums"]["notification_status"]
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           instance_id?: string | null
           is_read?: boolean
           message: string
           notification_type: Database["public"]["Enums"]["notification_type"]
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          read_at?: string | null
+          related_entity_type?: string
+          related_module?: string
+          sender_type?: string
+          status?: Database["public"]["Enums"]["notification_status"]
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           instance_id?: string | null
           is_read?: boolean
           message?: string
           notification_type?: Database["public"]["Enums"]["notification_type"]
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          read_at?: string | null
+          related_entity_type?: string
+          related_module?: string
+          sender_type?: string
+          status?: Database["public"]["Enums"]["notification_status"]
           title?: string
           updated_at?: string
           user_id?: string
@@ -545,6 +572,8 @@ export type Database = {
         | "service"
         | "bar"
         | "office"
+      notification_priority: "normal" | "high" | "critical"
+      notification_status: "unread" | "read" | "archived"
       notification_type: "notice" | "warning" | "escalation"
       photo_requirement: "none" | "optional" | "mandatory"
     }
@@ -701,6 +730,8 @@ export const Constants = {
         "bar",
         "office",
       ],
+      notification_priority: ["normal", "high", "critical"],
+      notification_status: ["unread", "read", "archived"],
       notification_type: ["notice", "warning", "escalation"],
       photo_requirement: ["none", "optional", "mandatory"],
     },
