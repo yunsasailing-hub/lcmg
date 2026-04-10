@@ -113,7 +113,7 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 }
 
 function MobileNav() {
-  const { signOut, profile, roles } = useAuth();
+  const { signOut, profile, roles, user } = useAuth();
   const location = useLocation();
   const [showMore, setShowMore] = useState(false);
 
@@ -121,6 +121,7 @@ function MobileNav() {
   const overflowItems = NAV_ITEMS.slice(5);
   const primaryRole = roles[0];
   const badge = primaryRole ? ROLE_BADGE[primaryRole] : null;
+  const displayName = profile?.full_name || profile?.email || user?.email || 'User';
 
   // Close "more" menu on route change
   useEffect(() => setShowMore(false), [location.pathname]);
@@ -134,15 +135,14 @@ function MobileNav() {
       >
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-lg font-heading font-bold text-primary-foreground shrink-0">La Cala</span>
-          {profile?.full_name && (
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-xs truncate" style={{ color: 'var(--nav-muted)' }}>{profile.full_name}</span>
-              {badge && (
-                <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
-                  {badge.label}
-                </span>
-              )}
-            </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs truncate" style={{ color: 'var(--nav-muted)' }}>{displayName}</span>
+            {badge && (
+              <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
+                {badge.label}
+              </span>
+            )}
+          </div>
           )}
         </div>
         <button
