@@ -14,34 +14,41 @@ function NotificationItem({ notification, onMarkRead }: {
   notification: AppNotification;
   onMarkRead: (id: string) => void;
 }) {
-  const isWarning = notification.notification_type === 'warning' || notification.notification_type === 'escalation';
+  const isEscalation = notification.notification_type === 'escalation';
+  const isWarning = notification.notification_type === 'warning' || isEscalation;
+  const isUnread = notification.status === 'unread';
 
   return (
     <div
       className={cn(
         'flex gap-3 p-3 border-b last:border-b-0 transition-colors cursor-pointer',
-        notification.is_read
+        !isUnread
           ? 'bg-card opacity-60'
-          : isWarning
-            ? 'bg-destructive/5'
-            : 'bg-accent/30'
+          : isEscalation
+            ? 'bg-destructive/10'
+            : isWarning
+              ? 'bg-destructive/5'
+              : 'bg-accent/30'
       )}
-      onClick={() => !notification.is_read && onMarkRead(notification.id)}
+      onClick={() => isUnread && onMarkRead(notification.id)}
     >
       <div className="shrink-0 mt-0.5">
         {isWarning ? (
-          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <AlertTriangle className={cn('h-4 w-4', isEscalation ? 'text-destructive' : 'text-destructive/80')} />
         ) : (
           <Info className="h-4 w-4 text-warning-foreground" />
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className={cn('text-sm font-medium truncate', !notification.is_read && 'font-semibold')}>
+          <p className={cn('text-sm font-medium truncate', isUnread && 'font-semibold')}>
             {notification.title}
           </p>
-          {!notification.is_read && (
-            <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
+          {isUnread && (
+            <span className={cn(
+              'h-2 w-2 rounded-full shrink-0 mt-1.5',
+              notification.priority === 'critical' ? 'bg-destructive' : notification.priority === 'high' ? 'bg-warning' : 'bg-primary'
+            )} />
           )}
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
