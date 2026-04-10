@@ -7,9 +7,16 @@ export interface AppNotification {
   user_id: string;
   instance_id: string | null;
   notification_type: 'notice' | 'warning' | 'escalation';
+  sender_type: string;
+  related_module: string;
+  related_entity_type: string;
+  priority: 'normal' | 'high' | 'critical';
+  status: 'unread' | 'read' | 'archived';
   title: string;
   message: string;
   is_read: boolean;
+  read_at: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -23,13 +30,14 @@ export function useNotifications() {
       const { data, error } = await supabase
         .from('in_app_notifications')
         .select('*')
+        .in('status', ['unread', 'read'])
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
       return (data || []) as AppNotification[];
     },
     enabled: !!user,
-    refetchInterval: 60_000, // Poll every 60s
+    refetchInterval: 60_000,
   });
 }
 
@@ -42,12 +50,12 @@ export function useUnreadCount() {
       const { count, error } = await supabase
         .from('in_app_notifications')
         .select('*', { count: 'exact', head: true })
-        .eq('is_read', false);
+        .eq('status', 'unread');
       if (error) throw error;
       return count || 0;
     },
     enabled: !!user,
-    refetchInterval: 30_000, // Poll every 30s
+    refetchInterval: 30_000,
   });
 }
 
@@ -58,7 +66,7 @@ export function useMarkAsRead() {
     mutationFn: async (notificationId: string) => {
       const { error } = await supabase
         .from('in_app_notifications')
-        .update({ is_read: true })
+        .update({ status: 'read' as any, is_read: true, read_at: new Date().toISOString() })
         .eq('id', notificationId);
       if (error) throw error;
     },
@@ -75,8 +83,8 @@ export function useMarkAllAsRead() {
     mutationFn: async () => {
       const { error } = await supabase
         .from('in_app_notifications')
-        .update({ is_read: true })
-        .eq('is_read', false);
+        .update({ status: 'read' as any, is_read: true, read_at: new Date().toISOString() })
+        .eq('status', 'unread');
       if (error) throw error;
     },
     onSuccess: () => {
@@ -95,7 +103,7 @@ export function useOverdueWarnings() {
         .from('in_app_notifications')
         .select('*')
         .in('notification_type', ['warning', 'escalation'])
-        .eq('is_read', false)
+        .eq('status', 'unread')
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
