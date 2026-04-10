@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   AlertTriangle, Bell, Info, CheckCheck, X, Archive, Eye, EyeOff,
-  Filter, ChevronDown,
+  Filter, ChevronDown, ExternalLink, ClipboardCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -14,11 +15,9 @@ import {
   DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Popover, PopoverContent, PopoverTrigger,
-} from '@/components/ui/popover';
-import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { useAuth } from '@/hooks/useAuth';
 import {
   useNotifications,
   useMarkAsRead,
@@ -63,26 +62,44 @@ function NotificationCard({
   onMarkRead,
   onMarkUnread,
   onArchive,
+  onNavigate,
 }: {
   notification: AppNotification;
   onMarkRead: (id: string) => void;
   onMarkUnread: (id: string) => void;
   onArchive: (id: string) => void;
+  onNavigate: (notification: AppNotification) => void;
 }) {
   const style = TYPE_STYLES[notification.notification_type] || TYPE_STYLES.notice;
   const Icon = style.icon;
   const isUnread = notification.status === 'unread';
+  const isEscalation = notification.notification_type === 'escalation';
+  const hasChecklist = !!notification.instance_id && notification.related_module === 'checklist';
 
-  // Extract branch/department from message if present
-  const messageParts = notification.message;
+  const handleCardClick = useCallback(() => {
+    // Mark as read on click
+    if (isUnread) {
+      onMarkRead(notification.id);
+    }
+  }, [isUnread, notification.id, onMarkRead]);
+
+  const handleNavigate = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Mark as read then navigate
+    if (isUnread) {
+      onMarkRead(notification.id);
+    }
+    onNavigate(notification);
+  }, [isUnread, notification, onMarkRead, onNavigate]);
 
   return (
     <div
       className={cn(
-        'relative p-4 transition-colors',
+        'relative p-4 transition-colors cursor-pointer',
         style.bg,
         isUnread ? 'bg-opacity-100' : 'opacity-70',
       )}
+      onClick={handleCardClick}
     >
       <div className="flex gap-3">
         {/* Icon */}
@@ -108,24 +125,42 @@ function NotificationCard({
             {/* Actions dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 -mt-1 -mr-1">
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 -mt-1 -mr-1" onClick={(e) => e.stopPropagation()}>
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuContent align="end" className="w-44">
+                {hasChecklist && (
+                  <>
+                    <DropdownMenuItem onClick={handleNavigate}>
+                      {isEscalation ? (
+                        <>
+                          <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                          Review Checklist
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardCheck className="h-3.5 w-3.5 mr-2" />
+                          View Checklist
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 {isUnread ? (
-                  <DropdownMenuItem onClick={() => onMarkRead(notification.id)}>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkRead(notification.id); }}>
                     <Eye className="h-3.5 w-3.5 mr-2" />
                     Mark as read
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem onClick={() => onMarkUnread(notification.id)}>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkUnread(notification.id); }}>
                     <EyeOff className="h-3.5 w-3.5 mr-2" />
                     Mark as unread
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onArchive(notification.id)}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(notification.id); }}>
                   <Archive className="h-3.5 w-3.5 mr-2" />
                   Archive
                 </DropdownMenuItem>
@@ -134,16 +169,42 @@ function NotificationCard({
           </div>
 
           <p className={cn('text-sm mt-1', isUnread ? 'text-foreground' : 'text-muted-foreground')}>
-            {messageParts}
+            {notification.message}
           </p>
 
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
-            <span className="text-[11px] text-muted-foreground">
-              {format(new Date(notification.created_at), 'MMM d, yyyy · h:mm a')}
-            </span>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {style.label}
-            </Badge>
+          <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-[11px] text-muted-foreground">
+                {format(new Date(notification.created_at), 'MMM d, yyyy · h:mm a')}
+              </span>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                {style.label}
+              </Badge>
+            </div>
+
+            {/* Action button */}
+            {hasChecklist && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-[11px] px-2 gap-1"
+                onClick={handleNavigate}
+              >
+                {isEscalation ? (
+                  <>
+                    <ExternalLink className="h-3 w-3" />
+                    Review
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCheck className="h-3 w-3" />
+                    {notification.notification_type === 'notice' || notification.notification_type === 'warning'
+                      ? 'Complete'
+                      : 'View'}
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -153,6 +214,7 @@ function NotificationCard({
 
 /* ─── Main Notification Center ─── */
 export default function NotificationCenter({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<'all' | 'unread' | 'read'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -187,6 +249,15 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
     }
     return result;
   }, [notifications, typeFilter, priorityFilter]);
+
+  const handleNavigate = useCallback((notification: AppNotification) => {
+    onClose();
+    if (notification.instance_id) {
+      navigate(`/checklists?instance=${notification.instance_id}`);
+    } else {
+      navigate('/checklists');
+    }
+  }, [navigate, onClose]);
 
   return (
     <div className="flex flex-col h-full max-h-[80vh] sm:max-h-[85vh] w-full sm:w-[420px] bg-card rounded-lg border shadow-lg overflow-hidden">
@@ -319,6 +390,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
                 onMarkRead={(id) => markAsRead.mutate(id)}
                 onMarkUnread={(id) => markAsUnread.mutate(id)}
                 onArchive={(id) => archiveNotification.mutate(id)}
+                onNavigate={handleNavigate}
               />
             ))}
           </div>
