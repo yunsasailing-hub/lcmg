@@ -254,7 +254,7 @@ export function useDeleteInstance() {
 
   return useMutation({
     mutationFn: async (instanceId: string) => {
-      const data = await invokeProtectedFunction<{ success?: boolean; error?: string }>(
+      const data = await invokeProtectedFunction<{ success?: boolean; ok?: boolean; error?: string }>(
         'delete-checklist-instance',
         { instanceId },
         'Failed to delete checklist',
