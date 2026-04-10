@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, Pencil, Save, X, AlertCircle, Eye, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -19,8 +19,10 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates, useCreateTemplate, useDeleteTemplate, useDeleteTemplateTask,
   useUpdateTemplate, useAddTemplateTask, useUpdateTemplateTask, useStaffProfiles, useCreateAssignment,
+  useTemplateAssignments, useAllTemplateAssignmentCounts,
   type PhotoRequirement, type ChecklistType, type Department,
 } from '@/hooks/useChecklists';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Constants } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 
@@ -281,6 +283,82 @@ function AssignDialog({ template }: { template: any }) {
     </Dialog>
   );
 }
+function ViewAssignmentsDialog({ templateId, templateTitle }: { templateId: string; templateTitle: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const { data: assignments, isLoading } = useTemplateAssignments(open ? templateId : null);
+
+  const statusColor = (s: string) => {
+    if (s === 'active') return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    if (s === 'paused') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+    return 'bg-muted text-muted-foreground';
+  };
+
+  const periodicityLabel = (p: string) => {
+    const map: Record<string, string> = { once: t('assign.oneTime'), daily: t('assign.daily'), weekly: t('assign.weekly'), biweekly: t('assign.biweekly'), monthly: t('assign.monthly') };
+    return map[p] || p;
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={e => e.stopPropagation()}>
+          <Eye className="h-3.5 w-3.5 mr-1" /> {t('assign.viewAssignments')}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t('assign.manageAssignments')}</DialogTitle>
+          <DialogDescription>{templateTitle}</DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">{t('common.loading')}</div>
+        ) : !assignments?.length ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">{t('assign.noAssignments')}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('assign.assignedUser')}</TableHead>
+                  <TableHead>{t('assign.periodicity')}</TableHead>
+                  <TableHead>{t('assign.startDate')}</TableHead>
+                  <TableHead>{t('assign.endDate')}</TableHead>
+                  <TableHead>{t('assign.statusLabel')}</TableHead>
+                  <TableHead>{t('assign.createdBy')}</TableHead>
+                  <TableHead>{t('assign.createdAt')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assignments.map((a: any) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">
+                      {a.assigned_profile?.full_name || '—'}
+                      {a.assigned_profile?.position && (
+                        <span className="block text-xs text-muted-foreground">{a.assigned_profile.position}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="capitalize">{periodicityLabel(a.periodicity)}</TableCell>
+                    <TableCell>{a.start_date}</TableCell>
+                    <TableCell>{a.end_date || '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={`text-xs capitalize ${statusColor(a.status)}`}>
+                        {a.status === 'active' ? t('assign.active') : a.status === 'paused' ? t('assign.paused') : t('assign.ended')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{a.created_by_profile?.full_name || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{new Date(a.created_at).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function TemplateManager() {
   const { t } = useTranslation();
@@ -291,6 +369,7 @@ export default function TemplateManager() {
   const updateTemplate = useUpdateTemplate();
   const addTask = useAddTemplateTask();
   const updateTask = useUpdateTemplateTask();
+  const { data: assignmentCounts } = useAllTemplateAssignmentCounts();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
@@ -430,6 +509,7 @@ export default function TemplateManager() {
             const taskCount = tasks.length;
             const isExpanded = expandedId === tpl.id;
             const isEditing = editingId === tpl.id;
+            const activeCount = assignmentCounts?.get(tpl.id) || 0;
 
             return (
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
@@ -442,10 +522,17 @@ export default function TemplateManager() {
                         <p className="text-xs text-muted-foreground capitalize mt-0.5">
                           {tpl.checklist_type} · {tpl.department} · {taskCount} {taskCount !== 1 ? t('checklists.tasks_plural') : t('checklists.task')}
                         </p>
+                        {activeCount > 0 && (
+                          <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            {t('assign.activeAssignments', { count: activeCount })}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                       <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
+                      <ViewAssignmentsDialog templateId={tpl.id} templateTitle={tpl.title} />
                       <AssignDialog template={tpl} />
                     </div>
                   </div>

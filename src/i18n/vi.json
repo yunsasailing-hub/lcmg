@@ -257,7 +257,18 @@
     "endDate": "Ngày kết thúc (tùy chọn)",
     "notes": "Ghi chú (tùy chọn)",
     "notesPlaceholder": "Thêm ghi chú cho phân công này...",
-    "startDateRequired": "Cần chọn ngày bắt đầu"
+    "startDateRequired": "Cần chọn ngày bắt đầu",
+    "viewAssignments": "Phân công",
+    "manageAssignments": "Quản lý phân công",
+    "activeAssignments": "{{count}} phân công đang hoạt động",
+    "noAssignments": "Không có phân công cho mẫu này.",
+    "assignedUser": "Người được phân công",
+    "createdBy": "Tạo bởi",
+    "createdAt": "Ngày tạo",
+    "statusLabel": "Trạng thái",
+    "active": "Hoạt động",
+    "paused": "Tạm dừng",
+    "ended": "Kết thúc"
   },
   "common": {
     "cancel": "Hủy",
