@@ -19,9 +19,9 @@ const NAV_ITEMS = [
 ];
 
 const ROLE_BADGE: Record<string, { label: string; color: string }> = {
-  owner: { label: 'Owner', color: 'bg-red-500/20 text-red-300' },
-  manager: { label: 'Manager', color: 'bg-orange-500/20 text-orange-300' },
-  staff: { label: 'Staff', color: 'bg-gray-500/20 text-gray-300' },
+  owner: { label: 'Owner', color: 'bg-red-600 text-white' },
+  manager: { label: 'Manager', color: 'bg-orange-500 text-white' },
+  staff: { label: 'Staff', color: 'bg-gray-500 text-white' },
 };
 
 function UserIdentity({ collapsed }: { collapsed?: boolean }) {
