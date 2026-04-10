@@ -90,29 +90,18 @@ function getDatesToGenerate(
   const { periodicity, start_date, last_generated_date } = assignment;
 
   if (periodicity === "once") {
-    // Only generate on start_date if not already generated
     if (!last_generated_date) return [start_date];
     return [];
   }
 
-  // For recurring: generate from day after last_generated_date (or start_date) up to today
-  const fromDate = last_generated_date
-    ? addDays(last_generated_date, 1)
+  // Start from next occurrence after last generated, or from start_date
+  let cursor = last_generated_date
+    ? getNextOccurrence(last_generated_date, periodicity)
     : start_date;
 
-  if (fromDate > today) return [];
+  if (cursor > today) return [];
 
   const dates: string[] = [];
-  let cursor = fromDate;
-
-  // If we have a last_generated_date, find the next occurrence after it
-  if (last_generated_date) {
-    cursor = getNextOccurrence(last_generated_date, periodicity);
-  } else {
-    cursor = start_date;
-  }
-
-  // Generate all occurrences up to today (max 90 to prevent runaway)
   let safety = 0;
   while (cursor <= today && safety < 90) {
     dates.push(cursor);

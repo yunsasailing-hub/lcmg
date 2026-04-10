@@ -38,6 +38,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Parse body FIRST so action is available for all checks
+    const { action, ...params } = await req.json();
+
     // Check caller roles
     const { data: callerRoles } = await supabaseAdmin
       .from("user_roles")
@@ -93,8 +96,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, ...params } = await req.json();
-
     // ─── LIST: roles + basic profiles ───
     if (action === "list") {
       const { data: roles, error } = await supabaseAdmin
@@ -130,7 +131,6 @@ Deno.serve(async (req) => {
         .eq("is_active", true)
         .order("name");
 
-      // Map roles by user
       const rolesMap: Record<string, string[]> = {};
       (roles || []).forEach((r: any) => {
         if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
@@ -230,13 +230,11 @@ Deno.serve(async (req) => {
       if (!user_id || !role) throw new Error("user_id and role required");
       if (user_id === user.id) throw new Error("Cannot change your own role");
 
-      // Delete all existing roles
       await supabaseAdmin
         .from("user_roles")
         .delete()
         .eq("user_id", user_id);
 
-      // Assign new role
       const { error } = await supabaseAdmin
         .from("user_roles")
         .insert({ user_id, role });
