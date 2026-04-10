@@ -516,6 +516,15 @@ export default function TemplateManager() {
           })}
         </div>
       )}
+
+      {assignmentManagerTemplate && (
+        <AssignmentManager
+          templateId={assignmentManagerTemplate.id}
+          templateTitle={assignmentManagerTemplate.title}
+          open={!!assignmentManagerTemplate}
+          onOpenChange={(open) => { if (!open) setAssignmentManagerTemplate(null); }}
+        />
+      )}
     </div>
   );
 }
