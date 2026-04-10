@@ -33,7 +33,8 @@ import {
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
-
+import { useAssignmentCountByTemplate } from '@/hooks/useAssignments';
+import AssignmentManager from '@/components/checklists/AssignmentManager';
 // ─── Create Template Dialog ───
 
 function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
