@@ -289,7 +289,7 @@ export default function ManagerDashboard() {
     return <ManagerDetail instanceId={selected.id} templateId={selected.template_id} instance={selected} onBack={() => setSelected(null)} />;
   }
 
-  const isOverdue = (instance: any) => instance.status === 'pending' && instance.scheduled_date < today;
+  
 
   return (
     <div className="space-y-4">
