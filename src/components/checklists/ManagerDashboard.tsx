@@ -4,6 +4,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
   Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2, Square, CheckSquare,
 } from 'lucide-react';
+import { useOverdueWarnings, type AppNotification } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -444,6 +445,9 @@ export default function ManagerDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Overdue Warning Cards */}
+      <OverdueWarningCards />
+
       {/* Stats */}
       <StatsRow checklists={checklists || []} />
 
