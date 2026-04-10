@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import {
@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useAllChecklists, useTemplateTasks, useTaskCompletions, useVerifyChecklist, useDeleteInstance, useBranches,
+  useAllChecklists, useTemplateTasks, useTaskCompletions, useVerifyChecklist, useDeleteInstance, useBulkDeleteInstances, useBranches,
   type ChecklistFilters, type ChecklistStatus, type Department,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
@@ -280,21 +280,105 @@ export default function ManagerDashboard() {
   const { t } = useTranslation();
   const statusCfg = useStatusConfig();
   const isOwner = hasRole('owner');
-  const today = new Date().toISOString().split('T')[0];
   const [filters, setFilters] = useState<ChecklistFilters>({});
   const { data: checklists, isLoading } = useAllChecklists(filters);
   const [selected, setSelected] = useState<any>(null);
+
+  // Bulk selection state (owner only)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
+  const bulkDelete = useBulkDeleteInstances();
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleToggleAll = useCallback((ids: string[], selected: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (selected) {
+        ids.forEach(id => next.add(id));
+      } else {
+        ids.forEach(id => next.delete(id));
+      }
+      return next;
+    });
+  }, []);
+
+  const handleCancelSelection = useCallback(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(() => {
+    const ids = Array.from(selectedIds);
+    bulkDelete.mutate(ids, {
+      onSuccess: () => {
+        toast.success(t('checklists.bulkDeleteSuccess', { count: ids.length }));
+        handleCancelSelection();
+      },
+      onError: (err) => {
+        toast.error(err.message || t('checklists.bulkDeleteFail'));
+      },
+    });
+  }, [selectedIds, bulkDelete, t, handleCancelSelection]);
 
   if (selected) {
     return <ManagerDetail instanceId={selected.id} templateId={selected.template_id} instance={selected} onBack={() => setSelected(null)} />;
   }
 
-  
-
   return (
     <div className="space-y-4">
       <StatsRow checklists={checklists || []} />
       <Filters filters={filters} setFilters={setFilters} isOwner={isOwner} />
+
+      {/* Owner: toggle select mode */}
+      {isOwner && !selectMode && !isLoading && (checklists?.length ?? 0) > 0 && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => setSelectMode(true)}>
+            {t('checklists.selectRecords')}
+          </Button>
+        </div>
+      )}
+
+      {/* Bulk action toolbar */}
+      {selectMode && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+          <span className="text-sm font-medium text-foreground">
+            {t('checklists.selectedCount', { count: selectedIds.size })}
+          </span>
+          <div className="flex-1" />
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={selectedIds.size === 0 || bulkDelete.isPending}>
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                {bulkDelete.isPending ? t('checklists.deleting') : t('checklists.deleteSelected')}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('checklists.bulkDeleteTitle')}</AlertDialogTitle>
+                <AlertDialogDescription>{t('checklists.bulkDeleteDesc', { count: selectedIds.size })}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('checklists.cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {t('checklists.confirmDelete')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Button variant="ghost" size="sm" onClick={handleCancelSelection}>
+            {t('checklists.cancel')}
+          </Button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div>
@@ -303,6 +387,10 @@ export default function ManagerDashboard() {
           checklists={checklists || []}
           statusCfg={statusCfg}
           onSelect={setSelected}
+          selectable={selectMode}
+          selectedIds={selectedIds}
+          onToggleSelect={handleToggleSelect}
+          onToggleAll={handleToggleAll}
         />
       )}
     </div>

@@ -277,6 +277,29 @@ export function useDeleteInstance() {
   });
 }
 
+export function useBulkDeleteInstances() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (instanceIds: string[]) => {
+      const data = await invokeProtectedFunction<{ success?: boolean; error?: string; deletedCount?: number }>(
+        'bulk-delete-checklist-instances',
+        { instanceIds },
+        'Failed to delete checklists',
+      );
+
+      if (!data?.success && data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+    },
+  });
+}
+
 export function useDeleteTemplate() {
   const queryClient = useQueryClient();
 

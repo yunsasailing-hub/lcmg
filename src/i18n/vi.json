@@ -173,7 +173,16 @@
     "deleteInstanceDesc": "Thao tác này sẽ xóa vĩnh viễn danh sách đã gửi và tất cả kết quả nhiệm vụ khỏi cơ sở dữ liệu.",
     "instanceDeleted": "Đã xóa bản ghi danh sách",
     "failDeleteInstance": "Xóa bản ghi thất bại",
-    "permissionDenied": "Không có quyền"
+    "permissionDenied": "Không có quyền",
+    "selectRecords": "Chọn bản ghi",
+    "selectAll": "Chọn tất cả",
+    "selectedCount": "{{count}} đã chọn",
+    "deleteSelected": "Xóa đã chọn",
+    "bulkDeleteTitle": "Xóa danh sách đã chọn",
+    "bulkDeleteDesc": "Bạn có chắc muốn xóa {{count}} bản ghi danh sách đã chọn? Thao tác này chỉ xóa các bản ghi đã chọn, không ảnh hưởng đến mẫu hoặc phân công. Không thể hoàn tác.",
+    "confirmDelete": "Xác nhận xóa",
+    "bulkDeleteSuccess": "Đã xóa {{count}} bản ghi thành công.",
+    "bulkDeleteFail": "Xóa danh sách đã chọn thất bại"
   },
   "status": {
     "pending": "Đang chờ",
