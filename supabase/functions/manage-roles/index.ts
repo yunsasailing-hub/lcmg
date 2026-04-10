@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform",
 };
 
 Deno.serve(async (req) => {
@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify the caller is an owner
+    // Verify the caller
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Check if caller is owner
     const { data: isOwner } = await supabaseAdmin
       .from("user_roles")
       .select("id")
@@ -54,24 +55,102 @@ Deno.serve(async (req) => {
 
     const { action, ...params } = await req.json();
 
+    // ─── LIST: roles + basic profiles ───
     if (action === "list") {
-      // Get all roles with profile info
       const { data: roles, error } = await supabaseAdmin
         .from("user_roles")
         .select("id, user_id, role");
       if (error) throw error;
 
-      // Get profiles for context
       const { data: profiles } = await supabaseAdmin
         .from("profiles")
-        .select("user_id, full_name, email, avatar_url")
-        .eq("is_active", true);
+        .select("user_id, full_name, email, avatar_url");
 
       return new Response(JSON.stringify({ roles, profiles }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // ─── LIST_FULL: all profiles with full details + roles ───
+    if (action === "list_full") {
+      const { data: profiles, error: pErr } = await supabaseAdmin
+        .from("profiles")
+        .select("*")
+        .order("full_name", { ascending: true });
+      if (pErr) throw pErr;
+
+      const { data: roles, error: rErr } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id, role");
+      if (rErr) throw rErr;
+
+      const { data: branches } = await supabaseAdmin
+        .from("branches")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+
+      // Map roles by user
+      const rolesMap: Record<string, string[]> = {};
+      (roles || []).forEach((r: any) => {
+        if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
+        rolesMap[r.user_id].push(r.role);
+      });
+
+      const enriched = (profiles || []).map((p: any) => ({
+        ...p,
+        roles: rolesMap[p.user_id] || [],
+      }));
+
+      return new Response(JSON.stringify({ profiles: enriched, branches: branches || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── UPDATE_PROFILE: edit user details ───
+    if (action === "update_profile") {
+      const { user_id, full_name, phone, email, department, branch_id, position } = params;
+      if (!user_id) throw new Error("user_id required");
+
+      const updateData: Record<string, any> = {};
+      if (full_name !== undefined) updateData.full_name = full_name;
+      if (phone !== undefined) updateData.phone = phone;
+      if (email !== undefined) updateData.email = email;
+      if (department !== undefined) updateData.department = department;
+      if (branch_id !== undefined) updateData.branch_id = branch_id || null;
+      if (position !== undefined) updateData.position = position;
+
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .update(updateData)
+        .eq("user_id", user_id)
+        .select()
+        .single();
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ ok: true, profile: data }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── TOGGLE_ACTIVE: activate/deactivate user ───
+    if (action === "toggle_active") {
+      const { user_id, is_active } = params;
+      if (!user_id) throw new Error("user_id required");
+      if (user_id === user.id) throw new Error("Cannot deactivate yourself");
+
+      const { error } = await supabaseAdmin
+        .from("profiles")
+        .update({ is_active })
+        .eq("user_id", user_id);
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── ASSIGN role ───
     if (action === "assign") {
       const { user_id, role } = params;
       const { data, error } = await supabaseAdmin
@@ -85,9 +164,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── REMOVE role ───
     if (action === "remove") {
       const { user_id, role } = params;
-      // Prevent removing your own owner role
       if (user_id === user.id && role === "owner") {
         return new Response(JSON.stringify({ error: "Cannot remove your own owner role" }), {
           status: 400,
@@ -101,6 +180,29 @@ Deno.serve(async (req) => {
         .eq("role", role);
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── SET_ROLE: replace all roles with a single one ───
+    if (action === "set_role") {
+      const { user_id, role } = params;
+      if (!user_id || !role) throw new Error("user_id and role required");
+      if (user_id === user.id) throw new Error("Cannot change your own role");
+
+      // Delete all existing roles
+      await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", user_id);
+
+      // Assign new role
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id, role });
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
