@@ -75,7 +75,7 @@ function useOverdueChecklists() {
           supabase.from('profiles').select('user_id, full_name').in('user_id', staffIds)
             .then(({ data: profiles }) => {
               if (profiles) profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p.full_name || 'Unknown']));
-            })
+            }) as Promise<void>
         );
       }
 
@@ -86,7 +86,7 @@ function useOverdueChecklists() {
               allBranches = branches;
               branchMap = Object.fromEntries(branches.map(b => [b.id, b.name]));
             }
-          })
+          }) as Promise<void>
       );
 
       if (templateIds.length > 0) {
@@ -94,7 +94,7 @@ function useOverdueChecklists() {
           supabase.from('checklist_templates').select('id, title').in('id', templateIds)
             .then(({ data: templates }) => {
               if (templates) templateMap = Object.fromEntries(templates.map(t => [t.id, t.title]));
-            })
+            }) as Promise<void>
         );
       }
 
