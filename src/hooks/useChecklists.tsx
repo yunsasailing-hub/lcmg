@@ -647,6 +647,49 @@ export function useUpdateAssignmentStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['template-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['template-assignment-counts'] });
+    },
+  });
+}
+
+export function useUpdateAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Record<string, any> }) => {
+      const { data, error } = await supabase
+        .from('checklist_assignments')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['template-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['template-assignment-counts'] });
+    },
+  });
+}
+
+export function useDeleteAssignment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('checklist_assignments')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['template-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['template-assignment-counts'] });
     },
   });
 }
