@@ -153,6 +153,17 @@ function EditUserDialog({
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label>Permission Level</Label>
+            <Select value={form.role} onValueChange={v => update('role', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
