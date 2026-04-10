@@ -417,6 +417,42 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          checklist_notices_enabled: boolean
+          checklist_warnings_enabled: boolean
+          created_at: string
+          id: string
+          notice_delay_hours: number
+          push_enabled: boolean
+          updated_at: string
+          warning_delay_hours: number
+          whatsapp_enabled: boolean
+        }
+        Insert: {
+          checklist_notices_enabled?: boolean
+          checklist_warnings_enabled?: boolean
+          created_at?: string
+          id?: string
+          notice_delay_hours?: number
+          push_enabled?: boolean
+          updated_at?: string
+          warning_delay_hours?: number
+          whatsapp_enabled?: boolean
+        }
+        Update: {
+          checklist_notices_enabled?: boolean
+          checklist_warnings_enabled?: boolean
+          created_at?: string
+          id?: string
+          notice_delay_hours?: number
+          push_enabled?: boolean
+          updated_at?: string
+          warning_delay_hours?: number
+          whatsapp_enabled?: boolean
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
