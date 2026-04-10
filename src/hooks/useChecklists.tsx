@@ -300,7 +300,7 @@ export function useBulkDeleteInstances() {
   });
 }
 
-
+export function useDeleteTemplate() {
   const queryClient = useQueryClient();
 
   return useMutation({
