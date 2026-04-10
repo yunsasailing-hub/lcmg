@@ -1,10 +1,14 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
@@ -13,19 +17,21 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates,
   useCreateTemplate,
-  useCreateInstance,
   useDeleteTemplate,
   useDeleteTemplateTask,
-  useStaffProfiles,
+  useActiveUsersForAssignment,
+  useCreateAssignment,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
+import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 
 // ─── Create Template Dialog ───
