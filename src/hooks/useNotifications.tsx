@@ -6,7 +6,7 @@ export interface AppNotification {
   id: string;
   user_id: string;
   instance_id: string | null;
-  notification_type: 'notice' | 'warning';
+  notification_type: 'notice' | 'warning' | 'escalation';
   title: string;
   message: string;
   is_read: boolean;

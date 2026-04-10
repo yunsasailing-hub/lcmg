@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
           .upsert({
             instance_id: instance.id,
             user_id: managerId,
-            notification_type: "warning",
+            notification_type: "escalation",
             title: `Escalation: ${templateTitle}`,
             message: `${typeLabel} checklist "${templateTitle}" for ${dateLabel} has not been completed by the assigned staff (4+ hours overdue).`,
           }, { onConflict: "instance_id,user_id,notification_type" });
