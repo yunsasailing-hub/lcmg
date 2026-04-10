@@ -248,6 +248,23 @@ export function useDeleteTemplateTask() {
   });
 }
 
+export function useDeleteInstance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (instanceId: string) => {
+      const { error } = await supabase
+        .from('checklist_instances')
+        .delete()
+        .eq('id', instanceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+    },
+  });
+}
+
 export function useUpdateInstanceNotes() {
   const queryClient = useQueryClient();
 

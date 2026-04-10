@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
-  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User,
+  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,12 +21,17 @@ import {
   useTemplateTasks,
   useTaskCompletions,
   useVerifyChecklist,
+  useDeleteInstance,
   useBranches,
   type ChecklistFilters,
   type ChecklistStatus,
   type Department,
   type ChecklistType,
 } from '@/hooks/useChecklists';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Constants } from '@/integrations/supabase/types';
 
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
@@ -144,15 +149,17 @@ function Filters({
 
 // ─── Checklist Detail (read-only) ───
 
-function ManagerDetail({ instanceId, templateId, instance, onBack }: {
+function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
   instanceId: string;
   templateId: string;
   instance: any;
   onBack: () => void;
+  isOwner: boolean;
 }) {
   const { data: tasks } = useTemplateTasks(templateId);
   const { data: completions, isLoading } = useTaskCompletions(instanceId);
   const verify = useVerifyChecklist();
+  const deleteInstance = useDeleteInstance();
   const [rejecting, setRejecting] = useState(false);
   const [rejectionNote, setRejectionNote] = useState('');
 
@@ -279,6 +286,39 @@ function ManagerDetail({ instanceId, templateId, instance, onBack }: {
           </div>
         </div>
       )}
+
+      {/* Owner-only: Delete checklist record */}
+      {isOwner && (
+        <div className="pt-2 border-t">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full">
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Record
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this checklist record?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove this checklist record from the database. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteInstance.mutate(instanceId, {
+                    onSuccess: () => { toast.success('Record deleted'); onBack(); },
+                    onError: () => toast.error('Failed to delete record'),
+                  })}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
     </div>
   );
 }
@@ -300,6 +340,7 @@ export default function ManagerDashboard() {
         templateId={selected.template_id}
         instance={selected}
         onBack={() => setSelected(null)}
+        isOwner={isOwner}
       />
     );
   }
