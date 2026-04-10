@@ -403,25 +403,6 @@ export default function ManagerDashboard() {
     }
   };
 
-  if (selected) {
-    return (
-      <ManagerDetail
-        instanceId={selected.id}
-        templateId={selected.template_id}
-        instance={selected}
-        onBack={() => setSelected(null)}
-        isOwner={isOwner}
-      />
-    );
-  }
-
-  const isOverdue = (instance: any) =>
-    instance.status === 'pending' && instance.scheduled_date < today;
-
-
-  const toggleMonth = (key: string) =>
-    setCollapsedMonths(prev => ({ ...prev, [key]: !prev[key] }));
-
   const deleteInstance = useDeleteInstance();
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
@@ -442,6 +423,24 @@ export default function ManagerDashboard() {
       setBulkDeleting(false);
     }
   };
+
+  if (selected) {
+    return (
+      <ManagerDetail
+        instanceId={selected.id}
+        templateId={selected.template_id}
+        instance={selected}
+        onBack={() => setSelected(null)}
+        isOwner={isOwner}
+      />
+    );
+  }
+
+  const isOverdue = (instance: any) =>
+    instance.status === 'pending' && instance.scheduled_date < today;
+
+  const toggleMonth = (key: string) =>
+    setCollapsedMonths(prev => ({ ...prev, [key]: !prev[key] }));
 
   return (
     <div className="space-y-4">
