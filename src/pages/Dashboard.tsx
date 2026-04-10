@@ -28,9 +28,10 @@ export default function Dashboard() {
         <StatCard icon={Building2} label="Branches" value={2} subtitle="All operational" />
       </div>
 
-      {/* Overdue checklists summary — managers & owners only */}
+      {/* Operational alerts — managers & owners only */}
       {isManagerOrOwner && (
         <div className="mb-8">
+          <h2 className="text-lg font-heading font-semibold text-foreground mb-4">Operational Alerts</h2>
           <OverdueChecklistsSummary />
         </div>
       )}
