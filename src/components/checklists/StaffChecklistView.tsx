@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, MessageSquare, Send, StickyNote } from 'lucide-react';
+import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,10 +24,18 @@ import {
 
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
   pending: { label: 'Pending', variant: 'secondary' },
+  late: { label: 'Late', variant: 'destructive', className: 'bg-warning text-warning-foreground hover:bg-warning/80' },
+  escalated: { label: 'Escalated', variant: 'destructive' },
   completed: { label: 'Done', variant: 'default', className: 'bg-emerald-600 text-white hover:bg-emerald-600/80' },
   verified: { label: 'Verified', variant: 'default', className: 'bg-ring text-primary-foreground hover:bg-ring/80' },
   rejected: { label: 'Rejected', variant: 'destructive' },
 };
+
+function formatDueTime(dueDatetime: string | null): string | null {
+  if (!dueDatetime) return null;
+  const d = new Date(dueDatetime);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
 
 // ─── List View ───
 
@@ -69,10 +77,23 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
             onClick={() => onSelect(instance.id, instance.template_id)}
             className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent active:bg-accent"
           >
-            <StatusIcon className={`h-5 w-5 shrink-0 ${instance.status === 'rejected' ? 'text-destructive' : instance.status === 'pending' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
+            <StatusIcon className={`h-5 w-5 shrink-0 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-foreground truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</p>
-              <p className="text-xs text-muted-foreground capitalize">{instance.checklist_type} · {instance.department}</p>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="capitalize">{instance.checklist_type}</span>
+                <span>·</span>
+                <span className="capitalize">{instance.department}</span>
+                {(instance as any).due_datetime && (
+                  <>
+                    <span>·</span>
+                    <span className="flex items-center gap-0.5">
+                      <Clock className="h-3 w-3" />
+                      Due {formatDueTime((instance as any).due_datetime)}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
             <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>
           </button>
@@ -192,7 +213,18 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         <Button variant="ghost" size="icon" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-heading font-semibold truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</h2>
-          <p className="text-xs text-muted-foreground capitalize">{instance?.checklist_type} · {instance?.department}</p>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="capitalize">{instance?.checklist_type} · {instance?.department}</span>
+            {(instance as any)?.due_datetime && (
+              <>
+                <span>·</span>
+                <span className="flex items-center gap-0.5">
+                  <Clock className="h-3 w-3" />
+                  Due at {formatDueTime((instance as any).due_datetime)}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

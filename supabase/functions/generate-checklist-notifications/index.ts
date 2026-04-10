@@ -19,11 +19,11 @@ Deno.serve(async (req) => {
   let createdNotices = 0;
   let createdWarnings = 0;
 
-  // Fetch all pending checklists with due_datetime set
+  // Fetch all pending/late checklists with due_datetime set
   const { data: pendingInstances, error: fetchErr } = await supabase
     .from("checklist_instances")
-    .select("id, assigned_to, checklist_type, department, scheduled_date, branch_id, template_id, assignment_id, due_datetime")
-    .eq("status", "pending")
+    .select("id, assigned_to, checklist_type, department, scheduled_date, branch_id, template_id, assignment_id, due_datetime, status")
+    .in("status", ["pending", "late"])
     .not("assigned_to", "is", null)
     .not("due_datetime", "is", null);
 
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     const typeLabel = instance.checklist_type.charAt(0).toUpperCase() + instance.checklist_type.slice(1);
     const dateLabel = instance.scheduled_date;
 
-    // 2h+ overdue → Notice to assigned staff
+    // 2h+ overdue → Notice (late status)
     if (hoursSinceDue >= 2) {
       const { error } = await supabase
         .from("in_app_notifications")
@@ -86,9 +86,16 @@ Deno.serve(async (req) => {
         }, { onConflict: "instance_id,user_id,notification_type" });
 
       if (!error) createdNotices++;
+
+      // Update instance status to 'late' and record notice_sent_at
+      await supabase
+        .from("checklist_instances")
+        .update({ status: "late", notice_sent_at: now.toISOString() })
+        .eq("id", instance.id)
+        .in("status", ["pending"]);
     }
 
-    // 4h+ overdue → Warning to assigned staff + all managers/owners
+    // 4h+ overdue → Warning (escalated status)
     if (hoursSinceDue >= 4) {
       const { error: staffErr } = await supabase
         .from("in_app_notifications")
@@ -115,6 +122,13 @@ Deno.serve(async (req) => {
             message: `${typeLabel} checklist "${templateTitle}" for ${dateLabel} has not been completed by the assigned staff (4+ hours overdue).`,
           }, { onConflict: "instance_id,user_id,notification_type" });
       }
+
+      // Update instance status to 'escalated' and record warning_sent_at
+      await supabase
+        .from("checklist_instances")
+        .update({ status: "escalated", warning_sent_at: now.toISOString() })
+        .eq("id", instance.id)
+        .in("status", ["pending", "late"]);
     }
   }
 

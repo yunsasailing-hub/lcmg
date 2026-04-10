@@ -124,6 +124,7 @@ export type Database = {
           due_datetime: string | null
           id: string
           notes: string | null
+          notice_sent_at: string | null
           rejection_note: string | null
           scheduled_date: string
           status: Database["public"]["Enums"]["checklist_status"]
@@ -132,6 +133,7 @@ export type Database = {
           updated_at: string
           verified_at: string | null
           verified_by: string | null
+          warning_sent_at: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -143,6 +145,7 @@ export type Database = {
           due_datetime?: string | null
           id?: string
           notes?: string | null
+          notice_sent_at?: string | null
           rejection_note?: string | null
           scheduled_date?: string
           status?: Database["public"]["Enums"]["checklist_status"]
@@ -151,6 +154,7 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          warning_sent_at?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -162,6 +166,7 @@ export type Database = {
           due_datetime?: string | null
           id?: string
           notes?: string | null
+          notice_sent_at?: string | null
           rejection_note?: string | null
           scheduled_date?: string
           status?: Database["public"]["Enums"]["checklist_status"]
@@ -170,6 +175,7 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          warning_sent_at?: string | null
         }
         Relationships: [
           {
@@ -524,7 +530,13 @@ export type Database = {
         | "monthly"
       assignment_status: "active" | "paused" | "ended"
       checklist_frequency: "daily" | "weekly" | "monthly" | "determinate_date"
-      checklist_status: "pending" | "completed" | "verified" | "rejected"
+      checklist_status:
+        | "pending"
+        | "completed"
+        | "verified"
+        | "rejected"
+        | "late"
+        | "escalated"
       checklist_type: "opening" | "afternoon" | "closing"
       department:
         | "management"
@@ -672,7 +684,14 @@ export const Constants = {
       ],
       assignment_status: ["active", "paused", "ended"],
       checklist_frequency: ["daily", "weekly", "monthly", "determinate_date"],
-      checklist_status: ["pending", "completed", "verified", "rejected"],
+      checklist_status: [
+        "pending",
+        "completed",
+        "verified",
+        "rejected",
+        "late",
+        "escalated",
+      ],
       checklist_type: ["opening", "afternoon", "closing"],
       department: [
         "management",
