@@ -38,14 +38,54 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if caller is owner
-    const { data: isOwner } = await supabaseAdmin
+    // Check caller roles
+    const { data: callerRoles } = await supabaseAdmin
       .from("user_roles")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("role", "owner")
-      .maybeSingle();
+      .select("role")
+      .eq("user_id", user.id);
 
+    const roles_list = (callerRoles || []).map((r: any) => r.role);
+    const isOwner = roles_list.includes("owner");
+    const isManager = roles_list.includes("manager");
+
+    // ─── LIST_ACTIVE_USERS: available to owner + manager for assignment dropdowns ───
+    if (action === "list_active_users") {
+      if (!isOwner && !isManager) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: profiles, error: pErr } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, full_name, email, department, position, branch_id, is_active")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true });
+      if (pErr) throw pErr;
+
+      const { data: allRoles, error: rErr } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id, role");
+      if (rErr) throw rErr;
+
+      const rolesMap: Record<string, string[]> = {};
+      (allRoles || []).forEach((r: any) => {
+        if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
+        rolesMap[r.user_id].push(r.role);
+      });
+
+      const enriched = (profiles || []).map((p: any) => ({
+        ...p,
+        roles: rolesMap[p.user_id] || [],
+      }));
+
+      return new Response(JSON.stringify({ users: enriched }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // All remaining actions require owner role
     if (!isOwner) {
       return new Response(JSON.stringify({ error: "Only owners can manage roles" }), {
         status: 403,

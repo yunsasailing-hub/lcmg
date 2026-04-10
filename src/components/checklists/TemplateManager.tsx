@@ -1,10 +1,14 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
@@ -13,19 +17,21 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useTemplates,
   useCreateTemplate,
-  useCreateInstance,
   useDeleteTemplate,
   useDeleteTemplateTask,
-  useStaffProfiles,
+  useActiveUsersForAssignment,
+  useCreateAssignment,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
+import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 
 // ─── Create Template Dialog ───
@@ -178,55 +184,155 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
 function AssignDialog({ template }: { template: any }) {
   const [open, setOpen] = useState(false);
-  const [staffId, setStaffId] = useState('');
-  const { data: staff } = useStaffProfiles(template.branch_id || undefined);
-  const createInstance = useCreateInstance();
+  const [userId, setUserId] = useState('');
+  const [periodicity, setPeriodicity] = useState<Database['public']['Enums']['assignment_periodicity']>('once');
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [notes, setNotes] = useState('');
+
+  const { data: users, isLoading: usersLoading, isError: usersError } = useActiveUsersForAssignment();
+  const createAssignment = useCreateAssignment();
+
+  // Sort users: same department first
+  const sortedUsers = [...(users || [])].sort((a, b) => {
+    const aDept = a.department === template.department ? 0 : 1;
+    const bDept = b.department === template.department ? 0 : 1;
+    if (aDept !== bDept) return aDept - bDept;
+    return (a.full_name || '').localeCompare(b.full_name || '');
+  });
 
   const handleAssign = () => {
-    if (!staffId) { toast.error('Select a staff member'); return; }
-    createInstance.mutate({
+    if (!userId) { toast.error('Select a user'); return; }
+    if (!startDate) { toast.error('Select a start date'); return; }
+
+    createAssignment.mutate({
       template_id: template.id,
-      checklist_type: template.checklist_type,
-      department: template.department,
-      branch_id: template.branch_id,
-      assigned_to: staffId,
+      assigned_to: userId,
+      periodicity,
+      start_date: format(startDate, 'yyyy-MM-dd'),
+      end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
+      notes: notes.trim() || null,
     }, {
       onSuccess: () => {
         toast.success('Checklist assigned!');
         setOpen(false);
-        setStaffId('');
+        resetForm();
       },
-      onError: () => toast.error('Failed to assign checklist'),
+      onError: (err: any) => toast.error(err.message || 'Failed to assign checklist'),
     });
   };
 
+  const resetForm = () => {
+    setUserId('');
+    setPeriodicity('once');
+    setStartDate(new Date());
+    setEndDate(undefined);
+    setNotes('');
+  };
+
+  const getUserLabel = (u: any) => {
+    const name = u.full_name || u.email || 'Unknown';
+    const role = u.roles?.[0] ? u.roles[0].charAt(0).toUpperCase() + u.roles[0].slice(1) : '';
+    const dept = u.department ? u.department.charAt(0).toUpperCase() + u.department.slice(1) : '';
+    const parts = [name, role, dept].filter(Boolean);
+    return parts.join(' – ');
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" onClick={e => e.stopPropagation()}>
-          <Users className="h-3.5 w-3.5 mr-1" /> Assign Today
+          <Users className="h-3.5 w-3.5 mr-1" /> Assign Checklist
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Assign Checklist</DialogTitle>
-          <DialogDescription>Assign "{template.title}" to a staff member for today.</DialogDescription>
+          <DialogDescription>Assign "{template.title}" to a team member.</DialogDescription>
         </DialogHeader>
-        <div>
-          <Label>Staff Member</Label>
-          <Select value={staffId} onValueChange={setStaffId}>
-            <SelectTrigger><SelectValue placeholder="Select staff..." /></SelectTrigger>
-            <SelectContent>
-              {staff?.map(s => (
-                <SelectItem key={s.id} value={s.user_id}>{s.full_name || s.email || 'Unknown'}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <div className="space-y-4">
+          {/* User */}
+          <div>
+            <Label>Assign to User *</Label>
+            {usersLoading ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading users…
+              </div>
+            ) : usersError ? (
+              <p className="text-sm text-destructive py-1">Failed to load users</p>
+            ) : !sortedUsers.length ? (
+              <p className="text-sm text-muted-foreground py-1">No active users available</p>
+            ) : (
+              <Select value={userId} onValueChange={setUserId}>
+                <SelectTrigger><SelectValue placeholder="Select user…" /></SelectTrigger>
+                <SelectContent>
+                  {sortedUsers.map(u => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {getUserLabel(u)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Periodicity */}
+          <div>
+            <Label>Periodicity *</Label>
+            <Select value={periodicity} onValueChange={v => setPeriodicity(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Constants.public.Enums.assignment_periodicity.map(p => (
+                  <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Start Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, 'PP') : 'Pick date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={startDate} onSelect={(d) => d && setStartDate(d)} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label>End Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, 'PP') : 'Optional'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={(d) => d < startDate} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes…" rows={2} />
+          </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleAssign} disabled={createInstance.isPending}>
-            {createInstance.isPending ? 'Assigning…' : 'Assign'}
+          <Button onClick={handleAssign} disabled={createAssignment.isPending || !userId}>
+            {createAssignment.isPending ? 'Assigning…' : 'Assign'}
           </Button>
         </DialogFooter>
       </DialogContent>
