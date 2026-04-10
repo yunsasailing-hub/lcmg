@@ -173,7 +173,16 @@
     "deleteInstanceDesc": "This will permanently remove this submitted checklist and all its task completions from the database.",
     "instanceDeleted": "Checklist record deleted",
     "failDeleteInstance": "Failed to delete checklist record",
-    "permissionDenied": "Permission denied"
+    "permissionDenied": "Permission denied",
+    "selectRecords": "Select Records",
+    "selectAll": "Select all",
+    "selectedCount": "{{count}} selected",
+    "deleteSelected": "Delete Selected",
+    "bulkDeleteTitle": "Delete Selected Checklists",
+    "bulkDeleteDesc": "Are you sure you want to delete {{count}} selected checklist record(s)? This action will remove only the selected submissions and will not affect checklist templates or assignments. This action cannot be undone.",
+    "confirmDelete": "Confirm Delete",
+    "bulkDeleteSuccess": "{{count}} checklist(s) deleted successfully.",
+    "bulkDeleteFail": "Failed to delete selected checklists"
   },
   "status": {
     "pending": "Pending",
