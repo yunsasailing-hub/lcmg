@@ -480,7 +480,7 @@ export default function TemplateManager() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete "{tpl.title}"?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will permanently remove this template and all its tasks. Existing assigned checklists will not be affected.
+                              This will deactivate this template only. All existing submitted checklists and history will remain in the database.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
