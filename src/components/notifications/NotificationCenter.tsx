@@ -14,7 +14,7 @@ function NotificationItem({ notification, onMarkRead }: {
   notification: AppNotification;
   onMarkRead: (id: string) => void;
 }) {
-  const isWarning = notification.notification_type === 'warning';
+  const isWarning = notification.notification_type === 'warning' || notification.notification_type === 'escalation';
 
   return (
     <div

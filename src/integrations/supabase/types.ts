@@ -545,7 +545,7 @@ export type Database = {
         | "service"
         | "bar"
         | "office"
-      notification_type: "notice" | "warning"
+      notification_type: "notice" | "warning" | "escalation"
       photo_requirement: "none" | "optional" | "mandatory"
     }
     CompositeTypes: {
@@ -701,7 +701,7 @@ export const Constants = {
         "bar",
         "office",
       ],
-      notification_type: ["notice", "warning"],
+      notification_type: ["notice", "warning", "escalation"],
       photo_requirement: ["none", "optional", "mandatory"],
     },
   },

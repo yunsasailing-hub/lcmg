@@ -6,7 +6,7 @@ export interface AppNotification {
   id: string;
   user_id: string;
   instance_id: string | null;
-  notification_type: 'notice' | 'warning';
+  notification_type: 'notice' | 'warning' | 'escalation';
   title: string;
   message: string;
   is_read: boolean;
@@ -94,7 +94,7 @@ export function useOverdueWarnings() {
       const { data, error } = await supabase
         .from('in_app_notifications')
         .select('*')
-        .eq('notification_type', 'warning')
+        .in('notification_type', ['warning', 'escalation'])
         .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(20);
