@@ -2,6 +2,7 @@ import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import UserManagement from '@/components/management/UserManagement';
 import RoleManager from '@/components/management/RoleManager';
+import NotificationSettings from '@/components/management/NotificationSettings';
 import { useAuth } from '@/hooks/useAuth';
 import EmptyState from '@/components/shared/EmptyState';
 import { ShieldAlert } from 'lucide-react';
@@ -19,12 +20,16 @@ export default function Management() {
           <TabsList>
             <TabsTrigger value="users">Team Members</TabsTrigger>
             <TabsTrigger value="roles">Role Manager</TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
           <TabsContent value="users">
             <UserManagement />
           </TabsContent>
           <TabsContent value="roles">
             <RoleManager />
+          </TabsContent>
+          <TabsContent value="notifications">
+            <NotificationSettings />
           </TabsContent>
         </Tabs>
       ) : (
