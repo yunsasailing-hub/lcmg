@@ -657,7 +657,7 @@ export function useUpdateAssignment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Record<string, any> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: TablesInsert<'checklist_assignments'> }) => {
       const { data, error } = await supabase
         .from('checklist_assignments')
         .update(updates)
