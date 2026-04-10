@@ -221,7 +221,9 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   const [showFilters, setShowFilters] = useState(false);
 
   const statusFilter = tab === 'all' ? 'all' : tab;
-  const { data: notifications = [], isLoading } = useNotifications(statusFilter as any);
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useNotifications(statusFilter as any);
+
+  const notifications = useMemo(() => data?.pages.flat() || [], [data]);
 
   const markAsRead = useMarkAsRead();
   const markAsUnread = useMarkAsUnread();
