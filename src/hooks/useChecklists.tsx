@@ -254,14 +254,19 @@ export function useDeleteInstance() {
 
   return useMutation({
     mutationFn: async (instanceId: string) => {
-      const data = await invokeProtectedFunction<{ success?: boolean; error?: string }>(
+      const data = await invokeProtectedFunction<{ success?: boolean; ok?: boolean; error?: string }>(
         'delete-checklist-instance',
         { instanceId },
         'Failed to delete checklist',
       );
 
-      if (!data?.success) {
-        throw new Error(data?.error || 'Failed to delete checklist');
+      // If the instance was already gone, treat as success
+      if (data?.ok === false) {
+        // Not found — already deleted, just refresh
+        return data;
+      }
+      if (!data?.success && data?.error) {
+        throw new Error(data.error);
       }
 
       return data;

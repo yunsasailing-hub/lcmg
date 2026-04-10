@@ -68,7 +68,10 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (instanceError) throw instanceError;
-    if (!instance) return jsonResponse({ error: "Checklist not found." }, 404);
+    if (!instance) {
+      // Return 200 with ok:false so the client SDK can read the body
+      return jsonResponse({ ok: false, error: "Checklist not found. It may have already been deleted." });
+    }
 
     // Delete task completions first
     const { error: deleteCompletionsError } = await supabaseAdmin
