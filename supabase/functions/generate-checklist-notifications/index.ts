@@ -23,10 +23,11 @@ Deno.serve(async (req) => {
   // Fetch all pending/late checklists with due_datetime set
   const { data: pendingInstances, error: fetchErr } = await supabase
     .from("checklist_instances")
-    .select("id, assigned_to, assigned_manager_user_id, checklist_type, department, scheduled_date, branch_id, template_id, due_datetime, status")
+    .select("id, assigned_to, assigned_manager_user_id, checklist_type, department, scheduled_date, branch_id, template_id, due_datetime, status, notice_sent_at, warning_sent_at, completed_at")
     .in("status", ["pending", "late"])
     .not("assigned_to", "is", null)
-    .not("due_datetime", "is", null);
+    .not("due_datetime", "is", null)
+    .is("completed_at", null);
 
   if (fetchErr) {
     return new Response(JSON.stringify({ ok: false, error: fetchErr.message }), {
@@ -84,10 +85,10 @@ Deno.serve(async (req) => {
 
     const branchName = instance.branch_id ? (branchMap[instance.branch_id] || "the branch") : "the branch";
     const staffName = profileMap[instance.assigned_to] || "Unknown";
-    const typeLabel = instance.checklist_type; // opening, afternoon, closing
+    const typeLabel = instance.checklist_type;
 
-    // ─── Rule 1: Notice at 2h+ ───
-    if (hoursSinceDue >= 2 && instance.status === "pending") {
+    // ─── Rule 1: Notice at 2h+ (only if not already sent) ───
+    if (hoursSinceDue >= 2 && !instance.notice_sent_at) {
       const { error } = await supabase
         .from("in_app_notifications")
         .upsert({
@@ -108,12 +109,11 @@ Deno.serve(async (req) => {
       await supabase
         .from("checklist_instances")
         .update({ status: "late", notice_sent_at: now.toISOString() })
-        .eq("id", instance.id)
-        .eq("status", "pending");
+        .eq("id", instance.id);
     }
 
-    // ─── Rule 2: Warning at 4h+ ───
-    if (hoursSinceDue >= 4) {
+    // ─── Rule 2: Warning at 4h+ (only if not already sent) ───
+    if (hoursSinceDue >= 4 && !instance.warning_sent_at) {
       // Staff warning
       const { error: staffErr } = await supabase
         .from("in_app_notifications")
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
 
       if (!staffErr) createdWarnings++;
 
-      // Manager escalation — use assigned_manager_user_id if set, otherwise all managers/owners
+      // Manager escalation
       const escalationTargets = instance.assigned_manager_user_id
         ? [instance.assigned_manager_user_id]
         : allManagerIds;
@@ -158,32 +158,32 @@ Deno.serve(async (req) => {
         if (!escErr) createdEscalations++;
       }
 
-      // Also create the notice if it wasn't created yet (handles edge case where
-      // first run catches a 4h+ overdue checklist that was never marked as late)
-      await supabase
-        .from("in_app_notifications")
-        .upsert({
-          instance_id: instance.id,
-          user_id: instance.assigned_to,
-          notification_type: "notice",
-          title: "Checklist Notice",
-          message: `Notice: Your ${typeLabel} checklist for ${branchName} has not been completed yet.`,
-          sender_type: "system",
-          related_module: "checklist",
-          related_entity_type: "checklist_occurrence",
-          priority: "high",
-          status: "unread",
-        }, { onConflict: "instance_id,user_id,notification_type" });
+      // Ensure notice is also set if somehow missed
+      if (!instance.notice_sent_at) {
+        await supabase
+          .from("in_app_notifications")
+          .upsert({
+            instance_id: instance.id,
+            user_id: instance.assigned_to,
+            notification_type: "notice",
+            title: "Checklist Notice",
+            message: `Notice: Your ${typeLabel} checklist for ${branchName} has not been completed yet.`,
+            sender_type: "system",
+            related_module: "checklist",
+            related_entity_type: "checklist_occurrence",
+            priority: "high",
+            status: "unread",
+          }, { onConflict: "instance_id,user_id,notification_type" });
+      }
 
       await supabase
         .from("checklist_instances")
         .update({
           status: "escalated",
           warning_sent_at: now.toISOString(),
-          notice_sent_at: now.toISOString(), // ensure notice timestamp is also set
+          notice_sent_at: instance.notice_sent_at || now.toISOString(),
         })
-        .eq("id", instance.id)
-        .in("status", ["pending", "late"]);
+        .eq("id", instance.id);
     }
   }
 
