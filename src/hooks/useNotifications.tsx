@@ -1,6 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+
+const PAGE_SIZE = 20;
 
 export interface AppNotification {
   id: string;
@@ -24,27 +26,31 @@ export interface AppNotification {
 export function useNotifications(statusFilter?: 'unread' | 'read' | 'all') {
   const { user } = useAuth();
 
-  return useQuery<AppNotification[]>({
+  return useInfiniteQuery<AppNotification[]>({
     queryKey: ['notifications', statusFilter || 'active'],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from('in_app_notifications')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .range(pageParam as number, (pageParam as number) + PAGE_SIZE - 1);
 
       if (statusFilter === 'unread') {
         query = query.eq('status', 'unread');
       } else if (statusFilter === 'read') {
         query = query.eq('status', 'read');
       } else {
-        // 'all' or default: show non-archived
         query = query.in('status', ['unread', 'read']);
       }
 
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as AppNotification[];
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < PAGE_SIZE) return undefined;
+      return allPages.flat().length;
     },
     enabled: !!user,
     refetchInterval: 60_000,
