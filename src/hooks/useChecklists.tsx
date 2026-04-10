@@ -14,51 +14,6 @@ export type ChecklistTemplate = Tables<'checklist_templates'>;
 export type ChecklistInstance = Tables<'checklist_instances'>;
 export type TaskCompletion = Tables<'checklist_task_completions'>;
 
-async function invokeProtectedFunction<T>(functionName: string, body: Record<string, unknown>, fallbackMessage: string) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.access_token) {
-    throw new Error('Your session has expired. Please sign in again.');
-  }
-
-  let accessToken = session.access_token;
-  const { data: refreshed } = await supabase.auth.refreshSession();
-  if (refreshed.session?.access_token) {
-    accessToken = refreshed.session.access_token;
-  }
-
-  const { data, error } = await supabase.functions.invoke(functionName, {
-    body,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (error) {
-    let message = error.message || fallbackMessage;
-    const context = (error as any)?.context;
-
-    if (context && typeof context.json === 'function') {
-      try {
-        const payload = await context.json();
-        message = payload?.error || payload?.message || message;
-      } catch {
-        // Ignore body parsing errors and use the fallback message.
-      }
-    }
-
-    if ((context as { status?: number } | undefined)?.status === 401) {
-      throw new Error('Your session has expired. Please sign in again.');
-    }
-
-    throw new Error(message);
-  }
-
-  return data as T;
-}
-
 // ─── Staff Hooks ───
 
 export function useMyChecklists(date?: string) {
@@ -186,7 +141,7 @@ export function useAllChecklists(filters?: ChecklistFilters) {
     queryFn: async () => {
       let query = supabase
         .from('checklist_instances')
-        .select('*, template:checklist_templates(title, department, checklist_type)')
+        .select('*, template:checklist_templates(title, department, checklist_type), assignee:profiles!checklist_instances_assigned_to_fkey(full_name, avatar_url)')
         .order('scheduled_date', { ascending: false });
 
       if (filters?.date) query = query.eq('scheduled_date', filters.date);
@@ -197,22 +152,7 @@ export function useAllChecklists(filters?: ChecklistFilters) {
 
       const { data, error } = await query;
       if (error) throw error;
-
-      // Fetch assignee profiles separately (no FK exists for assigned_to)
-      const userIds = [...new Set(data?.map(d => d.assigned_to).filter(Boolean) as string[])];
-      let profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, full_name, avatar_url')
-          .in('user_id', userIds);
-        profiles?.forEach(p => { profileMap[p.user_id] = { full_name: p.full_name, avatar_url: p.avatar_url }; });
-      }
-
-      return data?.map(d => ({
-        ...d,
-        assignee: d.assigned_to ? profileMap[d.assigned_to] || null : null,
-      })) || [];
+      return data;
     },
   });
 }
@@ -249,91 +189,26 @@ export function useVerifyChecklist() {
 
 // ─── Template Management Hooks ───
 
-export function useDeleteInstance() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (instanceId: string) => {
-      const data = await invokeProtectedFunction<{ success?: boolean; ok?: boolean; error?: string }>(
-        'delete-checklist-instance',
-        { instanceId },
-        'Failed to delete checklist',
-      );
-
-      // If the instance was already gone, treat as success
-      if (data?.ok === false) {
-        // Not found — already deleted, just refresh
-        return data;
-      }
-      if (!data?.success && data?.error) {
-        throw new Error(data.error);
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklists'] });
-    },
-  });
-}
-
-export function useBulkDeleteInstances() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (instanceIds: string[]) => {
-      const data = await invokeProtectedFunction<{ success?: boolean; error?: string; deletedCount?: number }>(
-        'bulk-delete-checklist-instances',
-        { instanceIds },
-        'Failed to delete checklists',
-      );
-
-      if (!data?.success && data?.error) {
-        throw new Error(data.error);
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklists'] });
-    },
-  });
-}
-
 export function useDeleteTemplate() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (templateId: string) => {
-      const { data, error } = await supabase.functions.invoke('delete-checklist-template', {
-        body: { templateId },
-      });
+      // Delete tasks first, then template
+      const { error: tasksError } = await supabase
+        .from('checklist_template_tasks')
+        .delete()
+        .eq('template_id', templateId);
+      if (tasksError) throw tasksError;
 
-      if (error) {
-        let message = error.message || 'Failed to delete template';
-        const context = (error as any)?.context;
-
-        if (context && typeof context.json === 'function') {
-          try {
-            const payload = await context.json();
-            message = payload?.error || payload?.message || message;
-          } catch {
-            // Fall back to the function error message when the response body can't be parsed.
-          }
-        }
-
-        throw new Error(message);
-      }
-
-      if (!data?.success) {
-        throw new Error(data?.error || 'Failed to delete template');
-      }
-
-      return data;
+      const { error } = await supabase
+        .from('checklist_templates')
+        .update({ is_active: false })
+        .eq('id', templateId);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
-      queryClient.invalidateQueries({ queryKey: ['checklists'] });
     },
   });
 }
@@ -348,78 +223,6 @@ export function useDeleteTemplateTask() {
         .delete()
         .eq('id', taskId);
       if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
-      queryClient.invalidateQueries({ queryKey: ['template-tasks'] });
-    },
-  });
-}
-
-export function useUpdateTemplate() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ templateId, updates }: {
-      templateId: string;
-      updates: { title?: string; checklist_type?: ChecklistType; department?: Department };
-    }) => {
-      const { data, error } = await supabase
-        .from('checklist_templates')
-        .update(updates)
-        .eq('id', templateId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
-    },
-  });
-}
-
-export function useAddTemplateTask() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (task: { template_id: string; title: string; sort_order: number; photo_requirement?: PhotoRequirement }) => {
-      const { data, error } = await supabase
-        .from('checklist_template_tasks')
-        .insert({
-          template_id: task.template_id,
-          title: task.title,
-          sort_order: task.sort_order,
-          photo_requirement: task.photo_requirement || 'none' as PhotoRequirement,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
-      queryClient.invalidateQueries({ queryKey: ['template-tasks'] });
-    },
-  });
-}
-
-export function useUpdateTemplateTask() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ taskId, updates }: {
-      taskId: string;
-      updates: { title?: string; sort_order?: number; photo_requirement?: PhotoRequirement };
-    }) => {
-      const { data, error } = await supabase
-        .from('checklist_template_tasks')
-        .update(updates)
-        .eq('id', taskId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
@@ -515,209 +318,6 @@ export function useCreateInstance() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['checklists'] });
-    },
-  });
-}
-
-export function useCreateAssignment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (assignment: {
-      template_id: string;
-      assigned_to: string;
-      branch_id?: string | null;
-      periodicity: string;
-      start_date: string;
-      end_date?: string | null;
-      notes?: string | null;
-      created_by?: string | null;
-    }) => {
-      // Save the assignment rule
-      const { data: rule, error: ruleErr } = await supabase
-        .from('checklist_assignments')
-        .insert({
-          template_id: assignment.template_id,
-          assigned_to: assignment.assigned_to,
-          branch_id: assignment.branch_id || null,
-          periodicity: assignment.periodicity as any,
-          start_date: assignment.start_date,
-          end_date: assignment.end_date || null,
-          notes: assignment.notes || null,
-          created_by: assignment.created_by || null,
-          status: 'active' as any,
-        })
-        .select()
-        .single();
-      if (ruleErr) throw ruleErr;
-
-      // Fetch template details for creating the first instance
-      const { data: tpl } = await supabase
-        .from('checklist_templates')
-        .select('checklist_type, department')
-        .eq('id', assignment.template_id)
-        .single();
-
-      if (tpl) {
-        // Create the first checklist instance immediately for ALL periodicity types
-        const { error: instErr } = await supabase
-          .from('checklist_instances')
-          .insert({
-            template_id: assignment.template_id,
-            assignment_id: rule.id,
-            checklist_type: tpl.checklist_type,
-            department: tpl.department,
-            branch_id: assignment.branch_id || null,
-            assigned_to: assignment.assigned_to,
-            scheduled_date: assignment.start_date,
-            notes: assignment.notes || null,
-          } as any);
-        if (instErr) throw instErr;
-      }
-
-      // Update last_generated_date so the cron job knows where to continue
-      await supabase
-        .from('checklist_assignments')
-        .update({
-          last_generated_date: assignment.start_date,
-          // Mark one-time assignments as ended immediately
-          ...(assignment.periodicity === 'once' ? { status: 'ended' as any } : {}),
-        })
-        .eq('id', rule.id);
-
-      return rule;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklists'] });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-    },
-  });
-}
-
-export function useAssignments() {
-  return useQuery({
-    queryKey: ['assignments'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('checklist_assignments')
-        .select('*, template:checklist_templates(title, checklist_type, department)')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-}
-
-export function useTemplateAssignments(templateId: string | null) {
-  return useQuery({
-    queryKey: ['template-assignments', templateId],
-    enabled: !!templateId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('checklist_assignments')
-        .select('*')
-        .eq('template_id', templateId!)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-
-      // Enrich with profile names
-      if (!data?.length) return [];
-      const userIds = [...new Set(data.map(a => a.assigned_to).concat(data.map(a => a.created_by).filter(Boolean) as string[]))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, position, department')
-        .in('user_id', userIds);
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-
-      return data.map(a => ({
-        ...a,
-        assigned_profile: profileMap.get(a.assigned_to) || null,
-        created_by_profile: a.created_by ? profileMap.get(a.created_by) || null : null,
-      }));
-    },
-  });
-}
-
-export function useAllTemplateAssignmentCounts() {
-  return useQuery({
-    queryKey: ['template-assignment-counts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('checklist_assignments')
-        .select('template_id, status, periodicity, assigned_to')
-        .eq('status', 'active');
-      if (error) throw error;
-
-      // Group by template_id
-      const counts = new Map<string, number>();
-      for (const row of data || []) {
-        if (!row.template_id) continue;
-        counts.set(row.template_id, (counts.get(row.template_id) || 0) + 1);
-      }
-      return counts;
-    },
-  });
-}
-
-export function useUpdateAssignmentStatus() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { data, error } = await supabase
-        .from('checklist_assignments')
-        .update({ status: status as any })
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['template-assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['template-assignment-counts'] });
-    },
-  });
-}
-
-export function useUpdateAssignment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: TablesInsert<'checklist_assignments'> }) => {
-      const { data, error } = await supabase
-        .from('checklist_assignments')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['template-assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['template-assignment-counts'] });
-    },
-  });
-}
-
-export function useDeleteAssignment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('checklist_assignments')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['template-assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['template-assignment-counts'] });
     },
   });
 }

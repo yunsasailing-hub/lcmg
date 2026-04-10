@@ -1,4 +1,3 @@
-import { useTranslation } from 'react-i18next';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import StaffChecklistView from '@/components/checklists/StaffChecklistView';
@@ -9,24 +8,19 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function Checklists() {
   const { hasAnyRole } = useAuth();
-  const { t } = useTranslation();
   const isManager = hasAnyRole(['owner', 'manager']);
 
   return (
     <AppShell>
-      <PageHeader title={t('checklists.title')} description={t('checklists.description')} />
+      <PageHeader title="Checklists" description="Daily opening & closing task lists" />
       {isManager ? (
         <Tabs defaultValue="dashboard" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="dashboard">{t('checklists.dashboard')}</TabsTrigger>
-            <TabsTrigger value="my">{t('checklists.myChecklists')}</TabsTrigger>
-            <TabsTrigger value="templates">{t('checklists.templates')}</TabsTrigger>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard">
             <ManagerDashboard />
-          </TabsContent>
-          <TabsContent value="my">
-            <StaffChecklistView />
           </TabsContent>
           <TabsContent value="templates">
             <TemplateManager />

@@ -57,71 +57,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const initHandled = useRef(false);
 
-  const clearAuthState = useCallback(() => {
-    setSession(null);
-    setUser(null);
-    setProfile(null);
-    setRoles([]);
-  }, []);
-
   const loadUserData = useCallback(async (currentUser: User) => {
     const [p, r] = await Promise.all([fetchProfile(currentUser.id), fetchRoles(currentUser.id)]);
     setProfile(p);
     setRoles(r);
   }, []);
 
-  const validateSession = useCallback(async (currentSession: Session | null) => {
-    if (!currentSession?.access_token) {
-      return null;
-    }
-
-    const { data: userData, error: userError } = await supabase.auth.getUser(currentSession.access_token);
-    if (!userError && userData.user) {
-      return currentSession;
-    }
-
-    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError || !refreshed.session?.access_token || !refreshed.session.user) {
-      return null;
-    }
-
-    const { data: refreshedUser, error: refreshedUserError } = await supabase.auth.getUser(refreshed.session.access_token);
-    if (refreshedUserError || !refreshedUser.user) {
-      return null;
-    }
-
-    return refreshed.session;
-  }, []);
-
-  const applySession = useCallback(async (currentSession: Session | null) => {
-    const validSession = await validateSession(currentSession);
-
-    if (!validSession?.user) {
-      clearAuthState();
-      return;
-    }
-
-    setSession(validSession);
-    setUser(validSession.user);
-    await loadUserData(validSession.user);
-  }, [clearAuthState, loadUserData, validateSession]);
-
   useEffect(() => {
-    let active = true;
-
     // 1. Get existing session first
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      if (initHandled.current || !active) return;
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (initHandled.current) return;
       initHandled.current = true;
-
-      await applySession(s);
-      if (active) {
+      if (s?.user) {
+        setSession(s);
+        setUser(s.user);
+        loadUserData(s.user).finally(() => setIsLoading(false));
+      } else {
         setIsLoading(false);
       }
     }).catch(() => {
-      if (!initHandled.current && active) {
+      if (!initHandled.current) {
         initHandled.current = true;
-        clearAuthState();
         setIsLoading(false);
       }
     });
@@ -136,20 +92,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (s?.user) {
         setSession(s);
         setUser(s.user);
-        loadUserData(s.user).finally(() => active && setIsLoading(false));
+        loadUserData(s.user).finally(() => setIsLoading(false));
       } else {
-        clearAuthState();
-        if (active) {
-          setIsLoading(false);
-        }
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRoles([]);
+        setIsLoading(false);
       }
     });
 
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, [applySession, clearAuthState, loadUserData]);
+    return () => subscription.unsubscribe();
+  }, [loadUserData]);
 
   const hasRole = useCallback((role: AppRole) => roles.includes(role), [roles]);
   const hasAnyRole = useCallback((r: AppRole[]) => r.some(role => roles.includes(role)), [roles]);
@@ -159,9 +113,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
     } catch {
       // force local cleanup
-      clearAuthState();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setRoles([]);
     }
-  }, [clearAuthState]);
+  }, []);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
