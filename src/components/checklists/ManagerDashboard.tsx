@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
-  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2,
+  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2, Square, CheckSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -374,7 +375,33 @@ export default function ManagerDashboard() {
   const { data: checklists, isLoading } = useAllChecklists(filters);
   const [selected, setSelected] = useState<any>(null);
   const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const groups = useMemo(() => groupByDepartmentAndMonth(checklists || []), [checklists]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const allVisibleIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const g of groups) for (const m of g.months) for (const item of m.items) ids.push(item.id);
+    return ids;
+  }, [groups]);
+
+  const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedIds.has(id));
+  const someSelected = allVisibleIds.some(id => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleIds));
+    }
+  };
 
   if (selected) {
     return (
@@ -402,6 +429,20 @@ export default function ManagerDashboard() {
 
       {/* Filters */}
       <Filters filters={filters} setFilters={setFilters} isOwner={isOwner} />
+
+      {/* Select All (owner only) */}
+      {isOwner && !isLoading && !!checklists?.length && (
+        <div className="flex items-center gap-2 px-1">
+          <Checkbox
+            checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+            onCheckedChange={toggleSelectAll}
+            aria-label="Select all"
+          />
+          <span className="text-xs text-muted-foreground">
+            {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+          </span>
+        </div>
+      )}
 
       {/* Grouped List */}
       {isLoading ? (
@@ -457,15 +498,30 @@ export default function ManagerDashboard() {
                             : instance.status === 'verified' ? ShieldCheck
                             : CheckCircle2;
 
+                          const isItemSelected = selectedIds.has(instance.id);
+
                           return (
-                            <button
+                            <div
                               key={instance.id}
-                              onClick={() => setSelected(instance)}
                               className={cn(
-                                'w-full flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-accent active:bg-accent',
+                                'w-full flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-accent',
                                 overdue && 'border-destructive/60',
+                                isOwner && isItemSelected && 'ring-1 ring-primary/40 bg-primary/5',
                               )}
                             >
+                              {isOwner && (
+                                <Checkbox
+                                  checked={isItemSelected}
+                                  onCheckedChange={() => toggleSelect(instance.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Select ${tpl?.title || 'checklist'}`}
+                                  className="shrink-0"
+                                />
+                              )}
+                              <button
+                                onClick={() => setSelected(instance)}
+                                className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                              >
                               <StatusIcon className={cn(
                                 'h-4 w-4 shrink-0',
                                 overdue ? 'text-destructive' : instance.status === 'rejected' ? 'text-destructive' : instance.status === 'pending' ? 'text-muted-foreground' : 'text-success',
@@ -482,7 +538,8 @@ export default function ManagerDashboard() {
                                 </p>
                               </div>
                               <Badge variant={cfg.variant} className={cn(cfg.className, 'text-[10px]')}>{cfg.label}</Badge>
-                            </button>
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
