@@ -360,7 +360,7 @@ function ViewAssignmentsDialog({ templateId, templateTitle }: { templateId: stri
   );
 }
 
-
+export default function TemplateManager() {
   const { t } = useTranslation();
   const { data: templates, isLoading, refetch } = useTemplates();
   const createTemplate = useCreateTemplate();
