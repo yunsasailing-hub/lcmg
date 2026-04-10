@@ -20,6 +20,26 @@ Deno.serve(async (req) => {
   let createdWarnings = 0;
   let createdEscalations = 0;
 
+  // ─── Read notification settings ───
+  const { data: settingsRow } = await supabase
+    .from("notification_settings")
+    .select("checklist_notices_enabled, checklist_warnings_enabled, notice_delay_hours, warning_delay_hours")
+    .limit(1)
+    .single();
+
+  const noticesEnabled = settingsRow?.checklist_notices_enabled ?? true;
+  const warningsEnabled = settingsRow?.checklist_warnings_enabled ?? true;
+  const noticeDelayHours = settingsRow?.notice_delay_hours ?? 2;
+  const warningDelayHours = settingsRow?.warning_delay_hours ?? 4;
+
+  // If both channels are disabled, skip entirely
+  if (!noticesEnabled && !warningsEnabled) {
+    return new Response(
+      JSON.stringify({ ok: true, notices: 0, warnings: 0, escalations: 0, message: "Notifications disabled" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+    );
+  }
+
   // Fetch all pending/late checklists with due_datetime set
   const { data: pendingInstances, error: fetchErr } = await supabase
     .from("checklist_instances")
