@@ -152,11 +152,11 @@ export default function GroupedChecklistList({ checklists, statusCfg, onSelect }
       {groups.map(dept => (
         <div key={dept.department} className="space-y-3">
           {/* Department header */}
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-heading font-bold uppercase tracking-wider text-foreground">
+          <div className="flex items-baseline gap-1.5">
+            <h3 className="text-base font-heading font-bold uppercase tracking-wider text-foreground">
               {t(`departments.${dept.department}`, dept.department)}
             </h3>
-            <Badge variant="outline" className="text-xs">{dept.total}</Badge>
+            <span className="text-base font-bold text-muted-foreground">({dept.total})</span>
           </div>
 
           {/* Month groups */}
