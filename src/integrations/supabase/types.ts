@@ -334,6 +334,50 @@ export type Database = {
           },
         ]
       }
+      in_app_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          instance_id: string | null
+          is_read: boolean
+          message: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          is_read?: boolean
+          message: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          is_read?: boolean
+          message?: string
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_app_notifications_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -483,6 +527,7 @@ export type Database = {
         | "service"
         | "bar"
         | "office"
+      notification_type: "notice" | "warning"
       photo_requirement: "none" | "optional" | "mandatory"
     }
     CompositeTypes: {
@@ -631,6 +676,7 @@ export const Constants = {
         "bar",
         "office",
       ],
+      notification_type: ["notice", "warning"],
       photo_requirement: ["none", "optional", "mandatory"],
     },
   },
