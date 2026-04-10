@@ -25,16 +25,17 @@ const ROLE_BADGE: Record<string, { label: string; color: string }> = {
 };
 
 function UserIdentity({ collapsed }: { collapsed?: boolean }) {
-  const { profile, roles } = useAuth();
+  const { profile, roles, user } = useAuth();
   const primaryRole = roles[0];
   const badge = primaryRole ? ROLE_BADGE[primaryRole] : null;
+  const displayName = profile?.full_name || profile?.email || user?.email || 'User';
 
-  if (collapsed || !profile?.full_name) return null;
+  if (collapsed) return null;
 
   return (
     <div className="px-3 pb-2">
       <p className="text-xs font-medium truncate" style={{ color: 'var(--primary-foreground)' }}>
-        {profile.full_name}
+        {displayName}
       </p>
       {badge && (
         <span className={cn('inline-block mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
