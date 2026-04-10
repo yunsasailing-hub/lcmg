@@ -17,10 +17,14 @@ export default function Checklists() {
         <Tabs defaultValue="dashboard" className="space-y-4">
           <TabsList>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="my-checklists">My Checklists</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
           <TabsContent value="dashboard">
             <ManagerDashboard />
+          </TabsContent>
+          <TabsContent value="my-checklists">
+            <StaffChecklistView />
           </TabsContent>
           <TabsContent value="templates">
             <TemplateManager />
