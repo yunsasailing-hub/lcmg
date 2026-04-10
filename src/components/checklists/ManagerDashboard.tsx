@@ -38,10 +38,18 @@ import { Constants } from '@/integrations/supabase/types';
 
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
   pending: { label: 'Pending', variant: 'secondary' },
+  late: { label: 'Late', variant: 'destructive', className: 'bg-warning text-warning-foreground hover:bg-warning/80' },
+  escalated: { label: 'Escalated', variant: 'destructive' },
   completed: { label: 'Done', variant: 'default', className: 'bg-success text-success-foreground hover:bg-success/80' },
   verified: { label: 'Verified', variant: 'default', className: 'bg-info text-info-foreground hover:bg-info/80' },
   rejected: { label: 'Rejected', variant: 'destructive' },
 };
+
+function formatDueTime(dueDatetime: string | null): string | null {
+  if (!dueDatetime) return null;
+  const d = new Date(dueDatetime);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
 
 // ─── Stats Row ───
 
