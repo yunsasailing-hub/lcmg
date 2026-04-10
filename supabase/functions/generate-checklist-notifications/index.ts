@@ -101,14 +101,16 @@ Deno.serve(async (req) => {
     const dueTime = new Date(instance.due_datetime);
     const hoursSinceDue = (now.getTime() - dueTime.getTime()) / (1000 * 60 * 60);
 
-    if (hoursSinceDue < 2) continue;
+    // Skip if not yet past the earliest threshold
+    const minThreshold = Math.min(noticeDelayHours, warningDelayHours);
+    if (hoursSinceDue < minThreshold) continue;
 
     const branchName = instance.branch_id ? (branchMap[instance.branch_id] || "the branch") : "the branch";
     const staffName = profileMap[instance.assigned_to] || "Unknown";
     const typeLabel = instance.checklist_type;
 
-    // ─── Rule 1: Notice at 2h+ (only if not already sent) ───
-    if (hoursSinceDue >= 2 && !instance.notice_sent_at) {
+    // ─── Rule 1: Notice (configurable delay, only if enabled) ───
+    if (noticesEnabled && hoursSinceDue >= noticeDelayHours && !instance.notice_sent_at) {
       const { error } = await supabase
         .from("in_app_notifications")
         .upsert({
@@ -132,8 +134,8 @@ Deno.serve(async (req) => {
         .eq("id", instance.id);
     }
 
-    // ─── Rule 2: Warning at 4h+ (only if not already sent) ───
-    if (hoursSinceDue >= 4 && !instance.warning_sent_at) {
+    // ─── Rule 2: Warning + Escalation (configurable delay, only if enabled) ───
+    if (warningsEnabled && hoursSinceDue >= warningDelayHours && !instance.warning_sent_at) {
       // Staff warning
       const { error: staffErr } = await supabase
         .from("in_app_notifications")
@@ -142,7 +144,7 @@ Deno.serve(async (req) => {
           user_id: instance.assigned_to,
           notification_type: "warning",
           title: "Checklist Warning",
-          message: `Warning: Your ${typeLabel} checklist for ${branchName} is still incomplete 4 hours after the due time. Please complete it immediately.`,
+          message: `Warning: Your ${typeLabel} checklist for ${branchName} is still incomplete ${warningDelayHours} hours after the due time. Please complete it immediately.`,
           sender_type: "system",
           related_module: "checklist",
           related_entity_type: "checklist_occurrence",
@@ -167,7 +169,7 @@ Deno.serve(async (req) => {
             user_id: managerId,
             notification_type: "escalation",
             title: "Checklist Escalation",
-            message: `Warning: The ${typeLabel} checklist for ${branchName}, assigned to ${staffName}, is still incomplete 4 hours after the due time.`,
+            message: `Warning: The ${typeLabel} checklist for ${branchName}, assigned to ${staffName}, is still incomplete ${warningDelayHours} hours after the due time.`,
             sender_type: "system",
             related_module: "checklist",
             related_entity_type: "checklist_occurrence",
@@ -179,7 +181,7 @@ Deno.serve(async (req) => {
       }
 
       // Ensure notice is also set if somehow missed
-      if (!instance.notice_sent_at) {
+      if (noticesEnabled && !instance.notice_sent_at) {
         await supabase
           .from("in_app_notifications")
           .upsert({
