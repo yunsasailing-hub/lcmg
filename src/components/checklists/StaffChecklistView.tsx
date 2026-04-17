@@ -158,8 +158,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       editable: isEditable,
       blockReasons: reasons,
     };
-    // eslint-disable-next-line no-console
-    console.log('[ChecklistDebug]', info);
     return info;
   }, [instance, user, profile, roles, isEditable, statusEditable, manuallyLocked, accessOk, assignedTo, assignedDept, myDept, status]);
 
