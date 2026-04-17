@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff } from 'lucide-react';
-import { useEffect } from 'react';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 const DEPARTMENTS = [
   { value: 'management', label: 'Management' },
@@ -20,6 +21,7 @@ const DEPARTMENTS = [
 
 export default function Login() {
   const { isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -58,7 +60,7 @@ export default function Login() {
       const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (err) throw err;
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || t('login.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -82,9 +84,9 @@ export default function Login() {
         },
       });
       if (err) throw err;
-      setSuccess('Check your email to confirm your account.');
+      setSuccess(t('login.confirmEmail'));
     } catch (err: any) {
-      setError(err.message || 'Signup failed');
+      setError(err.message || t('login.signupFailed'));
     } finally {
       setLoading(false);
     }
@@ -95,10 +97,15 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4 bg-nav">
       <div className="w-full max-w-md space-y-8">
+        {/* Language switch */}
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
+
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-4xl font-heading font-bold text-primary-foreground">La Cala</h1>
-          <p className="mt-2 text-nav-muted text-sm">Restaurant Management</p>
+          <h1 className="text-4xl font-heading font-bold text-primary-foreground">{t('common.appName')}</h1>
+          <p className="mt-2 text-nav-muted text-sm">{t('common.appTagline')}</p>
         </div>
 
         {/* Card */}
@@ -112,7 +119,7 @@ export default function Login() {
                 mode === 'login' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Log In
+              {t('login.logIn')}
             </button>
             <button
               type="button"
@@ -121,7 +128,7 @@ export default function Login() {
                 mode === 'signup' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Sign Up
+              {t('login.signUp')}
             </button>
           </div>
 
@@ -135,11 +142,11 @@ export default function Login() {
           {mode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
+                <Label htmlFor="login-email">{t('login.email')}</Label>
                 <Input id="login-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="login-password">Password</Label>
+                <Label htmlFor="login-password">{t('login.password')}</Label>
                 <div className="relative">
                   <Input id="login-password" type={showPassword ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="pr-10" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -148,24 +155,24 @@ export default function Login() {
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Logging in...' : 'Log In'}
+                {loading ? t('login.loggingIn') : t('login.logIn')}
               </Button>
             </form>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signup-name">Full Name</Label>
+                <Label htmlFor="signup-name">{t('login.fullName')}</Label>
                 <Input id="signup-name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="John Doe" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-phone">Phone</Label>
+                  <Label htmlFor="signup-phone">{t('login.phone')}</Label>
                   <Input id="signup-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34..." />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-dept">Department</Label>
+                  <Label htmlFor="signup-dept">{t('login.department')}</Label>
                   <Select value={department} onValueChange={setDepartment}>
-                    <SelectTrigger id="signup-dept"><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectTrigger id="signup-dept"><SelectValue placeholder={t('login.selectPlaceholder')} /></SelectTrigger>
                     <SelectContent>
                       {DEPARTMENTS.map(d => (
                         <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
@@ -175,24 +182,24 @@ export default function Login() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-position">Position</Label>
-                <Input id="signup-position" type="text" value={position} onChange={e => setPosition(e.target.value)} placeholder="Head Chef, Waiter..." />
+                <Label htmlFor="signup-position">{t('login.position')}</Label>
+                <Input id="signup-position" type="text" value={position} onChange={e => setPosition(e.target.value)} placeholder={t('login.positionPlaceholder')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
+                <Label htmlFor="signup-email">{t('login.email')}</Label>
                 <Input id="signup-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
+                <Label htmlFor="signup-password">{t('login.password')}</Label>
                 <div className="relative">
-                  <Input id="signup-password" type={showPassword ? 'text' : 'password'} required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="Min 6 characters" className="pr-10" />
+                  <Input id="signup-password" type={showPassword ? 'text' : 'password'} required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder={t('login.passwordPlaceholder')} className="pr-10" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Creating account...' : 'Sign Up'}
+                {loading ? t('login.creatingAccount') : t('login.signUp')}
               </Button>
             </form>
           )}

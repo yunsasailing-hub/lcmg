@@ -1,0 +1,67 @@
+import type { Translations } from './en';
+
+const vi: Translations = {
+  common: {
+    appName: 'La Cala',
+    appTagline: 'Quản Lý Nhà Hàng',
+    signOut: 'Đăng xuất',
+    save: 'Lưu',
+    cancel: 'Hủy',
+    loading: 'Đang tải...',
+    language: 'Ngôn ngữ',
+  },
+  nav: {
+    dashboard: 'Bảng điều khiển',
+    training: 'Đào tạo',
+    checklists: 'Danh sách kiểm tra',
+    recipes: 'Công thức',
+    inventory: 'Kho',
+    maintenance: 'Bảo trì',
+    management: 'Quản lý',
+    more: 'Thêm',
+  },
+  roles: {
+    owner: 'Chủ',
+    manager: 'Quản lý',
+    staff: 'Nhân viên',
+  },
+  login: {
+    logIn: 'Đăng nhập',
+    signUp: 'Đăng ký',
+    loggingIn: 'Đang đăng nhập...',
+    creatingAccount: 'Đang tạo tài khoản...',
+    email: 'Email',
+    password: 'Mật khẩu',
+    fullName: 'Họ và tên',
+    phone: 'Điện thoại',
+    department: 'Bộ phận',
+    position: 'Vị trí',
+    selectPlaceholder: 'Chọn',
+    passwordPlaceholder: 'Tối thiểu 6 ký tự',
+    positionPlaceholder: 'Bếp trưởng, Phục vụ...',
+    confirmEmail: 'Kiểm tra email để xác nhận tài khoản.',
+    loginFailed: 'Đăng nhập thất bại',
+    signupFailed: 'Đăng ký thất bại',
+  },
+  dashboard: {
+    welcome: 'Chào mừng trở lại, {{name}}',
+    subtitle: '{{role}} · Quản Lý Nhà Hàng La Cala',
+    teamMembers: 'Thành viên',
+    openChecklists: 'Danh sách đang mở',
+    activeRecipes: 'Công thức đang dùng',
+    branches: 'Chi nhánh',
+    operationalAlerts: 'Cảnh báo vận hành',
+    modules: 'Các mục',
+  },
+  management: {
+    title: 'Quản lý',
+    subtitle: 'Đội ngũ, chi nhánh & cài đặt hệ thống',
+    teamMembers: 'Thành viên',
+    roleManager: 'Quản lý vai trò',
+    notifications: 'Thông báo',
+    accessRestricted: 'Truy cập bị hạn chế',
+    accessRestrictedDesc: 'Chỉ chủ sở hữu mới có thể quản lý vai trò và cài đặt.',
+  },
+};
+
+export default vi;
