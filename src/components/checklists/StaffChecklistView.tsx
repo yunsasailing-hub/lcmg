@@ -123,6 +123,40 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const isEditable = instance?.status === 'pending' || instance?.status === 'rejected';
   const [notes, setNotes] = useState((instance as any)?.notes || '');
 
+  // ─── DEBUG: edit-eligibility diagnostics ───
+  const { profile, roles } = useAuth();
+  const debugInfo = useMemo(() => {
+    if (!instance) return null;
+    const assignedTo = (instance as any).assigned_to as string | null;
+    const assignedDept = (instance as any).department as string | null;
+    const myId = user?.id ?? null;
+    const myDept = profile?.department ?? null;
+    const status = instance.status;
+    const reasons: string[] = [];
+    if (assignedTo && myId && assignedTo !== myId && !roles.includes('owner') && !roles.includes('manager')) {
+      reasons.push('Not assigned to this user');
+    }
+    if (assignedDept && myDept && assignedDept !== myDept && !roles.includes('owner') && !roles.includes('manager')) {
+      reasons.push('Department mismatch');
+    }
+    if (status === 'completed' || status === 'verified') reasons.push('Checklist already completed');
+    if (status === 'escalated') reasons.push('Checklist locked / escalated by manager');
+    if (roles.length === 0) reasons.push('Role has no edit permission');
+    const info = {
+      assignedUserId: assignedTo,
+      assignedDepartment: assignedDept,
+      loggedUserId: myId,
+      loggedUserDepartment: myDept,
+      role: roles.join(', ') || '(none)',
+      status,
+      isEditable,
+      blockReasons: reasons,
+    };
+    // eslint-disable-next-line no-console
+    console.log('[ChecklistDebug]', info);
+    return info;
+  }, [instance, user, profile, roles, isEditable]);
+
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
     completions?.forEach(c => { map[c.task_id] = c; });
