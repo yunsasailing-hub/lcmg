@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -8,21 +9,25 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
-const NAV_ITEMS = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/training', icon: GraduationCap, label: 'Training' },
-  { to: '/checklists', icon: ClipboardCheck, label: 'Checklists' },
-  { to: '/recipes', icon: CookingPot, label: 'Recipes' },
-  { to: '/inventory', icon: Package, label: 'Inventory' },
-  { to: '/maintenance', icon: Wrench, label: 'Maintenance' },
-  { to: '/management', icon: Settings, label: 'Management' },
-];
+const useNavItems = () => {
+  const { t } = useTranslation();
+  return [
+    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/training', icon: GraduationCap, label: t('nav.training') },
+    { to: '/checklists', icon: ClipboardCheck, label: t('nav.checklists') },
+    { to: '/recipes', icon: CookingPot, label: t('nav.recipes') },
+    { to: '/inventory', icon: Package, label: t('nav.inventory') },
+    { to: '/maintenance', icon: Wrench, label: t('nav.maintenance') },
+    { to: '/management', icon: Settings, label: t('nav.management') },
+  ];
+};
 
-const ROLE_BADGE: Record<string, { label: string; color: string }> = {
-  owner: { label: 'Owner', color: 'bg-red-600 text-white' },
-  manager: { label: 'Manager', color: 'bg-orange-500 text-white' },
-  staff: { label: 'Staff', color: 'bg-gray-500 text-white' },
+const ROLE_BADGE: Record<string, { color: string }> = {
+  owner: { color: 'bg-red-600 text-white' },
+  manager: { color: 'bg-orange-500 text-white' },
+  staff: { color: 'bg-gray-500 text-white' },
 };
 
 function UserIdentity({ collapsed }: { collapsed?: boolean }) {
