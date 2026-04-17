@@ -176,13 +176,19 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   }, [tasks, completionMap, isEditable]);
 
   const handleToggle = (taskId: string, current: boolean) => {
-    if (!isEditable) return;
+    // DEBUG: editability gate temporarily removed — force-toggle the item
+    console.log('handleToggle fired', { taskId, current, isEditable });
     upsert.mutate({
       instance_id: instanceId,
       task_id: taskId,
       is_completed: !current,
       completed_by: !current ? user!.id : null,
       completed_at: !current ? new Date().toISOString() : null,
+    }, {
+      onError: (err: any) => {
+        console.error('Toggle failed', err);
+        toast.error(err?.message || 'Toggle failed');
+      },
     });
   };
 
