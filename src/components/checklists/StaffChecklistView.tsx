@@ -275,16 +275,16 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       {debugInfo && (
         <div className="rounded-lg border border-dashed border-warning bg-warning/10 p-3 text-xs space-y-1 font-mono">
           <p className="font-semibold text-warning-foreground">
-            🐞 You are logged as: {profile?.full_name ?? '(no name)'} — {debugInfo.role} — {debugInfo.loggedUserDepartment ?? '(no dept)'}
+            🐞 You are logged as: {profile?.full_name ?? '(no name)'} — {debugInfo.role} — {debugInfo.current_user_department ?? '(no dept)'}
           </p>
           <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
-            <span>Assigned user ID:</span><span className="truncate">{debugInfo.assignedUserId ?? '—'}</span>
-            <span>Assigned department:</span><span>{debugInfo.assignedDepartment ?? '—'}</span>
-            <span>Logged-in user ID:</span><span className="truncate">{debugInfo.loggedUserId ?? '—'}</span>
-            <span>Logged-in department:</span><span>{debugInfo.loggedUserDepartment ?? '—'}</span>
+            <span>Assigned user ID:</span><span className="truncate">{debugInfo.assigned_user_id ?? '—'}</span>
+            <span>Assigned department:</span><span>{debugInfo.assigned_department ?? '—'}</span>
+            <span>Logged-in user ID:</span><span className="truncate">{debugInfo.current_user_id ?? '—'}</span>
+            <span>Logged-in department:</span><span>{debugInfo.current_user_department ?? '—'}</span>
             <span>Role:</span><span>{debugInfo.role}</span>
-            <span>Status:</span><span>{debugInfo.status}</span>
-            <span>Is editable:</span><span>{String(debugInfo.isEditable)}</span>
+            <span>Status:</span><span>{instance?.status}</span>
+            <span>Is editable:</span><span>{String(debugInfo.editable)}</span>
           </div>
           {debugInfo.blockReasons.length > 0 && (
             <div className="pt-1 mt-1 border-t border-warning/40">
