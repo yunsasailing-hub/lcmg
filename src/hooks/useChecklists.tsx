@@ -216,15 +216,26 @@ export function useDeleteTemplate() {
 
   return useMutation({
     mutationFn: async (templateId: string) => {
-      // Soft delete: deactivate template only. Historical instances/assignments are preserved.
-      const { error } = await supabase
-        .from('checklist_templates')
-        .update({ is_active: false })
-        .eq('id', templateId);
-      if (error) throw error;
+      // Hard delete via security-definer RPC — removes template + tasks + assignments + instances + completions
+      const { data, error } = await supabase.rpc('delete_checklist_template' as any, {
+        _template_id: templateId,
+      });
+      if (error) {
+        console.error('[deleteTemplate] RPC error:', { templateId, error });
+        throw new Error(error.message || 'Database error while deleting template');
+      }
+      const result = data as { ok: boolean; error?: string; message?: string } | null;
+      if (!result || !result.ok) {
+        const msg = result?.message || 'Unknown error while deleting template';
+        console.error('[deleteTemplate] business error:', { templateId, result });
+        throw new Error(msg);
+      }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 }

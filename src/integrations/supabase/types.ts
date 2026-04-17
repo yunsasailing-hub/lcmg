@@ -575,6 +575,10 @@ export type Database = {
       }
     }
     Functions: {
+      delete_checklist_template: {
+        Args: { _template_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
