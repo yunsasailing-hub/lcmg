@@ -26,4 +26,13 @@ void i18n
     returnNull: false,
   });
 
+// Keep <html lang> in sync with the active language
+const syncHtmlLang = (lng: string) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('lang', lng.startsWith('vi') ? 'vi' : 'en');
+  }
+};
+syncHtmlLang(i18n.resolvedLanguage || i18n.language || 'en');
+i18n.on('languageChanged', syncHtmlLang);
+
 export default i18n;

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useUnreadCount } from '@/hooks/useNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -8,6 +9,7 @@ import NotificationCenter from './NotificationCenter';
 
 export default function NotificationBell({ collapsed }: { collapsed?: boolean }) {
   const { data: unreadCount = 0 } = useUnreadCount();
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,7 +34,7 @@ export default function NotificationBell({ collapsed }: { collapsed?: boolean })
         collapsed ? 'h-10 w-10' : 'h-9 w-9'
       )}
       style={{ color: 'var(--nav-foreground)' }}
-      title="Notifications"
+      title={t('notifications.bellTitle')}
     >
       <Bell className="h-5 w-5" />
       {unreadCount > 0 && (
@@ -49,7 +51,7 @@ export default function NotificationBell({ collapsed }: { collapsed?: boolean })
         {bellButton}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent side="right" className="p-0 w-full sm:w-[420px]">
-            <SheetTitle className="sr-only">Notifications</SheetTitle>
+            <SheetTitle className="sr-only">{t('notifications.bellTitle')}</SheetTitle>
             <NotificationCenter onClose={() => setOpen(false)} />
           </SheetContent>
         </Sheet>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle, Bell, Info, CheckCheck, X, Archive, Eye, EyeOff,
   Filter, ChevronDown, ExternalLink, ClipboardCheck,
@@ -29,24 +30,24 @@ import {
 } from '@/hooks/useNotifications';
 
 /* ─── Visual config per type ─── */
-const TYPE_STYLES: Record<string, { icon: typeof Info; bg: string; iconColor: string; label: string }> = {
+const TYPE_STYLES: Record<string, { icon: typeof Info; bg: string; iconColor: string; labelKey: string }> = {
   notice: {
     icon: Info,
     bg: 'bg-warning/10 border-l-4 border-l-warning',
     iconColor: 'text-warning-foreground',
-    label: 'Notice',
+    labelKey: 'notifications.types.notice',
   },
   warning: {
     icon: AlertTriangle,
     bg: 'bg-destructive/8 border-l-4 border-l-destructive/60',
     iconColor: 'text-destructive/80',
-    label: 'Warning',
+    labelKey: 'notifications.types.warning',
   },
   escalation: {
     icon: AlertTriangle,
     bg: 'bg-destructive/15 border-l-4 border-l-destructive',
     iconColor: 'text-destructive',
-    label: 'Escalation',
+    labelKey: 'notifications.types.escalation',
   },
 };
 
@@ -70,6 +71,7 @@ function NotificationCard({
   onArchive: (id: string) => void;
   onNavigate: (notification: AppNotification) => void;
 }) {
+  const { t } = useTranslation();
   const style = TYPE_STYLES[notification.notification_type] || TYPE_STYLES.notice;
   const Icon = style.icon;
   const isUnread = notification.status === 'unread';
@@ -115,7 +117,7 @@ function NotificationCard({
                 {notification.title}
               </h4>
               <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', PRIORITY_BADGE[notification.priority])}>
-                {notification.priority}
+                {t(`notifications.priority.${notification.priority}`)}
               </Badge>
               {isUnread && (
                 <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
@@ -136,12 +138,12 @@ function NotificationCard({
                       {isEscalation ? (
                         <>
                           <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                          Review Checklist
+                          {t('notifications.reviewChecklist')}
                         </>
                       ) : (
                         <>
                           <ClipboardCheck className="h-3.5 w-3.5 mr-2" />
-                          View Checklist
+                          {t('notifications.viewChecklist')}
                         </>
                       )}
                     </DropdownMenuItem>
@@ -151,18 +153,18 @@ function NotificationCard({
                 {isUnread ? (
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkRead(notification.id); }}>
                     <Eye className="h-3.5 w-3.5 mr-2" />
-                    Mark as read
+                    {t('notifications.markRead')}
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkUnread(notification.id); }}>
                     <EyeOff className="h-3.5 w-3.5 mr-2" />
-                    Mark as unread
+                    {t('notifications.markUnread')}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(notification.id); }}>
                   <Archive className="h-3.5 w-3.5 mr-2" />
-                  Archive
+                  {t('notifications.archive')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -178,7 +180,7 @@ function NotificationCard({
                 {format(new Date(notification.created_at), 'MMM d, yyyy · h:mm a')}
               </span>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                {style.label}
+                {t(style.labelKey)}
               </Badge>
             </div>
 
@@ -193,14 +195,14 @@ function NotificationCard({
                 {isEscalation ? (
                   <>
                     <ExternalLink className="h-3 w-3" />
-                    Review
+                    {t('notifications.review')}
                   </>
                 ) : (
                   <>
                     <ClipboardCheck className="h-3 w-3" />
                     {notification.notification_type === 'notice' || notification.notification_type === 'warning'
-                      ? 'Complete'
-                      : 'View'}
+                      ? t('notifications.complete')
+                      : t('notifications.view')}
                   </>
                 )}
               </Button>
@@ -215,6 +217,7 @@ function NotificationCard({
 /* ─── Main Notification Center ─── */
 export default function NotificationCenter({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'all' | 'unread' | 'read'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -267,7 +270,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card shrink-0">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-foreground" />
-          <h3 className="text-sm font-heading font-semibold">Notifications</h3>
+          <h3 className="text-sm font-heading font-semibold">{t('notifications.title')}</h3>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5">
               {unreadCount}
@@ -280,7 +283,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
             size="icon"
             className="h-7 w-7"
             onClick={() => setShowFilters(!showFilters)}
-            title="Filters"
+            title={t('common.filters')}
           >
             <Filter className={cn('h-3.5 w-3.5', showFilters && 'text-primary')} />
           </Button>
@@ -294,11 +297,11 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
       <div className="px-4 pt-2 pb-1 border-b shrink-0">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
           <TabsList className="w-full h-8">
-            <TabsTrigger value="all" className="flex-1 text-xs h-7">All</TabsTrigger>
+            <TabsTrigger value="all" className="flex-1 text-xs h-7">{t('notifications.tabs.all')}</TabsTrigger>
             <TabsTrigger value="unread" className="flex-1 text-xs h-7">
-              Unread{unreadCount > 0 ? ` (${unreadCount})` : ''}
+              {t('notifications.tabs.unread')}{unreadCount > 0 ? ` (${unreadCount})` : ''}
             </TabsTrigger>
-            <TabsTrigger value="read" className="flex-1 text-xs h-7">Read</TabsTrigger>
+            <TabsTrigger value="read" className="flex-1 text-xs h-7">{t('notifications.tabs.read')}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -308,24 +311,24 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
         <div className="px-4 py-2 border-b bg-muted/30 flex flex-wrap gap-2 shrink-0">
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="h-7 w-[120px] text-xs">
-              <SelectValue placeholder="Type" />
+              <SelectValue placeholder={t('notifications.typeFilter')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="notice">Notice</SelectItem>
-              <SelectItem value="warning">Warning</SelectItem>
-              <SelectItem value="escalation">Escalation</SelectItem>
+              <SelectItem value="all">{t('notifications.allTypes')}</SelectItem>
+              <SelectItem value="notice">{t('notifications.types.notice')}</SelectItem>
+              <SelectItem value="warning">{t('notifications.types.warning')}</SelectItem>
+              <SelectItem value="escalation">{t('notifications.types.escalation')}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
             <SelectTrigger className="h-7 w-[120px] text-xs">
-              <SelectValue placeholder="Priority" />
+              <SelectValue placeholder={t('notifications.priorityFilter')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All priorities</SelectItem>
-              <SelectItem value="normal">Normal</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="all">{t('notifications.allPriorities')}</SelectItem>
+              <SelectItem value="normal">{t('notifications.priority.normal')}</SelectItem>
+              <SelectItem value="high">{t('notifications.priority.high')}</SelectItem>
+              <SelectItem value="critical">{t('notifications.priority.critical')}</SelectItem>
             </SelectContent>
           </Select>
           {(typeFilter !== 'all' || priorityFilter !== 'all') && (
@@ -335,7 +338,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
               className="h-7 text-xs"
               onClick={() => { setTypeFilter('all'); setPriorityFilter('all'); }}
             >
-              Clear
+              {t('common.clear')}
             </Button>
           )}
         </div>
@@ -352,7 +355,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
             disabled={markAllAsRead.isPending}
           >
             <CheckCheck className="h-3.5 w-3.5 mr-1" />
-            Mark all read
+            {t('notifications.markAllRead')}
           </Button>
         )}
         {readCount > 0 && (
@@ -364,7 +367,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
             disabled={archiveAllRead.isPending}
           >
             <Archive className="h-3.5 w-3.5 mr-1" />
-            Archive read
+            {t('notifications.archiveRead')}
           </Button>
         )}
       </div>
@@ -373,14 +376,14 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
       <ScrollArea className="flex-1">
         {isLoading ? (
           <div className="p-8 text-center">
-            <p className="text-sm text-muted-foreground">Loading notifications...</p>
+            <p className="text-sm text-muted-foreground">{t('notifications.loading')}</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center">
             <Bell className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-medium text-muted-foreground">No notifications</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('notifications.empty')}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {tab === 'unread' ? "You're all caught up!" : 'Nothing to show here.'}
+              {tab === 'unread' ? t('notifications.emptyAllCaughtUp') : t('notifications.emptyNothing')}
             </p>
           </div>
         ) : (
@@ -404,7 +407,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}
                 >
-                  {isFetchingNextPage ? 'Loading...' : 'Load more'}
+                  {isFetchingNextPage ? t('common.loading') : t('common.loadMore')}
                 </Button>
               </div>
             )}
