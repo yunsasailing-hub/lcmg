@@ -45,10 +45,11 @@ const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary
   rejected: { label: 'Rejected', variant: 'destructive' },
 };
 
+import { formatVN } from '@/lib/timezone';
+
 function formatDueTime(dueDatetime: string | null): string | null {
   if (!dueDatetime) return null;
-  const d = new Date(dueDatetime);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  return formatVN(dueDatetime);
 }
 
 // ─── Stats Row ───

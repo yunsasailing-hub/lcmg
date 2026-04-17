@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { formatVNDateTime } from '@/lib/timezone';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle, Bell, Info, CheckCheck, X, Archive, Eye, EyeOff,
@@ -177,7 +177,7 @@ function NotificationCard({
           <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-[11px] text-muted-foreground">
-                {format(new Date(notification.created_at), 'MMM d, yyyy · h:mm a')}
+                {formatVNDateTime(notification.created_at)}
               </span>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                 {t(style.labelKey)}

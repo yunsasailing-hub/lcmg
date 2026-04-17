@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { formatVN } from '@/lib/timezone';
 import {
   useMyChecklists,
   useTemplateTasks,
@@ -33,8 +34,7 @@ const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary
 
 function formatDueTime(dueDatetime: string | null): string | null {
   if (!dueDatetime) return null;
-  const d = new Date(dueDatetime);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  return formatVN(dueDatetime);
 }
 
 // ─── List View ───
