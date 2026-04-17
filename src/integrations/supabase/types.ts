@@ -125,6 +125,7 @@ export type Database = {
           department: Database["public"]["Enums"]["department"]
           due_datetime: string | null
           id: string
+          manually_locked: boolean
           notes: string | null
           notice_sent_at: string | null
           rejection_note: string | null
@@ -148,6 +149,7 @@ export type Database = {
           department: Database["public"]["Enums"]["department"]
           due_datetime?: string | null
           id?: string
+          manually_locked?: boolean
           notes?: string | null
           notice_sent_at?: string | null
           rejection_note?: string | null
@@ -171,6 +173,7 @@ export type Database = {
           department?: Database["public"]["Enums"]["department"]
           due_datetime?: string | null
           id?: string
+          manually_locked?: boolean
           notes?: string | null
           notice_sent_at?: string | null
           rejection_note?: string | null
