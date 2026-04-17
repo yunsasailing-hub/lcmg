@@ -123,6 +123,40 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const isEditable = instance?.status === 'pending' || instance?.status === 'rejected';
   const [notes, setNotes] = useState((instance as any)?.notes || '');
 
+  // ─── DEBUG: edit-eligibility diagnostics ───
+  const { profile, roles } = useAuth();
+  const debugInfo = useMemo(() => {
+    if (!instance) return null;
+    const assignedTo = (instance as any).assigned_to as string | null;
+    const assignedDept = (instance as any).department as string | null;
+    const myId = user?.id ?? null;
+    const myDept = profile?.department ?? null;
+    const status = instance.status;
+    const reasons: string[] = [];
+    if (assignedTo && myId && assignedTo !== myId && !roles.includes('owner') && !roles.includes('manager')) {
+      reasons.push('Not assigned to this user');
+    }
+    if (assignedDept && myDept && assignedDept !== myDept && !roles.includes('owner') && !roles.includes('manager')) {
+      reasons.push('Department mismatch');
+    }
+    if (status === 'completed' || status === 'verified') reasons.push('Checklist already completed');
+    if (status === 'escalated') reasons.push('Checklist locked / escalated by manager');
+    if (roles.length === 0) reasons.push('Role has no edit permission');
+    const info = {
+      assignedUserId: assignedTo,
+      assignedDepartment: assignedDept,
+      loggedUserId: myId,
+      loggedUserDepartment: myDept,
+      role: roles.join(', ') || '(none)',
+      status,
+      isEditable,
+      blockReasons: reasons,
+    };
+    // eslint-disable-next-line no-console
+    console.log('[ChecklistDebug]', info);
+    return info;
+  }, [instance, user, profile, roles, isEditable]);
+
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
     completions?.forEach(c => { map[c.task_id] = c; });
@@ -233,6 +267,32 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{instance.rejection_note}</AlertDescription>
         </Alert>
+      )}
+
+      {/* ─── DEBUG BANNER (temporary) ─── */}
+      {debugInfo && (
+        <div className="rounded-lg border border-dashed border-warning bg-warning/10 p-3 text-xs space-y-1 font-mono">
+          <p className="font-semibold text-warning-foreground">
+            🐞 You are logged as: {profile?.full_name ?? '(no name)'} — {debugInfo.role} — {debugInfo.loggedUserDepartment ?? '(no dept)'}
+          </p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
+            <span>Assigned user ID:</span><span className="truncate">{debugInfo.assignedUserId ?? '—'}</span>
+            <span>Assigned department:</span><span>{debugInfo.assignedDepartment ?? '—'}</span>
+            <span>Logged-in user ID:</span><span className="truncate">{debugInfo.loggedUserId ?? '—'}</span>
+            <span>Logged-in department:</span><span>{debugInfo.loggedUserDepartment ?? '—'}</span>
+            <span>Role:</span><span>{debugInfo.role}</span>
+            <span>Status:</span><span>{debugInfo.status}</span>
+            <span>Is editable:</span><span>{String(debugInfo.isEditable)}</span>
+          </div>
+          {debugInfo.blockReasons.length > 0 && (
+            <div className="pt-1 mt-1 border-t border-warning/40">
+              <p className="font-semibold text-destructive">Block reasons:</p>
+              <ul className="list-disc list-inside text-destructive">
+                {debugInfo.blockReasons.map(r => <li key={r}>{r}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
 
       {loadingCompletions ? (
