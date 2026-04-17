@@ -139,28 +139,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
 
   const [notes, setNotes] = useState((instance as any)?.notes || '');
 
-  // ─── DEBUG: edit-eligibility diagnostics ───
-  const debugInfo = useMemo(() => {
-    if (!instance) return null;
-    const reasons: string[] = [];
-    if (!statusEditable) reasons.push('Checklist already completed');
-    else if (manuallyLocked) reasons.push('Checklist manually locked by manager');
-    else if (!accessOk) reasons.push('You are not assigned to this checklist');
-    if (!myDept) reasons.push('User profile missing department');
-    const info = {
-      assigned_user_id: assignedTo,
-      assigned_department: assignedDept,
-      current_user_id: user?.id ?? null,
-      current_user_department: myDept,
-      role: roles.join(', ') || '(none)',
-      status,
-      manually_locked: manuallyLocked,
-      editable: isEditable,
-      blockReasons: reasons,
-    };
-    return info;
-  }, [instance, user, profile, roles, isEditable, statusEditable, manuallyLocked, accessOk, assignedTo, assignedDept, myDept, status]);
-
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
     completions?.forEach(c => { map[c.task_id] = c; });
