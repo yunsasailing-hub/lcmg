@@ -222,7 +222,7 @@ function MobileNav() {
               >
                 <MoreHorizontal className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-medium">More</span>
+              <span className="text-[10px] font-medium">{t('nav.more')}</span>
             </button>
 
             {showMore && (

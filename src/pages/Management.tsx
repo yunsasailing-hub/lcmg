@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import UserManagement from '@/components/management/UserManagement';
@@ -10,17 +11,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Management() {
   const { hasRole } = useAuth();
+  const { t } = useTranslation();
   const isOwner = hasRole('owner');
 
   return (
     <AppShell>
-      <PageHeader title="Management" description="Team, branches & system settings" />
+      <PageHeader title={t('management.title')} description={t('management.subtitle')} />
       {isOwner ? (
         <Tabs defaultValue="users" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="users">Team Members</TabsTrigger>
-            <TabsTrigger value="roles">Role Manager</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="users">{t('management.teamMembers')}</TabsTrigger>
+            <TabsTrigger value="roles">{t('management.roleManager')}</TabsTrigger>
+            <TabsTrigger value="notifications">{t('management.notifications')}</TabsTrigger>
           </TabsList>
           <TabsContent value="users">
             <UserManagement />
@@ -33,7 +35,7 @@ export default function Management() {
           </TabsContent>
         </Tabs>
       ) : (
-        <EmptyState icon={ShieldAlert} title="Access restricted" description="Only owners can manage roles and settings." />
+        <EmptyState icon={ShieldAlert} title={t('management.accessRestricted')} description={t('management.accessRestrictedDesc')} />
       )}
     </AppShell>
   );
