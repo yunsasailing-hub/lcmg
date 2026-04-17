@@ -403,7 +403,11 @@ export default function TemplateManager() {
         toast.success('Template deleted');
         if (expandedId === templateId) setExpandedId(null);
       },
-      onError: () => toast.error('Failed to delete template'),
+      onError: (err: any) => {
+        const msg = err?.message || 'Failed to delete template';
+        console.error('[TemplateManager] delete failed:', { templateId, err });
+        toast.error(msg);
+      },
     });
   };
 
