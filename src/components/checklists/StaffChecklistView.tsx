@@ -120,42 +120,44 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
 
   const instance = checklists?.find(c => c.id === instanceId);
   const tpl = instance?.template as any;
-  const isEditable = instance?.status === 'pending' || instance?.status === 'rejected';
+  const { profile, roles } = useAuth();
+
+  // ─── Edit eligibility (department-aware) ───
+  const isManagerOrOwner = roles.includes('owner') || roles.includes('manager');
+  const assignedTo = (instance as any)?.assigned_to ?? null;
+  const assignedDept = (instance as any)?.department ?? null;
+  const myDept = profile?.department ?? null;
+  const statusOpen = instance?.status === 'pending' || instance?.status === 'rejected';
+  const isAssignedToMe = !!assignedTo && assignedTo === user?.id;
+  const isDeptMatch = !!assignedDept && !!myDept && assignedDept === myDept;
+  const isEditable = !!instance && statusOpen && (isAssignedToMe || isDeptMatch || isManagerOrOwner);
+
   const [notes, setNotes] = useState((instance as any)?.notes || '');
 
   // ─── DEBUG: edit-eligibility diagnostics ───
-  const { profile, roles } = useAuth();
   const debugInfo = useMemo(() => {
     if (!instance) return null;
-    const assignedTo = (instance as any).assigned_to as string | null;
-    const assignedDept = (instance as any).department as string | null;
-    const myId = user?.id ?? null;
-    const myDept = profile?.department ?? null;
-    const status = instance.status;
     const reasons: string[] = [];
-    if (assignedTo && myId && assignedTo !== myId && !roles.includes('owner') && !roles.includes('manager')) {
-      reasons.push('Not assigned to this user');
+    if (!statusOpen) {
+      if (instance.status === 'completed' || instance.status === 'verified') reasons.push('Checklist already completed');
+      else if (instance.status === 'escalated') reasons.push('Checklist locked / escalated by manager');
+      else reasons.push(`Status "${instance.status}" is not editable`);
+    } else if (!isAssignedToMe && !isDeptMatch && !isManagerOrOwner) {
+      reasons.push('You are not assigned to this checklist');
     }
-    if (assignedDept && myDept && assignedDept !== myDept && !roles.includes('owner') && !roles.includes('manager')) {
-      reasons.push('Department mismatch');
-    }
-    if (status === 'completed' || status === 'verified') reasons.push('Checklist already completed');
-    if (status === 'escalated') reasons.push('Checklist locked / escalated by manager');
-    if (roles.length === 0) reasons.push('Role has no edit permission');
     const info = {
-      assignedUserId: assignedTo,
-      assignedDepartment: assignedDept,
-      loggedUserId: myId,
-      loggedUserDepartment: myDept,
+      assigned_user_id: assignedTo,
+      assigned_department: assignedDept,
+      current_user_id: user?.id ?? null,
+      current_user_department: myDept,
       role: roles.join(', ') || '(none)',
-      status,
-      isEditable,
+      editable: isEditable,
       blockReasons: reasons,
     };
     // eslint-disable-next-line no-console
     console.log('[ChecklistDebug]', info);
     return info;
-  }, [instance, user, profile, roles, isEditable]);
+  }, [instance, user, profile, roles, isEditable, statusOpen, isAssignedToMe, isDeptMatch, isManagerOrOwner, assignedTo, assignedDept, myDept]);
 
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
