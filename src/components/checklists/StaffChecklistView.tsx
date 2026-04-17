@@ -175,21 +175,22 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
     });
   }, [tasks, completionMap, isEditable]);
 
-  const handleToggle = (taskId: string, current: boolean) => {
-    // DEBUG: editability gate temporarily removed — force-toggle the item
-    console.log('handleToggle fired', { taskId, current, isEditable });
+  const handleToggle = (taskId: string, checked: boolean) => {
+    console.log('handleToggle fired', taskId, checked);
     upsert.mutate({
       instance_id: instanceId,
       task_id: taskId,
-      is_completed: !current,
-      completed_by: !current ? user!.id : null,
-      completed_at: !current ? new Date().toISOString() : null,
+      is_completed: checked,
+      completed_by: checked ? user!.id : null,
+      completed_at: checked ? new Date().toISOString() : null,
     }, {
+      onSuccess: () => console.log('database mutation success', taskId),
       onError: (err: any) => {
-        console.error('Toggle failed', err);
-        toast.error(err?.message || 'Toggle failed');
+        console.error('database mutation failed', err);
+        toast.error(err?.message || 'Failed to save checklist item');
       },
     });
+    console.log('local state updated', taskId, checked);
   };
 
   const handlePhoto = async (taskId: string) => {
