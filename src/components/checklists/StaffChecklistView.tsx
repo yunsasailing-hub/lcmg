@@ -282,6 +282,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         </Alert>
       )}
 
+      {manuallyLocked && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>This checklist was manually locked by manager.</AlertDescription>
+        </Alert>
+      )}
+
       {/* ─── DEBUG BANNER (temporary) ─── */}
       {debugInfo && (
         <div className="rounded-lg border border-dashed border-warning bg-warning/10 p-3 text-xs space-y-1 font-mono">
