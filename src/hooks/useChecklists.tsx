@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { invokeManageRoles } from '@/lib/manageRoles';
+import { todayVN } from '@/lib/timezone';
 import type { Database, Tables, TablesInsert } from '@/integrations/supabase/types';
 
 // Type exports
@@ -19,7 +20,7 @@ export type TaskCompletion = Tables<'checklist_task_completions'>;
 
 export function useMyChecklists(date?: string) {
   const { user } = useAuth();
-  const targetDate = date || new Date().toISOString().split('T')[0];
+  const targetDate = date || todayVN();
 
   return useQuery({
     queryKey: ['checklists', 'my', targetDate],
