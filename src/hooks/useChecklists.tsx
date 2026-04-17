@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { invokeManageRoles } from '@/lib/manageRoles';
+import { todayVN } from '@/lib/timezone';
 import type { Database, Tables, TablesInsert } from '@/integrations/supabase/types';
 
 // Type exports
@@ -19,7 +20,7 @@ export type TaskCompletion = Tables<'checklist_task_completions'>;
 
 export function useMyChecklists(date?: string) {
   const { user } = useAuth();
-  const targetDate = date || new Date().toISOString().split('T')[0];
+  const targetDate = date || todayVN();
 
   return useQuery({
     queryKey: ['checklists', 'my', targetDate],
@@ -469,8 +470,10 @@ export function useCreateAssignment() {
         throw assignmentError;
       }
 
+      // Template due time is in Vietnam local time (Asia/Ho_Chi_Minh, UTC+7).
+      // Convert to UTC ISO so timestamptz comparisons in notification logic are correct.
       const dueTime = (template as any).default_due_time || '10:00:00';
-      const dueDatetime = `${assignment.start_date}T${dueTime}Z`;
+      const dueDatetime = new Date(`${assignment.start_date}T${dueTime}+07:00`).toISOString();
 
       const firstInstancePayload = {
         template_id: assignment.template_id,

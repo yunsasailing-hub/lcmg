@@ -15,7 +15,10 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const today = new Date().toISOString().split("T")[0];
+  // "Today" must be evaluated in Vietnam local time (UTC+7), not server UTC.
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
 
   // Fetch all active assignments that need generation
   const { data: assignments, error: fetchErr } = await supabase
@@ -43,9 +46,10 @@ Deno.serve(async (req) => {
     for (const date of datesToGenerate) {
       if (a.end_date && date > a.end_date) continue;
 
-      // Compute due_datetime from scheduled_date + template due time
+      // Compute due_datetime: template due time is Vietnam local time (Asia/Ho_Chi_Minh, UTC+7)
+      // Convert to UTC ISO for storage so timestamptz comparisons are correct.
       const dueTime = a.template.default_due_time || "10:00:00";
-      const dueDatetime = `${date}T${dueTime}Z`;
+      const dueDatetime = new Date(`${date}T${dueTime}+07:00`).toISOString();
 
       const { error: insErr } = await supabase
         .from("checklist_instances")
