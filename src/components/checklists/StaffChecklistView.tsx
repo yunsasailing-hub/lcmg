@@ -139,28 +139,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
 
   const [notes, setNotes] = useState((instance as any)?.notes || '');
 
-  // ─── DEBUG: edit-eligibility diagnostics ───
-  const debugInfo = useMemo(() => {
-    if (!instance) return null;
-    const reasons: string[] = [];
-    if (!statusEditable) reasons.push('Checklist already completed');
-    else if (manuallyLocked) reasons.push('Checklist manually locked by manager');
-    else if (!accessOk) reasons.push('You are not assigned to this checklist');
-    if (!myDept) reasons.push('User profile missing department');
-    const info = {
-      assigned_user_id: assignedTo,
-      assigned_department: assignedDept,
-      current_user_id: user?.id ?? null,
-      current_user_department: myDept,
-      role: roles.join(', ') || '(none)',
-      status,
-      manually_locked: manuallyLocked,
-      editable: isEditable,
-      blockReasons: reasons,
-    };
-    return info;
-  }, [instance, user, profile, roles, isEditable, statusEditable, manuallyLocked, accessOk, assignedTo, assignedDept, myDept, status]);
-
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
     completions?.forEach(c => { map[c.task_id] = c; });
@@ -281,25 +259,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         </Alert>
       )}
 
-      {/* Debug panel — only visible when ?debug=1 is in the URL AND user is Owner/Manager */}
-      {debugInfo && isManagerOrOwner && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1' && (
-        <div className="rounded-lg border border-dashed border-warning bg-warning/10 p-3 text-xs space-y-1 font-mono">
-          <p className="font-semibold text-warning-foreground">
-            🐞 {profile?.full_name ?? '(no name)'} — {debugInfo.role} — {debugInfo.current_user_department ?? '(no dept)'}
-          </p>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
-            <span>Assigned user ID:</span><span className="truncate">{debugInfo.assigned_user_id ?? '—'}</span>
-            <span>Assigned department:</span><span>{debugInfo.assigned_department ?? '—'}</span>
-            <span>Status:</span><span>{instance?.status}</span>
-            <span>Is editable:</span><span>{String(debugInfo.editable)}</span>
-          </div>
-          {debugInfo.blockReasons.length > 0 && (
-            <ul className="list-disc list-inside text-destructive pt-1 mt-1 border-t border-warning/40">
-              {debugInfo.blockReasons.map(r => <li key={r}>{r}</li>)}
-            </ul>
-          )}
-        </div>
-      )}
+
 
       {loadingCompletions ? (
         <div className="space-y-3">
