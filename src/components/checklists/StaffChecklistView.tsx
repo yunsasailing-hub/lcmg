@@ -176,13 +176,19 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   }, [tasks, completionMap, isEditable]);
 
   const handleToggle = (taskId: string, current: boolean) => {
-    if (!isEditable) return;
+    // DEBUG: editability gate temporarily removed — force-toggle the item
+    console.log('handleToggle fired', { taskId, current, isEditable });
     upsert.mutate({
       instance_id: instanceId,
       task_id: taskId,
       is_completed: !current,
       completed_by: !current ? user!.id : null,
       completed_at: !current ? new Date().toISOString() : null,
+    }, {
+      onError: (err: any) => {
+        console.error('Toggle failed', err);
+        toast.error(err?.message || 'Toggle failed');
+      },
     });
   };
 
@@ -348,10 +354,17 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                     )}
                     <Checkbox
                       checked={done}
-                      onCheckedChange={() => handleToggle(task.id, done)}
-                      disabled={!isEditable}
-                      className="h-5 w-5 ml-1"
+                      onCheckedChange={() => {
+                        // eslint-disable-next-line no-console
+                        console.log('Checkbox clicked', task.id, { done, isEditable });
+                        handleToggle(task.id, done);
+                      }}
+                      disabled={false}
+                      className="h-5 w-5 ml-1 relative z-10 cursor-pointer"
                     />
+                    {!isEditable && (
+                      <span className="text-[10px] text-destructive ml-1">(forced)</span>
+                    )}
                   </div>
                 </div>
 
