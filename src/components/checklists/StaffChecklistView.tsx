@@ -321,15 +321,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             const needsPhoto = task.photo_requirement === 'mandatory' && !c?.photo_url;
             const photoReq = task.photo_requirement as PhotoRequirement;
 
-            console.log('row rendered', task.id, done);
             return (
               <div
                 key={task.id}
-                className={`relative rounded-lg border bg-card p-3 space-y-2 ${needsPhoto && done ? 'border-destructive/50' : ''}`}
-                style={{ pointerEvents: 'auto' }}
+                className={`rounded-lg border bg-card p-3 space-y-2 ${needsPhoto && done ? 'border-destructive/50' : ''}`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0" style={{ pointerEvents: 'auto' }}>
+                  <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
                     {photoReq === 'mandatory' && (
                       <p className="text-xs text-destructive mt-0.5">📸 Photo required</p>
@@ -338,7 +336,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                       <p className="text-xs text-muted-foreground mt-0.5">📷 Photo optional</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0 relative" style={{ zIndex: 20, pointerEvents: 'auto' }}>
+                  <div className="flex items-center gap-1 shrink-0">
                     {isEditable && (
                       <>
                         <Button
@@ -360,32 +358,12 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                         </Button>
                       </>
                     )}
-                    {/* DEBUG: Test Toggle button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        console.log('Test Toggle button clicked', task.id);
-                        handleToggle(task.id, !done);
-                      }}
-                      className="text-[10px] px-2 py-1 rounded border border-warning text-warning-foreground bg-warning/20 hover:bg-warning/30"
-                    >
-                      Test Toggle
-                    </button>
-                    {/* Native checkbox in a 32x32 click target */}
-                    <label
-                      className="inline-flex items-center justify-center h-8 w-8 cursor-pointer ml-1"
-                      style={{ pointerEvents: 'auto' }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={done}
-                        onChange={(e) => {
-                          console.log('native checkbox changed', task.id, e.target.checked);
-                          handleToggle(task.id, e.target.checked);
-                        }}
-                        className="h-5 w-5 cursor-pointer accent-primary"
-                      />
-                    </label>
+                    <Checkbox
+                      checked={done}
+                      onCheckedChange={(v) => handleToggle(task.id, !!v)}
+                      disabled={!isEditable}
+                      className="h-5 w-5 ml-1"
+                    />
                   </div>
                 </div>
 
