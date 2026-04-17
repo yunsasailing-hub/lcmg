@@ -26,7 +26,7 @@ import {
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
   pending: { label: 'Pending', variant: 'secondary' },
   late: { label: 'Late', variant: 'destructive', className: 'bg-warning text-warning-foreground hover:bg-warning/80' },
-  escalated: { label: 'Escalated', variant: 'destructive' },
+  escalated: { label: 'Overdue / escalated', variant: 'destructive', className: 'bg-warning text-warning-foreground hover:bg-warning/80' },
   completed: { label: 'Done', variant: 'default', className: 'bg-emerald-600 text-white hover:bg-emerald-600/80' },
   verified: { label: 'Verified', variant: 'default', className: 'bg-ring text-primary-foreground hover:bg-ring/80' },
   rejected: { label: 'Rejected', variant: 'destructive' },
