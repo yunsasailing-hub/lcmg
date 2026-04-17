@@ -180,7 +180,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   }, [tasks, completionMap, isEditable]);
 
   const handleToggle = (taskId: string, checked: boolean) => {
-    console.log('handleToggle fired', taskId, checked);
     upsert.mutate({
       instance_id: instanceId,
       task_id: taskId,
@@ -188,13 +187,8 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       completed_by: checked ? user!.id : null,
       completed_at: checked ? new Date().toISOString() : null,
     }, {
-      onSuccess: () => console.log('database mutation success', taskId),
-      onError: (err: any) => {
-        console.error('database mutation failed', err);
-        toast.error(err?.message || 'Failed to save checklist item');
-      },
+      onError: (err: any) => toast.error(err?.message || 'Failed to save checklist item'),
     });
-    console.log('local state updated', taskId, checked);
   };
 
   const handlePhoto = async (taskId: string) => {
