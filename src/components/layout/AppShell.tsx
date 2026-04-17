@@ -32,6 +32,7 @@ const ROLE_BADGE: Record<string, { color: string }> = {
 
 function UserIdentity({ collapsed }: { collapsed?: boolean }) {
   const { profile, roles, user } = useAuth();
+  const { t } = useTranslation();
   const primaryRole = roles[0];
   const badge = primaryRole ? ROLE_BADGE[primaryRole] : null;
   const displayName = profile?.full_name || profile?.email || user?.email || 'User';
@@ -43,9 +44,9 @@ function UserIdentity({ collapsed }: { collapsed?: boolean }) {
       <p className="text-xs font-medium truncate" style={{ color: 'var(--primary-foreground)' }}>
         {displayName}
       </p>
-      {badge && (
+      {badge && primaryRole && (
         <span className={cn('inline-block mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
-          {badge.label}
+          {t(`roles.${primaryRole}`)}
         </span>
       )}
     </div>
@@ -54,6 +55,8 @@ function UserIdentity({ collapsed }: { collapsed?: boolean }) {
 
 function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { signOut } = useAuth();
+  const { t } = useTranslation();
+  const NAV_ITEMS = useNavItems();
 
   return (
     <aside
@@ -67,7 +70,7 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
       {/* Header */}
       <div className="flex h-16 items-center justify-between px-4">
         {!collapsed && (
-          <span className="text-lg font-heading font-bold text-primary-foreground">La Cala</span>
+          <span className="text-lg font-heading font-bold text-primary-foreground">{t('common.appName')}</span>
         )}
         <div className="flex items-center gap-1">
           <NotificationBell collapsed={collapsed} />
@@ -107,14 +110,19 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
       </nav>
 
       {/* Footer */}
-      <div className="border-t px-2 py-3" style={{ borderColor: 'var(--sidebar-border)' }}>
+      <div className="border-t px-2 py-3 space-y-2" style={{ borderColor: 'var(--sidebar-border)' }}>
+        {!collapsed && (
+          <div className="px-2">
+            <LanguageSwitcher />
+          </div>
+        )}
         <button
           onClick={() => signOut()}
           className={cn('nav-item w-full', collapsed && 'justify-center px-0')}
-          title={collapsed ? 'Sign out' : undefined}
+          title={collapsed ? t('common.signOut') : undefined}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span className="text-sm font-medium">Sign Out</span>}
+          {!collapsed && <span className="text-sm font-medium">{t('common.signOut')}</span>}
         </button>
       </div>
     </aside>
@@ -123,6 +131,8 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 
 function MobileNav() {
   const { signOut, profile, roles, user } = useAuth();
+  const { t } = useTranslation();
+  const NAV_ITEMS = useNavItems();
   const location = useLocation();
   const [showMore, setShowMore] = useState(false);
 
@@ -143,22 +153,24 @@ function MobileNav() {
         style={{ background: 'var(--nav)' }}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <span className="text-lg font-heading font-bold text-primary-foreground shrink-0">La Cala</span>
+          <span className="text-lg font-heading font-bold text-primary-foreground shrink-0">{t('common.appName')}</span>
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-xs truncate" style={{ color: 'var(--nav-muted)' }}>{displayName}</span>
-            {badge && (
+            {badge && primaryRole && (
               <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
-                {badge.label}
+                {t(`roles.${primaryRole}`)}
               </span>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <LanguageSwitcher />
           <NotificationBell />
           <button
             onClick={() => signOut()}
             className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-nav-active"
             style={{ color: 'var(--nav-foreground)' }}
+            aria-label={t('common.signOut')}
           >
             <LogOut className="h-5 w-5" />
           </button>
