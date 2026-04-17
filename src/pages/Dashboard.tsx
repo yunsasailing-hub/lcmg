@@ -25,10 +25,10 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={Users} label={t('dashboard.teamMembers')} value={12} subtitle="3 on shift today" />
-        <StatCard icon={ClipboardCheck} label={t('dashboard.openChecklists')} value={4} subtitle="2 due today" />
-        <StatCard icon={CookingPot} label={t('dashboard.activeRecipes')} value={48} subtitle="Updated this week" />
-        <StatCard icon={Building2} label={t('dashboard.branches')} value={2} subtitle="All operational" />
+        <StatCard icon={Users} label={t('dashboard.teamMembers')} value={12} subtitle={t('dashboard.onShiftToday', { count: 3 })} />
+        <StatCard icon={ClipboardCheck} label={t('dashboard.openChecklists')} value={4} subtitle={t('dashboard.dueToday', { count: 2 })} />
+        <StatCard icon={CookingPot} label={t('dashboard.activeRecipes')} value={48} subtitle={t('dashboard.updatedThisWeek')} />
+        <StatCard icon={Building2} label={t('dashboard.branches')} value={2} subtitle={t('dashboard.allOperational')} />
       </div>
 
       {/* Operational alerts — managers & owners only */}
@@ -42,12 +42,12 @@ export default function Dashboard() {
       {/* Modules */}
       <h2 className="text-lg font-heading font-semibold text-foreground mb-4">{t('dashboard.modules')}</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <ModuleCard to="/training" icon={GraduationCap} title={t('nav.training')} description="Staff training & certifications" stat="3 pending" />
-        <ModuleCard to="/checklists" icon={ClipboardCheck} title={t('nav.checklists')} description="Daily opening & closing tasks" stat="4 active" />
-        <ModuleCard to="/recipes" icon={CookingPot} title={t('nav.recipes')} description="Recipe book & costings" stat="48 recipes" />
-        <ModuleCard to="/inventory" icon={Package} title={t('nav.inventory')} description="Stock levels & orders" stat="6 low stock" />
-        <ModuleCard to="/maintenance" icon={Wrench} title={t('nav.maintenance')} description="Equipment & repairs" stat="1 open ticket" />
-        <ModuleCard to="/management" icon={Settings} title={t('nav.management')} description="Team, branches & settings" stat="" />
+        <ModuleCard to="/training" icon={GraduationCap} title={t('nav.training')} description={t('dashboard.moduleDescriptions.training')} stat={t('dashboard.moduleStats.pendingShort', { count: 3 })} />
+        <ModuleCard to="/checklists" icon={ClipboardCheck} title={t('nav.checklists')} description={t('dashboard.moduleDescriptions.checklists')} stat={t('dashboard.moduleStats.activeShort', { count: 4 })} />
+        <ModuleCard to="/recipes" icon={CookingPot} title={t('nav.recipes')} description={t('dashboard.moduleDescriptions.recipes')} stat={t('dashboard.moduleStats.recipesShort', { count: 48 })} />
+        <ModuleCard to="/inventory" icon={Package} title={t('nav.inventory')} description={t('dashboard.moduleDescriptions.inventory')} stat={t('dashboard.moduleStats.lowStockShort', { count: 6 })} />
+        <ModuleCard to="/maintenance" icon={Wrench} title={t('nav.maintenance')} description={t('dashboard.moduleDescriptions.maintenance')} stat={t('dashboard.moduleStats.openTicketShort', { count: 1 })} />
+        <ModuleCard to="/management" icon={Settings} title={t('nav.management')} description={t('dashboard.moduleDescriptions.management')} stat="" />
       </div>
     </AppShell>
   );
