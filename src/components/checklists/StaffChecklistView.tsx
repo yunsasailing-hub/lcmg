@@ -120,42 +120,44 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
 
   const instance = checklists?.find(c => c.id === instanceId);
   const tpl = instance?.template as any;
-  const isEditable = instance?.status === 'pending' || instance?.status === 'rejected';
+  const { profile, roles } = useAuth();
+
+  // ─── Edit eligibility (department-aware) ───
+  const isManagerOrOwner = roles.includes('owner') || roles.includes('manager');
+  const assignedTo = (instance as any)?.assigned_to ?? null;
+  const assignedDept = (instance as any)?.department ?? null;
+  const myDept = profile?.department ?? null;
+  const statusOpen = instance?.status === 'pending' || instance?.status === 'rejected';
+  const isAssignedToMe = !!assignedTo && assignedTo === user?.id;
+  const isDeptMatch = !!assignedDept && !!myDept && assignedDept === myDept;
+  const isEditable = !!instance && statusOpen && (isAssignedToMe || isDeptMatch || isManagerOrOwner);
+
   const [notes, setNotes] = useState((instance as any)?.notes || '');
 
   // ─── DEBUG: edit-eligibility diagnostics ───
-  const { profile, roles } = useAuth();
   const debugInfo = useMemo(() => {
     if (!instance) return null;
-    const assignedTo = (instance as any).assigned_to as string | null;
-    const assignedDept = (instance as any).department as string | null;
-    const myId = user?.id ?? null;
-    const myDept = profile?.department ?? null;
-    const status = instance.status;
     const reasons: string[] = [];
-    if (assignedTo && myId && assignedTo !== myId && !roles.includes('owner') && !roles.includes('manager')) {
-      reasons.push('Not assigned to this user');
+    if (!statusOpen) {
+      if (instance.status === 'completed' || instance.status === 'verified') reasons.push('Checklist already completed');
+      else if (instance.status === 'escalated') reasons.push('Checklist locked / escalated by manager');
+      else reasons.push(`Status "${instance.status}" is not editable`);
+    } else if (!isAssignedToMe && !isDeptMatch && !isManagerOrOwner) {
+      reasons.push('You are not assigned to this checklist');
     }
-    if (assignedDept && myDept && assignedDept !== myDept && !roles.includes('owner') && !roles.includes('manager')) {
-      reasons.push('Department mismatch');
-    }
-    if (status === 'completed' || status === 'verified') reasons.push('Checklist already completed');
-    if (status === 'escalated') reasons.push('Checklist locked / escalated by manager');
-    if (roles.length === 0) reasons.push('Role has no edit permission');
     const info = {
-      assignedUserId: assignedTo,
-      assignedDepartment: assignedDept,
-      loggedUserId: myId,
-      loggedUserDepartment: myDept,
+      assigned_user_id: assignedTo,
+      assigned_department: assignedDept,
+      current_user_id: user?.id ?? null,
+      current_user_department: myDept,
       role: roles.join(', ') || '(none)',
-      status,
-      isEditable,
+      editable: isEditable,
       blockReasons: reasons,
     };
     // eslint-disable-next-line no-console
     console.log('[ChecklistDebug]', info);
     return info;
-  }, [instance, user, profile, roles, isEditable]);
+  }, [instance, user, profile, roles, isEditable, statusOpen, isAssignedToMe, isDeptMatch, isManagerOrOwner, assignedTo, assignedDept, myDept]);
 
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
@@ -273,16 +275,16 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       {debugInfo && (
         <div className="rounded-lg border border-dashed border-warning bg-warning/10 p-3 text-xs space-y-1 font-mono">
           <p className="font-semibold text-warning-foreground">
-            🐞 You are logged as: {profile?.full_name ?? '(no name)'} — {debugInfo.role} — {debugInfo.loggedUserDepartment ?? '(no dept)'}
+            🐞 You are logged as: {profile?.full_name ?? '(no name)'} — {debugInfo.role} — {debugInfo.current_user_department ?? '(no dept)'}
           </p>
           <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
-            <span>Assigned user ID:</span><span className="truncate">{debugInfo.assignedUserId ?? '—'}</span>
-            <span>Assigned department:</span><span>{debugInfo.assignedDepartment ?? '—'}</span>
-            <span>Logged-in user ID:</span><span className="truncate">{debugInfo.loggedUserId ?? '—'}</span>
-            <span>Logged-in department:</span><span>{debugInfo.loggedUserDepartment ?? '—'}</span>
+            <span>Assigned user ID:</span><span className="truncate">{debugInfo.assigned_user_id ?? '—'}</span>
+            <span>Assigned department:</span><span>{debugInfo.assigned_department ?? '—'}</span>
+            <span>Logged-in user ID:</span><span className="truncate">{debugInfo.current_user_id ?? '—'}</span>
+            <span>Logged-in department:</span><span>{debugInfo.current_user_department ?? '—'}</span>
             <span>Role:</span><span>{debugInfo.role}</span>
-            <span>Status:</span><span>{debugInfo.status}</span>
-            <span>Is editable:</span><span>{String(debugInfo.isEditable)}</span>
+            <span>Status:</span><span>{instance?.status}</span>
+            <span>Is editable:</span><span>{String(debugInfo.editable)}</span>
           </div>
           {debugInfo.blockReasons.length > 0 && (
             <div className="pt-1 mt-1 border-t border-warning/40">

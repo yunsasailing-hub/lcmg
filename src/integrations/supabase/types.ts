@@ -575,6 +575,10 @@ export type Database = {
       }
     }
     Functions: {
+      current_user_department: {
+        Args: never
+        Returns: Database["public"]["Enums"]["department"]
+      }
       delete_checklist_template: {
         Args: { _template_id: string }
         Returns: Json
