@@ -122,15 +122,20 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const tpl = instance?.template as any;
   const { profile, roles } = useAuth();
 
-  // ─── Edit eligibility (department-aware) ───
+  // ─── Edit eligibility (department-aware, escalation ≠ lock) ───
   const isManagerOrOwner = roles.includes('owner') || roles.includes('manager');
   const assignedTo = (instance as any)?.assigned_to ?? null;
   const assignedDept = (instance as any)?.department ?? null;
   const myDept = profile?.department ?? null;
-  const statusOpen = instance?.status === 'pending' || instance?.status === 'rejected';
+  const status = instance?.status;
+  const manuallyLocked = !!(instance as any)?.manually_locked;
+  // Only completed/verified or manually-locked checklists are read-only.
+  const statusEditable = status !== 'completed' && status !== 'verified';
+  const notLocked = !manuallyLocked;
   const isAssignedToMe = !!assignedTo && assignedTo === user?.id;
   const isDeptMatch = !!assignedDept && !!myDept && assignedDept === myDept;
-  const isEditable = !!instance && statusOpen && (isAssignedToMe || isDeptMatch || isManagerOrOwner);
+  const accessOk = isAssignedToMe || isDeptMatch || isManagerOrOwner;
+  const isEditable = !!instance && statusEditable && notLocked && accessOk;
 
   const [notes, setNotes] = useState((instance as any)?.notes || '');
 
@@ -138,26 +143,25 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const debugInfo = useMemo(() => {
     if (!instance) return null;
     const reasons: string[] = [];
-    if (!statusOpen) {
-      if (instance.status === 'completed' || instance.status === 'verified') reasons.push('Checklist already completed');
-      else if (instance.status === 'escalated') reasons.push('Checklist locked / escalated by manager');
-      else reasons.push(`Status "${instance.status}" is not editable`);
-    } else if (!isAssignedToMe && !isDeptMatch && !isManagerOrOwner) {
-      reasons.push('You are not assigned to this checklist');
-    }
+    if (!statusEditable) reasons.push('Checklist already completed');
+    else if (manuallyLocked) reasons.push('Checklist manually locked by manager');
+    else if (!accessOk) reasons.push('You are not assigned to this checklist');
+    if (!myDept) reasons.push('User profile missing department');
     const info = {
       assigned_user_id: assignedTo,
       assigned_department: assignedDept,
       current_user_id: user?.id ?? null,
       current_user_department: myDept,
       role: roles.join(', ') || '(none)',
+      status,
+      manually_locked: manuallyLocked,
       editable: isEditable,
       blockReasons: reasons,
     };
     // eslint-disable-next-line no-console
     console.log('[ChecklistDebug]', info);
     return info;
-  }, [instance, user, profile, roles, isEditable, statusOpen, isAssignedToMe, isDeptMatch, isManagerOrOwner, assignedTo, assignedDept, myDept]);
+  }, [instance, user, profile, roles, isEditable, statusEditable, manuallyLocked, accessOk, assignedTo, assignedDept, myDept, status]);
 
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
