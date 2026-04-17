@@ -416,6 +416,11 @@ export default function UserManagement() {
                           Inactive
                         </Badge>
                       )}
+                      {!user.department && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-warning text-warning-foreground bg-warning/20" title="This user has no department assigned">
+                          ⚠ No department
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground space-y-0.5">
                       {user.email && <p>{user.email}</p>}
