@@ -348,10 +348,17 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                     )}
                     <Checkbox
                       checked={done}
-                      onCheckedChange={() => handleToggle(task.id, done)}
-                      disabled={!isEditable}
-                      className="h-5 w-5 ml-1"
+                      onCheckedChange={() => {
+                        // eslint-disable-next-line no-console
+                        console.log('Checkbox clicked', task.id, { done, isEditable });
+                        handleToggle(task.id, done);
+                      }}
+                      disabled={false}
+                      className="h-5 w-5 ml-1 relative z-10 cursor-pointer"
                     />
+                    {!isEditable && (
+                      <span className="text-[10px] text-destructive ml-1">(forced)</span>
+                    )}
                   </div>
                 </div>
 
