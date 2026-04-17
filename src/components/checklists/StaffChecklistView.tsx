@@ -158,8 +158,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       editable: isEditable,
       blockReasons: reasons,
     };
-    // eslint-disable-next-line no-console
-    console.log('[ChecklistDebug]', info);
     return info;
   }, [instance, user, profile, roles, isEditable, statusEditable, manuallyLocked, accessOk, assignedTo, assignedDept, myDept, status]);
 
@@ -180,7 +178,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   }, [tasks, completionMap, isEditable]);
 
   const handleToggle = (taskId: string, checked: boolean) => {
-    console.log('handleToggle fired', taskId, checked);
     upsert.mutate({
       instance_id: instanceId,
       task_id: taskId,
@@ -188,13 +185,8 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       completed_by: checked ? user!.id : null,
       completed_at: checked ? new Date().toISOString() : null,
     }, {
-      onSuccess: () => console.log('database mutation success', taskId),
-      onError: (err: any) => {
-        console.error('database mutation failed', err);
-        toast.error(err?.message || 'Failed to save checklist item');
-      },
+      onError: (err: any) => toast.error(err?.message || 'Failed to save checklist item'),
     });
-    console.log('local state updated', taskId, checked);
   };
 
   const handlePhoto = async (taskId: string) => {
@@ -289,28 +281,22 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         </Alert>
       )}
 
-      {/* ─── DEBUG BANNER (temporary) ─── */}
-      {debugInfo && (
+      {/* Debug panel — only visible when ?debug=1 is in the URL AND user is Owner/Manager */}
+      {debugInfo && isManagerOrOwner && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1' && (
         <div className="rounded-lg border border-dashed border-warning bg-warning/10 p-3 text-xs space-y-1 font-mono">
           <p className="font-semibold text-warning-foreground">
-            🐞 You are logged as: {profile?.full_name ?? '(no name)'} — {debugInfo.role} — {debugInfo.current_user_department ?? '(no dept)'}
+            🐞 {profile?.full_name ?? '(no name)'} — {debugInfo.role} — {debugInfo.current_user_department ?? '(no dept)'}
           </p>
           <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
             <span>Assigned user ID:</span><span className="truncate">{debugInfo.assigned_user_id ?? '—'}</span>
             <span>Assigned department:</span><span>{debugInfo.assigned_department ?? '—'}</span>
-            <span>Logged-in user ID:</span><span className="truncate">{debugInfo.current_user_id ?? '—'}</span>
-            <span>Logged-in department:</span><span>{debugInfo.current_user_department ?? '—'}</span>
-            <span>Role:</span><span>{debugInfo.role}</span>
             <span>Status:</span><span>{instance?.status}</span>
             <span>Is editable:</span><span>{String(debugInfo.editable)}</span>
           </div>
           {debugInfo.blockReasons.length > 0 && (
-            <div className="pt-1 mt-1 border-t border-warning/40">
-              <p className="font-semibold text-destructive">Block reasons:</p>
-              <ul className="list-disc list-inside text-destructive">
-                {debugInfo.blockReasons.map(r => <li key={r}>{r}</li>)}
-              </ul>
-            </div>
+            <ul className="list-disc list-inside text-destructive pt-1 mt-1 border-t border-warning/40">
+              {debugInfo.blockReasons.map(r => <li key={r}>{r}</li>)}
+            </ul>
           )}
         </div>
       )}
@@ -327,15 +313,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             const needsPhoto = task.photo_requirement === 'mandatory' && !c?.photo_url;
             const photoReq = task.photo_requirement as PhotoRequirement;
 
-            console.log('row rendered', task.id, done);
             return (
               <div
                 key={task.id}
-                className={`relative rounded-lg border bg-card p-3 space-y-2 ${needsPhoto && done ? 'border-destructive/50' : ''}`}
-                style={{ pointerEvents: 'auto' }}
+                className={`rounded-lg border bg-card p-3 space-y-2 ${needsPhoto && done ? 'border-destructive/50' : ''}`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0" style={{ pointerEvents: 'auto' }}>
+                  <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
                     {photoReq === 'mandatory' && (
                       <p className="text-xs text-destructive mt-0.5">📸 Photo required</p>
@@ -344,7 +328,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                       <p className="text-xs text-muted-foreground mt-0.5">📷 Photo optional</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0 relative" style={{ zIndex: 20, pointerEvents: 'auto' }}>
+                  <div className="flex items-center gap-1 shrink-0">
                     {isEditable && (
                       <>
                         <Button
@@ -366,32 +350,12 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                         </Button>
                       </>
                     )}
-                    {/* DEBUG: Test Toggle button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        console.log('Test Toggle button clicked', task.id);
-                        handleToggle(task.id, !done);
-                      }}
-                      className="text-[10px] px-2 py-1 rounded border border-warning text-warning-foreground bg-warning/20 hover:bg-warning/30"
-                    >
-                      Test Toggle
-                    </button>
-                    {/* Native checkbox in a 32x32 click target */}
-                    <label
-                      className="inline-flex items-center justify-center h-8 w-8 cursor-pointer ml-1"
-                      style={{ pointerEvents: 'auto' }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={done}
-                        onChange={(e) => {
-                          console.log('native checkbox changed', task.id, e.target.checked);
-                          handleToggle(task.id, e.target.checked);
-                        }}
-                        className="h-5 w-5 cursor-pointer accent-primary"
-                      />
-                    </label>
+                    <Checkbox
+                      checked={done}
+                      onCheckedChange={(v) => handleToggle(task.id, !!v)}
+                      disabled={!isEditable}
+                      className="h-5 w-5 ml-1"
+                    />
                   </div>
                 </div>
 
