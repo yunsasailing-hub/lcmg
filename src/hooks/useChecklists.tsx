@@ -90,7 +90,27 @@ export function useUpsertCompletion() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_data, variables) => {
+    // Optimistic update: patch cache immediately so UI flips before round-trip
+    onMutate: async (variables) => {
+      const key = ['task-completions', variables.instance_id];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<any[]>(key);
+      queryClient.setQueryData<any[]>(key, (old = []) => {
+        const idx = old.findIndex(c => c.task_id === variables.task_id);
+        const merged = idx >= 0 ? { ...old[idx], ...variables } : { id: `temp-${variables.task_id}`, ...variables };
+        if (idx >= 0) {
+          const next = old.slice();
+          next[idx] = merged;
+          return next;
+        }
+        return [...old, merged];
+      });
+      return { previous, key };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(ctx.key, ctx.previous);
+    },
+    onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['task-completions', variables.instance_id] });
     },
   });

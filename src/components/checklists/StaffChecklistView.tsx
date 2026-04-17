@@ -175,21 +175,22 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
     });
   }, [tasks, completionMap, isEditable]);
 
-  const handleToggle = (taskId: string, current: boolean) => {
-    // DEBUG: editability gate temporarily removed — force-toggle the item
-    console.log('handleToggle fired', { taskId, current, isEditable });
+  const handleToggle = (taskId: string, checked: boolean) => {
+    console.log('handleToggle fired', taskId, checked);
     upsert.mutate({
       instance_id: instanceId,
       task_id: taskId,
-      is_completed: !current,
-      completed_by: !current ? user!.id : null,
-      completed_at: !current ? new Date().toISOString() : null,
+      is_completed: checked,
+      completed_by: checked ? user!.id : null,
+      completed_at: checked ? new Date().toISOString() : null,
     }, {
+      onSuccess: () => console.log('database mutation success', taskId),
       onError: (err: any) => {
-        console.error('Toggle failed', err);
-        toast.error(err?.message || 'Toggle failed');
+        console.error('database mutation failed', err);
+        toast.error(err?.message || 'Failed to save checklist item');
       },
     });
+    console.log('local state updated', taskId, checked);
   };
 
   const handlePhoto = async (taskId: string) => {
@@ -315,13 +316,15 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             const needsPhoto = task.photo_requirement === 'mandatory' && !c?.photo_url;
             const photoReq = task.photo_requirement as PhotoRequirement;
 
+            console.log('row rendered', task.id, done);
             return (
               <div
                 key={task.id}
-                className={`rounded-lg border bg-card p-3 space-y-2 ${needsPhoto && done ? 'border-destructive/50' : ''}`}
+                className={`relative rounded-lg border bg-card p-3 space-y-2 ${needsPhoto && done ? 'border-destructive/50' : ''}`}
+                style={{ pointerEvents: 'auto' }}
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0" style={{ pointerEvents: 'auto' }}>
                     <p className={`text-sm font-medium ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
                     {photoReq === 'mandatory' && (
                       <p className="text-xs text-destructive mt-0.5">📸 Photo required</p>
@@ -330,7 +333,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                       <p className="text-xs text-muted-foreground mt-0.5">📷 Photo optional</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0 relative" style={{ zIndex: 20, pointerEvents: 'auto' }}>
                     {isEditable && (
                       <>
                         <Button
@@ -352,19 +355,32 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                         </Button>
                       </>
                     )}
-                    <Checkbox
-                      checked={done}
-                      onCheckedChange={() => {
-                        // eslint-disable-next-line no-console
-                        console.log('Checkbox clicked', task.id, { done, isEditable });
-                        handleToggle(task.id, done);
+                    {/* DEBUG: Test Toggle button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('Test Toggle button clicked', task.id);
+                        handleToggle(task.id, !done);
                       }}
-                      disabled={false}
-                      className="h-5 w-5 ml-1 relative z-10 cursor-pointer"
-                    />
-                    {!isEditable && (
-                      <span className="text-[10px] text-destructive ml-1">(forced)</span>
-                    )}
+                      className="text-[10px] px-2 py-1 rounded border border-warning text-warning-foreground bg-warning/20 hover:bg-warning/30"
+                    >
+                      Test Toggle
+                    </button>
+                    {/* Native checkbox in a 32x32 click target */}
+                    <label
+                      className="inline-flex items-center justify-center h-8 w-8 cursor-pointer ml-1"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={done}
+                        onChange={(e) => {
+                          console.log('native checkbox changed', task.id, e.target.checked);
+                          handleToggle(task.id, e.target.checked);
+                        }}
+                        className="h-5 w-5 cursor-pointer accent-primary"
+                      />
+                    </label>
                   </div>
                 </div>
 
