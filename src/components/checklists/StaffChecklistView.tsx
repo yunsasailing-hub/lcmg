@@ -63,7 +63,7 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {checklists.map(instance => {
         const tpl = instance.template as any;
         const cfg = statusConfig[instance.status as ChecklistStatus];
@@ -75,12 +75,12 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
           <button
             key={instance.id}
             onClick={() => onSelect(instance.id, instance.template_id)}
-            className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent active:bg-accent"
+            className="w-full flex items-center gap-3 rounded-xl border bg-card p-4 sm:p-5 text-left transition-colors hover:bg-accent active:bg-accent min-h-[72px]"
           >
-            <StatusIcon className={`h-5 w-5 shrink-0 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
+            <StatusIcon className={`h-6 w-6 shrink-0 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</p>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <p className="font-medium text-base text-foreground truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</p>
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mt-0.5">
                 <span className="capitalize">{instance.checklist_type}</span>
                 <span>·</span>
                 <span className="capitalize">{instance.department}</span>
