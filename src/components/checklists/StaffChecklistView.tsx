@@ -63,7 +63,7 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {checklists.map(instance => {
         const tpl = instance.template as any;
         const cfg = statusConfig[instance.status as ChecklistStatus];
@@ -75,12 +75,12 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
           <button
             key={instance.id}
             onClick={() => onSelect(instance.id, instance.template_id)}
-            className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent active:bg-accent"
+            className="w-full flex items-center gap-3 rounded-xl border bg-card p-4 sm:p-5 text-left transition-colors hover:bg-accent active:bg-accent min-h-[72px]"
           >
-            <StatusIcon className={`h-5 w-5 shrink-0 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
+            <StatusIcon className={`h-6 w-6 shrink-0 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</p>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <p className="font-medium text-base text-foreground truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</p>
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mt-0.5">
                 <span className="capitalize">{instance.checklist_type}</span>
                 <span>·</span>
                 <span className="capitalize">{instance.department}</span>
@@ -225,158 +225,205 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={onBack}><ChevronLeft className="h-5 w-5" /></Button>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-heading font-semibold truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</h2>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="capitalize">{instance?.checklist_type} · {instance?.department}</span>
-            {(instance as any)?.due_datetime && (
-              <>
-                <span>·</span>
-                <span className="flex items-center gap-0.5">
-                  <Clock className="h-3 w-3" />
-                  Due at {formatDueTime((instance as any).due_datetime)}
-                </span>
-              </>
+    <div className="mx-auto max-w-6xl pb-28 lg:pb-6">
+      {/* Sticky top bar */}
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-background/95 backdrop-blur border-b">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-11 w-11" onClick={onBack}>
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg md:text-xl font-heading font-semibold truncate">
+                {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
+              </h2>
+              {instance && (() => {
+                const cfg = statusConfig[instance.status as ChecklistStatus];
+                return <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>;
+              })()}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground mt-0.5">
+              <span className="capitalize">{instance?.checklist_type} · {instance?.department}</span>
+              {(instance as any)?.due_datetime && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-0.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    Due {formatDueTime((instance as any).due_datetime)}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
+        {/* Left column — tasks */}
+        <div className="lg:col-span-2 space-y-3">
+          {instance?.status === 'rejected' && instance.rejection_note && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{instance.rejection_note}</AlertDescription>
+            </Alert>
+          )}
+
+          {manuallyLocked && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>This checklist was manually locked by manager.</AlertDescription>
+            </Alert>
+          )}
+
+          {loadingCompletions ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tasks?.map(task => {
+                const c = completionMap[task.id];
+                const done = !!c?.is_completed;
+                const needsPhoto = task.photo_requirement === 'mandatory' && !c?.photo_url;
+                const photoReq = task.photo_requirement as PhotoRequirement;
+
+                return (
+                  <div
+                    key={task.id}
+                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${needsPhoto && done ? 'border-destructive/50' : ''}`}
+                  >
+                    <div className="flex items-start gap-3 md:gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-base md:text-lg font-medium leading-snug ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                          {task.title}
+                        </p>
+                        {photoReq === 'mandatory' && (
+                          <p className="text-sm text-destructive mt-1">📸 Photo required</p>
+                        )}
+                        {photoReq === 'optional' && (
+                          <p className="text-sm text-muted-foreground mt-1">📷 Photo optional</p>
+                        )}
+                      </div>
+                      {/* Large tap target wrapping the checkbox */}
+                      <button
+                        type="button"
+                        disabled={!isEditable}
+                        onClick={() => isEditable && handleToggle(task.id, !done)}
+                        className="shrink-0 flex items-center justify-center h-14 w-14 md:h-16 md:w-16 rounded-xl border-2 border-input hover:bg-accent active:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        aria-label={done ? 'Mark incomplete' : 'Mark complete'}
+                      >
+                        <Checkbox
+                          checked={done}
+                          disabled={!isEditable}
+                          className="h-7 w-7 md:h-8 md:w-8 pointer-events-none"
+                        />
+                      </button>
+                    </div>
+
+                    {isEditable && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10 px-4"
+                          disabled={uploading === task.id}
+                          onClick={() => handlePhoto(task.id)}
+                        >
+                          <Camera className="h-4 w-4 mr-2" />
+                          {uploading === task.id ? 'Uploading…' : c?.photo_url ? 'Replace photo' : 'Add photo'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10 px-4"
+                          onClick={() => setExpandedComment(expandedComment === task.id ? null : task.id)}
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Comment
+                        </Button>
+                      </div>
+                    )}
+
+                    {c?.photo_url && (
+                      <div>
+                        <img src={c.photo_url} alt="Task photo" className="h-24 w-24 md:h-28 md:w-28 rounded-lg object-cover border" />
+                      </div>
+                    )}
+
+                    {c?.comment && (
+                      <p className="text-sm text-muted-foreground italic">💬 {c.comment}</p>
+                    )}
+
+                    {expandedComment === task.id && isEditable && (
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="Add a comment..."
+                          value={comments[task.id] || ''}
+                          onChange={e => setComments(prev => ({ ...prev, [task.id]: e.target.value }))}
+                          className="min-h-[72px] text-base"
+                        />
+                        <Button size="icon" className="shrink-0 h-12 w-12" onClick={() => handleComment(task.id)}>
+                          <Send className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right column — notes & submit (sticky on desktop/tablet landscape) */}
+        <div className="lg:col-span-1">
+          <div className="lg:sticky lg:top-24 space-y-4">
+            <div className="rounded-xl border bg-card p-4 md:p-5 space-y-2">
+              <div className="flex items-center gap-2">
+                <StickyNote className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Notes (optional)</Label>
+              </div>
+              {isEditable ? (
+                <Textarea
+                  placeholder="Add any additional notes about this checklist..."
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  className="min-h-[120px] text-base"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  {(instance as any)?.notes || 'No notes added.'}
+                </p>
+              )}
+            </div>
+
+            {isEditable && (
+              <Button
+                className="hidden lg:flex w-full h-12 text-base"
+                size="lg"
+                disabled={!canSubmit || submit.isPending}
+                onClick={handleSubmit}
+              >
+                {submit.isPending ? 'Submitting…' : 'Submit Checklist'}
+              </Button>
             )}
           </div>
         </div>
       </div>
 
-      {instance?.status === 'rejected' && instance.rejection_note && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{instance.rejection_note}</AlertDescription>
-        </Alert>
-      )}
-
-      {manuallyLocked && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>This checklist was manually locked by manager.</AlertDescription>
-        </Alert>
-      )}
-
-
-
-      {loadingCompletions ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />)}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {tasks?.map(task => {
-            const c = completionMap[task.id];
-            const done = !!c?.is_completed;
-            const needsPhoto = task.photo_requirement === 'mandatory' && !c?.photo_url;
-            const photoReq = task.photo_requirement as PhotoRequirement;
-
-            return (
-              <div
-                key={task.id}
-                className={`rounded-lg border bg-card p-3 space-y-2 ${needsPhoto && done ? 'border-destructive/50' : ''}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
-                    {photoReq === 'mandatory' && (
-                      <p className="text-xs text-destructive mt-0.5">📸 Photo required</p>
-                    )}
-                    {photoReq === 'optional' && (
-                      <p className="text-xs text-muted-foreground mt-0.5">📷 Photo optional</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {isEditable && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={uploading === task.id}
-                          onClick={() => handlePhoto(task.id)}
-                        >
-                          <Camera className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setExpandedComment(expandedComment === task.id ? null : task.id)}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    <Checkbox
-                      checked={done}
-                      onCheckedChange={(v) => handleToggle(task.id, !!v)}
-                      disabled={!isEditable}
-                      className="h-5 w-5 ml-1"
-                    />
-                  </div>
-                </div>
-
-                {c?.photo_url && (
-                  <div>
-                    <img src={c.photo_url} alt="Task photo" className="h-16 w-16 rounded-md object-cover border" />
-                  </div>
-                )}
-
-                {c?.comment && (
-                  <p className="text-xs text-muted-foreground italic">💬 {c.comment}</p>
-                )}
-
-                {expandedComment === task.id && isEditable && (
-                  <div className="flex gap-2">
-                    <Textarea
-                      placeholder="Add a comment..."
-                      value={comments[task.id] || ''}
-                      onChange={e => setComments(prev => ({ ...prev, [task.id]: e.target.value }))}
-                      className="min-h-[60px] text-sm"
-                    />
-                    <Button size="icon" className="shrink-0 h-10 w-10" onClick={() => handleComment(task.id)}>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Notes field */}
-      <div className="rounded-lg border bg-card p-3 space-y-2">
-        <div className="flex items-center gap-2">
-          <StickyNote className="h-4 w-4 text-muted-foreground" />
-          <Label className="text-sm font-medium">Notes (optional)</Label>
-        </div>
-        {isEditable ? (
-          <Textarea
-            placeholder="Add any additional notes about this checklist..."
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            className="min-h-[80px] text-sm"
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground italic">
-            {(instance as any)?.notes || 'No notes added.'}
-          </p>
-        )}
-      </div>
-
+      {/* Sticky bottom action bar — phone & tablet portrait */}
       {isEditable && (
-        <Button
-          className="w-full"
-          size="lg"
-          disabled={!canSubmit || submit.isPending}
-          onClick={handleSubmit}
-        >
-          {submit.isPending ? 'Submitting…' : 'Submit Checklist'}
-        </Button>
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+          <div className="mx-auto max-w-6xl">
+            <Button
+              className="w-full h-14 text-base"
+              size="lg"
+              disabled={!canSubmit || submit.isPending}
+              onClick={handleSubmit}
+            >
+              {submit.isPending ? 'Submitting…' : 'Submit Checklist'}
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
