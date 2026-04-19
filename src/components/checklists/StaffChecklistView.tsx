@@ -124,6 +124,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState<string | null>(null);
+  const [saveToDevice, setSaveToDeviceState] = useState<boolean>(() => getSaveToDeviceEnabled());
 
   const instance = checklists?.find(c => c.id === instanceId);
   const tpl = instance?.template as any;
@@ -197,7 +198,27 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             photo_url: url,
           });
           toast.dismiss(uploadingToast);
-          toast.success('Photo uploaded successfully.');
+
+          // Local device save — only after successful upload.
+          if (getSaveToDeviceEnabled()) {
+            const savingToast = toast.loading('Saving photo to device…');
+            const result = await saveOptimizedPhotoToDevice(optimized.file, {
+              branch: (instance as any)?.branch_id ?? null,
+              department: instance?.department ?? null,
+              checklistType: instance?.checklist_type ?? null,
+              capturedAt: new Date(),
+            });
+            toast.dismiss(savingToast);
+            if (result.ok) {
+              toast.success('Photo uploaded and saved on this device.');
+            } else if (result.reason === 'permission') {
+              toast.warning('Photo uploaded to app, but could not be saved on this device.');
+            } else {
+              toast.warning('Photo uploaded, but device save failed.');
+            }
+          } else {
+            toast.success('Photo uploaded successfully.');
+          }
         } catch {
           toast.dismiss(uploadingToast);
           toast.error('Photo upload failed. Please try again.');
@@ -205,9 +226,9 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       } catch (err) {
         toast.dismiss(optimizingToast);
         if (err instanceof ImageTooLargeError) {
-          toast.error(err.message);
+          toast.error('Photo processing failed. Please retake the photo.');
         } else {
-          toast.error('Photo upload failed. Please try again.');
+          toast.error('Photo processing failed. Please retake the photo.');
         }
       } finally {
         setUploading(null);
