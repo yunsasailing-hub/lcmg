@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN } from '@/lib/timezone';
+import { compressImage } from '@/lib/imageCompression';
 import {
   useMyChecklists,
   useTemplateTasks,
@@ -177,7 +178,8 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       if (!file) return;
       setUploading(taskId);
       try {
-        const url = await uploadChecklistPhoto(file, user!.id);
+        const compressed = await compressImage(file, { maxSizeKB: 500, maxDimension: 1600 });
+        const url = await uploadChecklistPhoto(compressed, user!.id);
         upsert.mutate({
           instance_id: instanceId,
           task_id: taskId,
