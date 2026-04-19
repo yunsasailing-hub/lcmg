@@ -16,6 +16,8 @@ import {
   getSaveToDeviceEnabled,
   setSaveToDeviceEnabled,
 } from '@/lib/saveToDevice';
+import { logSaveStep } from '@/lib/saveDebug';
+import PhotoSaveDebugPanel from './PhotoSaveDebugPanel';
 import {
   useMyChecklists,
   useTemplateTasks,
@@ -184,13 +186,30 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       const file = input.files?.[0];
       if (!file) return;
       setUploading(taskId);
+      logSaveStep({ step: 'captureStarted' });
+      logSaveStep({ step: 'fileReceived', name: file.name, mime: file.type, size: file.size });
       const optimizingToast = toast.loading('Optimizing photo…');
       try {
+        logSaveStep({ step: 'optimizationStarted' });
         const optimized = await optimizeChecklistImage(file);
+        logSaveStep({
+          step: 'optimizationSuccess',
+          width: optimized.width,
+          height: optimized.height,
+          size: optimized.size,
+          mime: optimized.file.type,
+        });
         toast.dismiss(optimizingToast);
         const uploadingToast = toast.loading('Uploading photo…');
         try {
+          logSaveStep({
+            step: 'uploadStarted',
+            instanceId,
+            taskId,
+            userId: user!.id,
+          });
           const url = await uploadChecklistPhoto(optimized.file, user!.id);
+          logSaveStep({ step: 'uploadSuccess', url });
           upsert.mutate({
             instance_id: instanceId,
             task_id: taskId,
@@ -210,21 +229,32 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             });
             toast.dismiss(savingToast);
             if (result.ok === true) {
+              logSaveStep({ step: 'final', outcome: 'uploaded+saved' });
               toast.success('Photo uploaded and saved on this device.');
             } else if (result.ok === false && result.reason === 'permission') {
+              logSaveStep({ step: 'final', outcome: 'uploaded+saveFailed' });
               toast.warning('Photo uploaded to app, but could not be saved on this device.');
             } else {
+              logSaveStep({ step: 'final', outcome: 'uploaded+saveFailed' });
               toast.warning('Photo uploaded, but device save failed.');
             }
           } else {
+            logSaveStep({ step: 'final', outcome: 'uploaded+saved' });
             toast.success('Photo uploaded successfully.');
           }
-        } catch {
+        } catch (uploadErr: any) {
           toast.dismiss(uploadingToast);
+          logSaveStep({ step: 'uploadFailed', error: uploadErr?.message ?? String(uploadErr) });
+          logSaveStep({ step: 'final', outcome: 'uploadFailed' });
           toast.error('Photo upload failed. Please try again.');
         }
       } catch (err) {
         toast.dismiss(optimizingToast);
+        logSaveStep({
+          step: 'optimizationFailed',
+          error: err instanceof Error ? err.message : String(err),
+        });
+        logSaveStep({ step: 'final', outcome: 'processingFailed' });
         if (err instanceof ImageTooLargeError) {
           toast.error('Photo processing failed. Please retake the photo.');
         } else {
@@ -463,6 +493,8 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                 />
               </div>
             </div>
+
+            <PhotoSaveDebugPanel />
 
             {isEditable && (
               <Button
