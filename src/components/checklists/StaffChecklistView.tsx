@@ -494,6 +494,8 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
               </div>
             </div>
 
+            <PhotoSaveDebugPanel />
+
             {isEditable && (
               <Button
                 className="hidden lg:flex w-full h-12 text-base"
