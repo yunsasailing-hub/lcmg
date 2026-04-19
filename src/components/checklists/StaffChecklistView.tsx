@@ -209,9 +209,9 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
               capturedAt: new Date(),
             });
             toast.dismiss(savingToast);
-            if (result.ok) {
+            if (result.ok === true) {
               toast.success('Photo uploaded and saved on this device.');
-            } else if (result.reason === 'permission') {
+            } else if (result.ok === false && result.reason === 'permission') {
               toast.warning('Photo uploaded to app, but could not be saved on this device.');
             } else {
               toast.warning('Photo uploaded, but device save failed.');
