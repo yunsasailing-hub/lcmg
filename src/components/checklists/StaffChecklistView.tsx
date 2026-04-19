@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote } from 'lucide-react';
+import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,11 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN } from '@/lib/timezone';
 import { optimizeChecklistImage, ImageTooLargeError } from '@/lib/imageCompression';
+import {
+  saveOptimizedPhotoToDevice,
+  getSaveToDeviceEnabled,
+  setSaveToDeviceEnabled,
+} from '@/lib/saveToDevice';
 import {
   useMyChecklists,
   useTemplateTasks,
@@ -118,6 +124,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState<string | null>(null);
+  const [saveToDevice, setSaveToDeviceState] = useState<boolean>(() => getSaveToDeviceEnabled());
 
   const instance = checklists?.find(c => c.id === instanceId);
   const tpl = instance?.template as any;
@@ -191,7 +198,27 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             photo_url: url,
           });
           toast.dismiss(uploadingToast);
-          toast.success('Photo uploaded successfully.');
+
+          // Local device save — only after successful upload.
+          if (getSaveToDeviceEnabled()) {
+            const savingToast = toast.loading('Saving photo to device…');
+            const result = await saveOptimizedPhotoToDevice(optimized.file, {
+              branch: (instance as any)?.branch_id ?? null,
+              department: instance?.department ?? null,
+              checklistType: instance?.checklist_type ?? null,
+              capturedAt: new Date(),
+            });
+            toast.dismiss(savingToast);
+            if (result.ok === true) {
+              toast.success('Photo uploaded and saved on this device.');
+            } else if (result.ok === false && result.reason === 'permission') {
+              toast.warning('Photo uploaded to app, but could not be saved on this device.');
+            } else {
+              toast.warning('Photo uploaded, but device save failed.');
+            }
+          } else {
+            toast.success('Photo uploaded successfully.');
+          }
         } catch {
           toast.dismiss(uploadingToast);
           toast.error('Photo upload failed. Please try again.');
@@ -199,9 +226,9 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       } catch (err) {
         toast.dismiss(optimizingToast);
         if (err instanceof ImageTooLargeError) {
-          toast.error(err.message);
+          toast.error('Photo processing failed. Please retake the photo.');
         } else {
-          toast.error('Photo upload failed. Please try again.');
+          toast.error('Photo processing failed. Please retake the photo.');
         }
       } finally {
         setUploading(null);
@@ -411,6 +438,30 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                   {(instance as any)?.notes || 'No notes added.'}
                 </p>
               )}
+            </div>
+
+            <div className="rounded-xl border bg-card p-4 md:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <Label htmlFor="save-to-device" className="text-sm font-medium block">
+                      Save checklist photos to this device
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Photos are uploaded first, then saved locally.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="save-to-device"
+                  checked={saveToDevice}
+                  onCheckedChange={(v) => {
+                    setSaveToDeviceState(v);
+                    setSaveToDeviceEnabled(v);
+                  }}
+                />
+              </div>
             </div>
 
             {isEditable && (
