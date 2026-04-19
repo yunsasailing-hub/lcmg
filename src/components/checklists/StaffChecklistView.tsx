@@ -440,6 +440,30 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
               )}
             </div>
 
+            <div className="rounded-xl border bg-card p-4 md:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <Label htmlFor="save-to-device" className="text-sm font-medium block">
+                      Save checklist photos to this device
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Photos are uploaded first, then saved locally.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="save-to-device"
+                  checked={saveToDevice}
+                  onCheckedChange={(v) => {
+                    setSaveToDeviceState(v);
+                    setSaveToDeviceEnabled(v);
+                  }}
+                />
+              </div>
+            </div>
+
             {isEditable && (
               <Button
                 className="hidden lg:flex w-full h-12 text-base"
