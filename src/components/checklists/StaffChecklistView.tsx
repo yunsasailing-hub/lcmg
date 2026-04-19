@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote } from 'lucide-react';
+import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,11 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN } from '@/lib/timezone';
 import { optimizeChecklistImage, ImageTooLargeError } from '@/lib/imageCompression';
+import {
+  saveOptimizedPhotoToDevice,
+  getSaveToDeviceEnabled,
+  setSaveToDeviceEnabled,
+} from '@/lib/saveToDevice';
 import {
   useMyChecklists,
   useTemplateTasks,
