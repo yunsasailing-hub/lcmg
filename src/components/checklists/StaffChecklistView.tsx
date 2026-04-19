@@ -177,17 +177,32 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       const file = input.files?.[0];
       if (!file) return;
       setUploading(taskId);
+      const optimizingToast = toast.loading('Optimizing photo…');
       try {
-        const compressed = await compressImage(file, { maxSizeKB: 500, maxDimension: 1600 });
-        const url = await uploadChecklistPhoto(compressed, user!.id);
-        upsert.mutate({
-          instance_id: instanceId,
-          task_id: taskId,
-          is_completed: completionMap[taskId]?.is_completed ?? false,
-          photo_url: url,
-        });
-      } catch {
-        toast.error('Failed to upload photo');
+        const optimized = await optimizeChecklistImage(file);
+        toast.dismiss(optimizingToast);
+        const uploadingToast = toast.loading('Uploading photo…');
+        try {
+          const url = await uploadChecklistPhoto(optimized.file, user!.id);
+          upsert.mutate({
+            instance_id: instanceId,
+            task_id: taskId,
+            is_completed: completionMap[taskId]?.is_completed ?? false,
+            photo_url: url,
+          });
+          toast.dismiss(uploadingToast);
+          toast.success('Photo uploaded successfully.');
+        } catch {
+          toast.dismiss(uploadingToast);
+          toast.error('Photo upload failed. Please try again.');
+        }
+      } catch (err) {
+        toast.dismiss(optimizingToast);
+        if (err instanceof ImageTooLargeError) {
+          toast.error(err.message);
+        } else {
+          toast.error('Photo upload failed. Please try again.');
+        }
       } finally {
         setUploading(null);
       }
