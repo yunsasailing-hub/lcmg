@@ -299,7 +299,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   };
 
   return (
-    <div className="mx-auto max-w-6xl pb-28 lg:pb-6">
+    <div className="mx-auto max-w-6xl pb-[calc(env(safe-area-inset-bottom)+10rem)] lg:pb-6">
       {/* Sticky top bar */}
       <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-background/95 backdrop-blur border-b">
         <div className="flex items-center gap-2">
@@ -510,9 +510,15 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         </div>
       </div>
 
-      {/* Sticky bottom action bar — phone & tablet portrait */}
+      {/* Sticky bottom action bar — phone & tablet portrait. Sits ABOVE the mobile bottom nav (64px + safe area). */}
       {isEditable && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+        <div
+          className="lg:hidden fixed left-0 right-0 z-40 border-t bg-background/95 backdrop-blur px-4 py-3"
+          style={{
+            bottom: 'calc(64px + env(safe-area-inset-bottom))',
+            paddingBottom: '0.75rem',
+          }}
+        >
           <div className="mx-auto max-w-6xl">
             <Button
               className="w-full h-14 text-base"
