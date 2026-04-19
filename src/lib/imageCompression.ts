@@ -1,39 +1,46 @@
-// Client-side image compression for checklist photo uploads.
-// Targets a max file size (default 500KB) by resizing + iteratively lowering JPEG quality.
+// Automatic checklist image optimization.
+// Spec:
+//  - Output: JPEG, max 1280x1280 (aspect preserved)
+//  - Quality ladder: 0.75 → 0.70 → 0.65 → 0.60 (target ≤ 300 KB)
+//  - If still > 500 KB hard max: retry at 1024x1024 @ 0.60
+//  - If still > 500 KB: throw ImageTooLargeError → caller blocks upload
 
-export interface CompressOptions {
-  maxSizeKB?: number;      // target max size in KB
-  maxDimension?: number;   // max width/height in px on longest edge
-  mimeType?: string;       // output mime
+export class ImageTooLargeError extends Error {
+  constructor(message = 'Image is too large. Please retake the photo.') {
+    super(message);
+    this.name = 'ImageTooLargeError';
+  }
 }
 
-const DEFAULTS: Required<CompressOptions> = {
-  maxSizeKB: 500,
-  maxDimension: 1600,
-  mimeType: 'image/jpeg',
-};
+export interface OptimizedImage {
+  file: File;
+  width: number;
+  height: number;
+  size: number; // bytes
+}
+
+const TARGET_BYTES = 300 * 1024;
+const HARD_MAX_BYTES = 500 * 1024;
+const PRIMARY_DIM = 1280;
+const FALLBACK_DIM = 1024;
+const QUALITY_LADDER = [0.75, 0.7, 0.65, 0.6];
+const MIME = 'image/jpeg';
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = (e) => {
-      URL.revokeObjectURL(url);
-      reject(e);
-    };
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
     img.src = url;
   });
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> {
-  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, MIME, quality));
 }
 
-function drawToCanvas(img: HTMLImageElement, maxDim: number): HTMLCanvasElement {
+function drawToCanvas(img: HTMLImageElement, maxDim: number): { canvas: HTMLCanvasElement; width: number; height: number } {
   let { width, height } = img;
   const longest = Math.max(width, height);
   if (longest > maxDim) {
@@ -46,53 +53,50 @@ function drawToCanvas(img: HTMLImageElement, maxDim: number): HTMLCanvasElement 
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D context unavailable');
+  // White background in case source has alpha (JPEG has no alpha).
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
   ctx.drawImage(img, 0, 0, width, height);
-  return canvas;
+  return { canvas, width, height };
+}
+
+function toJpegFile(blob: Blob, originalName: string): File {
+  const baseName = originalName.replace(/\.[^.]+$/, '') || 'photo';
+  return new File([blob], `${baseName}.jpg`, { type: MIME });
 }
 
 /**
- * Compress an image File so its final size is <= maxSizeKB.
- * Returns a JPEG File. Falls back to original file on failure.
+ * Optimize a checklist photo per spec. Always returns a JPEG.
+ * Throws ImageTooLargeError if the image cannot be brought under the hard 500 KB cap.
  */
-export async function compressImage(file: File, opts: CompressOptions = {}): Promise<File> {
-  const { maxSizeKB, maxDimension, mimeType } = { ...DEFAULTS, ...opts };
-  const targetBytes = maxSizeKB * 1024;
+export async function optimizeChecklistImage(file: File): Promise<OptimizedImage> {
+  const img = await loadImage(file);
 
-  // Skip very small images already under target.
-  if (file.size <= targetBytes && file.type.startsWith('image/')) {
-    return file;
+  // Pass 1: 1280px, walk the quality ladder. Accept first result ≤ 300 KB.
+  const pass1 = drawToCanvas(img, PRIMARY_DIM);
+  let lastBlob: Blob | null = null;
+  let lastDims = { width: pass1.width, height: pass1.height };
+
+  for (const q of QUALITY_LADDER) {
+    const blob = await canvasToBlob(pass1.canvas, q);
+    if (!blob) continue;
+    lastBlob = blob;
+    if (blob.size <= TARGET_BYTES) {
+      return { file: toJpegFile(blob, file.name), width: pass1.width, height: pass1.height, size: blob.size };
+    }
   }
 
-  try {
-    const img = await loadImage(file);
-
-    // Try progressively smaller dimensions + qualities until we fit under target.
-    const dimensionSteps = [maxDimension, 1280, 1024, 800, 640];
-    const qualitySteps = [0.85, 0.75, 0.65, 0.55, 0.45, 0.35];
-
-    let bestBlob: Blob | null = null;
-
-    for (const dim of dimensionSteps) {
-      const canvas = drawToCanvas(img, dim);
-      for (const q of qualitySteps) {
-        const blob = await canvasToBlob(canvas, mimeType, q);
-        if (!blob) continue;
-        bestBlob = blob;
-        if (blob.size <= targetBytes) {
-          const baseName = file.name.replace(/\.[^.]+$/, '') || 'photo';
-          return new File([blob], `${baseName}.jpg`, { type: mimeType });
-        }
-      }
-    }
-
-    // Couldn't get under target; return smallest blob produced.
-    if (bestBlob) {
-      const baseName = file.name.replace(/\.[^.]+$/, '') || 'photo';
-      return new File([bestBlob], `${baseName}.jpg`, { type: mimeType });
-    }
-  } catch (err) {
-    console.warn('[compressImage] Falling back to original file:', err);
+  // Pass 1 done. If best result is within hard max, accept it.
+  if (lastBlob && lastBlob.size <= HARD_MAX_BYTES) {
+    return { file: toJpegFile(lastBlob, file.name), width: lastDims.width, height: lastDims.height, size: lastBlob.size };
   }
 
-  return file;
+  // Pass 2: 1024px @ 0.60.
+  const pass2 = drawToCanvas(img, FALLBACK_DIM);
+  const blob2 = await canvasToBlob(pass2.canvas, 0.6);
+  if (blob2 && blob2.size <= HARD_MAX_BYTES) {
+    return { file: toJpegFile(blob2, file.name), width: pass2.width, height: pass2.height, size: blob2.size };
+  }
+
+  throw new ImageTooLargeError();
 }
