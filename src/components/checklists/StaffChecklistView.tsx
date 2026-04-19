@@ -16,6 +16,8 @@ import {
   getSaveToDeviceEnabled,
   setSaveToDeviceEnabled,
 } from '@/lib/saveToDevice';
+import { logSaveStep } from '@/lib/saveDebug';
+import PhotoSaveDebugPanel from './PhotoSaveDebugPanel';
 import {
   useMyChecklists,
   useTemplateTasks,
