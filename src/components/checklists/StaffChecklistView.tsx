@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN } from '@/lib/timezone';
-import { compressImage } from '@/lib/imageCompression';
+import { optimizeChecklistImage, ImageTooLargeError } from '@/lib/imageCompression';
 import {
   useMyChecklists,
   useTemplateTasks,
