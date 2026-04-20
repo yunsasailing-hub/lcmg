@@ -889,8 +889,13 @@ export type Database = {
           id: string
           instruction_en: string
           instruction_vi: string | null
+          note: string | null
+          procedure_type: Database["public"]["Enums"]["procedure_type"]
           recipe_id: string
           step_number: number
+          temperature: string | null
+          tool: string | null
+          warning: string | null
         }
         Insert: {
           created_at?: string
@@ -898,8 +903,13 @@ export type Database = {
           id?: string
           instruction_en: string
           instruction_vi?: string | null
+          note?: string | null
+          procedure_type?: Database["public"]["Enums"]["procedure_type"]
           recipe_id: string
           step_number: number
+          temperature?: string | null
+          tool?: string | null
+          warning?: string | null
         }
         Update: {
           created_at?: string
@@ -907,8 +917,13 @@ export type Database = {
           id?: string
           instruction_en?: string
           instruction_vi?: string | null
+          note?: string | null
+          procedure_type?: Database["public"]["Enums"]["procedure_type"]
           recipe_id?: string
           step_number?: number
+          temperature?: string | null
+          tool?: string | null
+          warning?: string | null
         }
         Relationships: [
           {
@@ -1243,6 +1258,15 @@ export type Database = {
       notification_status: "unread" | "read" | "archived"
       notification_type: "notice" | "warning" | "escalation"
       photo_requirement: "none" | "optional" | "mandatory"
+      procedure_type:
+        | "prep"
+        | "cook"
+        | "assemble"
+        | "bake"
+        | "mix"
+        | "finish"
+        | "service_prep"
+        | "other"
       recipe_kind: "dish" | "prep" | "batch" | "sub_recipe"
       recipe_status: "draft" | "active" | "archived"
       storage_type: "dry" | "chilled" | "frozen" | "ambient"
@@ -1408,6 +1432,16 @@ export const Constants = {
       notification_status: ["unread", "read", "archived"],
       notification_type: ["notice", "warning", "escalation"],
       photo_requirement: ["none", "optional", "mandatory"],
+      procedure_type: [
+        "prep",
+        "cook",
+        "assemble",
+        "bake",
+        "mix",
+        "finish",
+        "service_prep",
+        "other",
+      ],
       recipe_kind: ["dish", "prep", "batch", "sub_recipe"],
       recipe_status: ["draft", "active", "archived"],
       storage_type: ["dry", "chilled", "frozen", "ambient"],
