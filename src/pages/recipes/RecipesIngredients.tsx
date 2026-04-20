@@ -164,8 +164,8 @@ export default function RecipesIngredients() {
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('recipes.ingredients.allUnits')}</SelectItem>
-            {units.map(u => (
-              <SelectItem key={u.id} value={u.id}>{u.code}</SelectItem>
+            {[...units].sort((a, b) => a.name_en.localeCompare(b.name_en)).map(u => (
+              <SelectItem key={u.id} value={u.id}>{u.name_en}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -285,7 +285,7 @@ export default function RecipesIngredients() {
                       {typeName ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">{cat?.name_en ?? '—'}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm">{unit?.code ?? '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">{unit?.name_en ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">{sh?.name ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">
                       {ing.price != null

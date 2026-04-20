@@ -88,7 +88,7 @@ export default function RecipesSettings() {
             rows={units}
             isLoading={uLoading}
             fields={unitFields}
-            primaryLabel={(r) => `${r.code} — ${r.name_en}`}
+            primaryLabel={(r) => r.name_en}
             secondaryLabel={(r) => r.name_vi || null}
             emptyTitle={t('recipes.settings.empty.units')}
             addLabel={t('recipes.settings.add.unit')}
