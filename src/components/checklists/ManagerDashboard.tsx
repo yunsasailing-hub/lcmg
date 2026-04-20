@@ -20,7 +20,6 @@ import {
   useAllChecklists,
   useTemplateTasks,
   useTaskCompletions,
-  useVerifyChecklist,
   useDeleteInstance,
   useBranches,
   type ChecklistFilters,
