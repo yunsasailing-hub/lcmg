@@ -342,6 +342,11 @@ const vi: Translations = {
         fixBeforeSave: 'Vui lòng sửa các dòng lỗi trước khi lưu.',
       },
     },
+    summary: {
+      sellingPrice: 'Giá bán',
+      foodCostPct: 'Tỷ lệ chi phí thực phẩm',
+      noSellingPrice: 'Đặt giá bán',
+    },
     ingredients: {
       title: 'Nguyên liệu',
       subtitle: 'Danh sách nguyên liệu thô dùng trong công thức',
