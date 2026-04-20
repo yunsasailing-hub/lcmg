@@ -313,6 +313,8 @@ export default function RecipeIngredientsTab({ recipeId, currency, canManage }: 
                       onChange={(v) => onPickIngredient(l._key, v || null)}
                       options={ingredientOptions}
                       placeholder={t('recipes.lines.searchIngredient') as string}
+                      searchPlaceholder={t('recipes.lines.searchIngredient') as string}
+                      emptyText={t('recipes.lines.noIngredients') as string}
                     />
                     {err?.ingredient && <p className="mt-1 text-xs text-destructive">{err.ingredient}</p>}
                   </div>
