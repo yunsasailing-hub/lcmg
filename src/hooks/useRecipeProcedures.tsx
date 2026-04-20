@@ -20,6 +20,10 @@ export interface RecipeProcedureRow {
   duration_minutes: number | null;
   temperature: string | null;
   note: string | null;
+  image_url: string | null;
+  image_storage_path: string | null;
+  video_url: string | null;
+  web_link: string | null;
   created_at: string;
 }
 
@@ -33,6 +37,10 @@ export interface ProcedureStepInput {
   duration_minutes: number | null;
   temperature: string | null;
   note: string | null;
+  image_url?: string | null;
+  image_storage_path?: string | null;
+  video_url?: string | null;
+  web_link?: string | null;
 }
 
 export function useRecipeProcedures(recipeId: string | undefined) {
@@ -81,6 +89,10 @@ export function useSaveRecipeProcedures() {
           duration_minutes: s.duration_minutes,
           temperature: s.temperature,
           note: s.note,
+          image_url: s.image_url ?? null,
+          image_storage_path: s.image_storage_path ?? null,
+          video_url: s.video_url ?? null,
+          web_link: s.web_link ?? null,
         };
         if (s.id) {
           const { error } = await (supabase as any)
