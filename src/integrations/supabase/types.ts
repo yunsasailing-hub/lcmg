@@ -816,6 +816,7 @@ export type Database = {
       }
       recipe_ingredients: {
         Row: {
+          cost_adjust_pct: number
           created_at: string
           id: string
           ingredient_id: string | null
@@ -827,6 +828,7 @@ export type Database = {
           unit_id: string | null
         }
         Insert: {
+          cost_adjust_pct?: number
           created_at?: string
           id?: string
           ingredient_id?: string | null
@@ -838,6 +840,7 @@ export type Database = {
           unit_id?: string | null
         }
         Update: {
+          cost_adjust_pct?: number
           created_at?: string
           id?: string
           ingredient_id?: string | null

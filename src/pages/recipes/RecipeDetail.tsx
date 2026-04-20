@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, Lock } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
+import RecipeIngredientsTab from '@/components/recipes/RecipeIngredientsTab';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -540,9 +541,12 @@ export default function RecipeDetail() {
             </CardContent>
           </Card>
 
+          {/* Phase 2: Ingredients & Cost */}
+          <RecipeIngredientsTab recipeId={recipe.id} currency={recipe.currency} canManage={canManage} />
+
           {/* Future tab placeholders */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {(['ingredients', 'procedure', 'media', 'service'] as const).map(key => (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(['procedure', 'media', 'service'] as const).map(key => (
               <Card key={key} className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
                   <Lock className="h-4 w-4" />
