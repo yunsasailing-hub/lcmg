@@ -3,6 +3,7 @@ import RecipesDashboard from './recipes/RecipesDashboard';
 import RecipesIngredients from './recipes/RecipesIngredients';
 import IngredientDetail from './recipes/IngredientDetail';
 import RecipesPlaceholder from './recipes/RecipesPlaceholder';
+import RecipesSettings from './recipes/RecipesSettings';
 
 export default function Recipes() {
   return (
