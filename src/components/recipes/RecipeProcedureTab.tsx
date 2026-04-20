@@ -375,6 +375,70 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                       placeholder={t('recipes.procedure.notePh') as string}
                     />
                   </div>
+
+                  <div className="sm:col-span-12 rounded-md border border-dashed p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                      {t('recipes.media.stepMediaTitle')}
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-12">
+                      <div className="sm:col-span-12">
+                        <label className="text-xs text-muted-foreground">{t('recipes.media.stepImage')}</label>
+                        <div className="mt-1 flex flex-wrap items-center gap-3">
+                          {s.image_url ? (
+                            <img src={s.image_url} alt="" className="h-20 w-20 rounded-md border object-cover" />
+                          ) : (
+                            <div className="flex h-20 w-20 items-center justify-center rounded-md border bg-muted">
+                              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <input
+                            ref={el => (fileInputs.current[s._key] = el)}
+                            type="file" accept="image/*" hidden
+                            onChange={e => {
+                              const f = e.target.files?.[0];
+                              e.target.value = '';
+                              if (f) handleStepImageUpload(s._key, f);
+                            }}
+                          />
+                          <Button
+                            size="sm" variant="outline" type="button"
+                            onClick={() => fileInputs.current[s._key]?.click()}
+                            disabled={uploadingKey === s._key}
+                          >
+                            <Upload className="h-4 w-4" />
+                            {uploadingKey === s._key
+                              ? t('recipes.media.uploading')
+                              : (s.image_url ? t('recipes.media.replaceImage') : t('recipes.media.uploadImage'))}
+                          </Button>
+                          {s.image_url && (
+                            <Button
+                              size="sm" variant="ghost" type="button"
+                              onClick={() => patch(s._key, { image_url: null, image_storage_path: null })}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                              {t('recipes.media.removeImage')}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="sm:col-span-6">
+                        <label className="text-xs text-muted-foreground">{t('recipes.media.stepVideo')}</label>
+                        <Input
+                          value={s.video_url ?? ''}
+                          onChange={e => patch(s._key, { video_url: e.target.value })}
+                          placeholder={t('recipes.media.videoUrl') as string}
+                        />
+                      </div>
+                      <div className="sm:col-span-6">
+                        <label className="text-xs text-muted-foreground">{t('recipes.media.stepWeb')}</label>
+                        <Input
+                          value={s.web_link ?? ''}
+                          onChange={e => patch(s._key, { web_link: e.target.value })}
+                          placeholder={t('recipes.media.webUrl') as string}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
