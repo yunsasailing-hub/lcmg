@@ -144,11 +144,8 @@ export default function IngredientDetail() {
             <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/80">
               {t('recipes.ingredients.sections.storage')}
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div>
               <Field label={t('recipes.ingredients.fields.storehouse')}>{sh?.name ?? '—'}</Field>
-              <Field label={t('recipes.ingredients.fields.storage')}>
-                {t(`recipes.ingredients.storageType.${ing.storage_type}`)}
-              </Field>
             </div>
           </CardContent>
         </Card>
