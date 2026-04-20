@@ -27,7 +27,6 @@ import { CURRENCIES, mapNameToLegacyEnum } from '@/hooks/useIngredients';
 export const COLUMNS = {
   id: 'ID',
   name: 'Name',
-  nameVi: 'Name (VI)',
   type: 'Type',
   category: 'Ingredient Category',
   unit: 'Unit',
@@ -41,7 +40,6 @@ export const COLUMNS = {
 export const EXPORT_HEADER_ORDER = [
   COLUMNS.id,
   COLUMNS.name,
-  COLUMNS.nameVi,
   COLUMNS.type,
   COLUMNS.category,
   COLUMNS.unit,
@@ -168,7 +166,7 @@ export function buildExportRows(
   return rows.map((i) => ({
     [COLUMNS.id]: i.code ?? '',
     [COLUMNS.name]: i.name_en ?? '',
-    [COLUMNS.nameVi]: i.name_vi ?? '',
+    
     [COLUMNS.type]: i.ingredient_type_id
       ? typeById.get(i.ingredient_type_id)?.name_en ?? ''
       : '',
@@ -294,7 +292,7 @@ export function validateRows(
 
     const idVal = raw[COLUMNS.id] ?? '';
     const nameVal = raw[COLUMNS.name] ?? '';
-    const nameViVal = raw[COLUMNS.nameVi] ?? '';
+    
     const typeVal = raw[COLUMNS.type] ?? '';
     const catVal = raw[COLUMNS.category] ?? '';
     const unitVal = raw[COLUMNS.unit] ?? '';
@@ -434,7 +432,7 @@ export function validateRows(
       parsed = {
         code,
         name_en,
-        name_vi: norm(nameViVal) || null,
+        name_vi: null,
         is_active,
         ingredient_type_id: typeMatch.id,
         ingredient_type: mapNameToLegacyEnum(typeMatch.name_en),

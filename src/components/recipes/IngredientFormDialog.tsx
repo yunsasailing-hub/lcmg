@@ -34,7 +34,6 @@ interface Props {
 const emptyForm = {
   code: '',
   name_en: '',
-  name_vi: '',
   is_active: true,
   ingredient_type_id: '',
   category_id: '',
@@ -76,7 +75,6 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
       setForm({
         code: ingredient.code ?? '',
         name_en: ingredient.name_en ?? '',
-        name_vi: ingredient.name_vi ?? '',
         is_active: ingredient.is_active,
         ingredient_type_id: ingredient.ingredient_type_id ?? '',
         category_id: ingredient.category_id ?? '',
@@ -196,7 +194,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         ...(ingredient?.id ? { id: ingredient.id } : {}),
         code,
         name_en: nameEn,
-        name_vi: form.name_vi.trim() || null,
+        name_vi: null,
         is_active: form.is_active,
         ingredient_type: legacyEnum,
         ingredient_type_id: form.ingredient_type_id,
@@ -245,12 +243,8 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                 <Input value={form.code} onChange={(e) => set('code', e.target.value)} required placeholder="e.g. ING-0001" />
               </div>
               <div>
-                <Label>{t('recipes.ingredients.fields.nameEn')} *</Label>
+                <Label>{t('recipes.ingredients.fields.name', { defaultValue: 'Name' })} *</Label>
                 <Input value={form.name_en} onChange={(e) => set('name_en', e.target.value)} required />
-              </div>
-              <div className="sm:col-span-2">
-                <Label>{t('recipes.ingredients.fields.nameVi')}</Label>
-                <Input value={form.name_vi} onChange={(e) => set('name_vi', e.target.value)} />
               </div>
               <div className="flex items-center gap-3 sm:col-span-2">
                 <Switch id="active" checked={form.is_active} onCheckedChange={(checked) => set('is_active', checked)} />

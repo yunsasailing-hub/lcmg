@@ -107,7 +107,7 @@ export default function IngredientDetail() {
   );
 
   return (
-    <RecipesShell title={ing.name_en} description={ing.name_vi ?? undefined} actions={actions}>
+    <RecipesShell title={ing.name_en} actions={actions}>
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="p-5 space-y-4">
@@ -126,8 +126,7 @@ export default function IngredientDetail() {
                   {ing.is_active ? t('status.active') : t('status.inactive')}
                 </Badge>
               </Field>
-              <Field label={t('recipes.ingredients.fields.nameEn')}>{ing.name_en}</Field>
-              <Field label={t('recipes.ingredients.fields.nameVi')}>{ing.name_vi ?? '—'}</Field>
+              <Field label={t('recipes.ingredients.fields.name', { defaultValue: 'Name' })}>{ing.name_en}</Field>
             </div>
           </CardContent>
         </Card>
