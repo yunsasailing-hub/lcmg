@@ -432,7 +432,7 @@ export function validateRows(
       parsed = {
         code,
         name_en,
-        name_vi: norm(nameViVal) || null,
+        name_vi: null,
         is_active,
         ingredient_type_id: typeMatch.id,
         ingredient_type: mapNameToLegacyEnum(typeMatch.name_en),
