@@ -116,6 +116,7 @@ const vi: Translations = {
     service: 'Phục vụ',
     bar: 'Quầy bar',
     office: 'Văn phòng',
+    bakery: 'Bánh mì',
   },
   validation: {
     required: 'Trường này là bắt buộc',

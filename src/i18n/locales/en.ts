@@ -114,6 +114,7 @@ const en = {
     service: 'Service',
     bar: 'Bar',
     office: 'Office',
+    bakery: 'Bakery',
   },
   validation: {
     required: 'This field is required',
