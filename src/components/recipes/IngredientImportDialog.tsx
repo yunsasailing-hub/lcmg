@@ -237,6 +237,20 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
     );
   };
 
+  const actBadge = (a: RowAction) => {
+    const cls =
+      a === 'create'
+        ? 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30'
+        : a === 'update'
+          ? 'bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-500/30'
+          : 'bg-muted text-muted-foreground border-border';
+    return (
+      <Badge variant="outline" className={cls}>
+        {ACTION_LABEL[a]}
+      </Badge>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-h-[92vh] max-w-5xl overflow-hidden flex flex-col">
