@@ -292,7 +292,7 @@ export function validateRows(
 
     const idVal = raw[COLUMNS.id] ?? '';
     const nameVal = raw[COLUMNS.name] ?? '';
-    const nameViVal = raw[COLUMNS.nameVi] ?? '';
+    
     const typeVal = raw[COLUMNS.type] ?? '';
     const catVal = raw[COLUMNS.category] ?? '';
     const unitVal = raw[COLUMNS.unit] ?? '';
