@@ -61,6 +61,11 @@ const en = {
     refresh: 'Refresh',
     export: 'Export',
     import: 'Import',
+    name: 'Name',
+    total: 'total',
+    archived: 'Archived',
+    restored: 'Restored',
+    view: 'View',
   },
   nav: {
     dashboard: 'Dashboard',
