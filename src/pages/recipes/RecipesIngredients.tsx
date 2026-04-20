@@ -25,7 +25,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import {
   useIngredients, useRecipeCategories, useRecipeUnits, useStorehouses,
-  useArchiveIngredient, INGREDIENT_TYPES,
+  useArchiveIngredient, useIngredientTypes,
   type Ingredient,
 } from '@/hooks/useIngredients';
 import { toast } from '@/hooks/use-toast';
