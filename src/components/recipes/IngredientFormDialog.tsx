@@ -173,7 +173,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
     }
   };
 
-  const storageOpts: StorageType[] = ['dry', 'chilled', 'frozen', 'ambient'];
+  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -256,31 +256,21 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
           {/* Storage */}
           <section>
             <h3 className={sectionTitle}>{t('recipes.ingredients.sections.storage')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>{t('recipes.ingredients.fields.storehouse')}</Label>
-                <Select value={form.storehouse_id || 'none'}
-                  onValueChange={v => set('storehouse_id', v === 'none' ? '' : v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t('common.none')}</SelectItem>
-                    {storehouses.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>{t('recipes.ingredients.fields.storage')}</Label>
-                <Select value={form.storage_type} onValueChange={v => set('storage_type', v as StorageType)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {storageOpts.map(s => (
-                      <SelectItem key={s} value={s}>{t(`recipes.ingredients.storageType.${s}`)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label>{t('recipes.ingredients.fields.storehouse')}</Label>
+              <Select value={form.storehouse_id || 'none'}
+                onValueChange={v => set('storehouse_id', v === 'none' ? '' : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('common.none')}</SelectItem>
+                  {storehouses.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('recipes.ingredients.fields.storehouseHelp')}
+              </p>
             </div>
           </section>
 
