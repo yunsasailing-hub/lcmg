@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Pencil, Archive, ArchiveRestore, Search, Carrot } from 'lucide-react';
+import {
+  Plus, Pencil, Archive, ArchiveRestore, Search, Carrot, Eye, ArrowUpDown,
+} from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import EmptyState from '@/components/shared/EmptyState';
 import IngredientFormDialog from '@/components/recipes/IngredientFormDialog';
@@ -21,20 +24,28 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useIngredients, useRecipeCategories, useRecipeUnits, useArchiveIngredient,
+  useIngredients, useRecipeCategories, useRecipeUnits, useStorehouses,
+  useArchiveIngredient, INGREDIENT_TYPES,
   type Ingredient,
 } from '@/hooks/useIngredients';
 import { toast } from '@/hooks/use-toast';
 
+type SortKey = 'name' | 'code' | 'category' | 'updated';
+
 export default function RecipesIngredients() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { hasAnyRole } = useAuth();
   const canManage = hasAnyRole(['owner', 'manager']);
 
   const [includeArchived, setIncludeArchived] = useState(false);
   const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [storageFilter, setStorageFilter] = useState<string>('all');
+  const [unitFilter, setUnitFilter] = useState<string>('all');
+  const [storehouseFilter, setStorehouseFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortKey>('name');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Ingredient | null>(null);
@@ -42,26 +53,46 @@ export default function RecipesIngredients() {
   const { data: ingredients = [], isLoading } = useIngredients(includeArchived);
   const { data: categories = [] } = useRecipeCategories();
   const { data: units = [] } = useRecipeUnits();
+  const { data: storehouses = [] } = useStorehouses();
   const archive = useArchiveIngredient();
 
   const categoryMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
+  const storehouseMap = useMemo(() => Object.fromEntries(storehouses.map(s => [s.id, s])), [storehouses]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    return ingredients.filter(i => {
+    const out = ingredients.filter(i => {
       if (s) {
         const hay = `${i.name_en} ${i.name_vi ?? ''} ${i.code ?? ''}`.toLowerCase();
         if (!hay.includes(s)) return false;
       }
+      if (typeFilter !== 'all' && i.ingredient_type !== typeFilter) return false;
       if (categoryFilter !== 'all' && i.category_id !== categoryFilter) return false;
-      if (storageFilter !== 'all' && i.storage_type !== storageFilter) return false;
+      if (unitFilter !== 'all' && i.base_unit_id !== unitFilter) return false;
+      if (storehouseFilter !== 'all' && i.storehouse_id !== storehouseFilter) return false;
+      if (statusFilter === 'active' && !i.is_active) return false;
+      if (statusFilter === 'inactive' && i.is_active) return false;
       return true;
     });
-  }, [ingredients, search, categoryFilter, storageFilter]);
+    out.sort((a, b) => {
+      switch (sortBy) {
+        case 'code': return (a.code ?? '').localeCompare(b.code ?? '');
+        case 'category': {
+          const ac = a.category_id ? categoryMap[a.category_id]?.name_en ?? '' : '';
+          const bc = b.category_id ? categoryMap[b.category_id]?.name_en ?? '' : '';
+          return ac.localeCompare(bc);
+        }
+        case 'updated': return (b.updated_at ?? '').localeCompare(a.updated_at ?? '');
+        default: return a.name_en.localeCompare(b.name_en);
+      }
+    });
+    return out;
+  }, [ingredients, search, typeFilter, categoryFilter, unitFilter, storehouseFilter, statusFilter, sortBy, categoryMap]);
 
   const openAdd = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (ing: Ingredient) => { setEditing(ing); setDialogOpen(true); };
+  const openView = (ing: Ingredient) => navigate(`/recipes/ingredients/${ing.id}`);
 
   const handleArchive = async () => {
     if (!archiveTarget) return;
@@ -72,6 +103,11 @@ export default function RecipesIngredients() {
       toast({ title: t('common.error'), description: (e as Error).message, variant: 'destructive' });
     }
     setArchiveTarget(null);
+  };
+
+  const clearFilters = () => {
+    setSearch(''); setTypeFilter('all'); setCategoryFilter('all');
+    setUnitFilter('all'); setStorehouseFilter('all'); setStatusFilter('all');
   };
 
   const actions = canManage ? (
@@ -97,6 +133,17 @@ export default function RecipesIngredients() {
             className="pl-9"
           />
         </div>
+
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger><SelectValue placeholder={t('recipes.ingredients.allTypes')} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('recipes.ingredients.allTypes')}</SelectItem>
+            {INGREDIENT_TYPES.map(it => (
+              <SelectItem key={it} value={it}>{t(`recipes.ingredients.typeLabel.${it}`)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -106,16 +153,49 @@ export default function RecipesIngredients() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={storageFilter} onValueChange={setStorageFilter}>
+
+        <Select value={unitFilter} onValueChange={setUnitFilter}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('recipes.ingredients.allStorage')}</SelectItem>
-            <SelectItem value="dry">{t('recipes.ingredients.storageType.dry')}</SelectItem>
-            <SelectItem value="chilled">{t('recipes.ingredients.storageType.chilled')}</SelectItem>
-            <SelectItem value="frozen">{t('recipes.ingredients.storageType.frozen')}</SelectItem>
-            <SelectItem value="ambient">{t('recipes.ingredients.storageType.ambient')}</SelectItem>
+            <SelectItem value="all">{t('recipes.ingredients.allUnits')}</SelectItem>
+            {units.map(u => (
+              <SelectItem key={u.id} value={u.id}>{u.code}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
+
+        <Select value={storehouseFilter} onValueChange={setStorehouseFilter}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('recipes.ingredients.allStorehouses')}</SelectItem>
+            {storehouses.map(s => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('recipes.ingredients.allStatuses')}</SelectItem>
+            <SelectItem value="active">{t('status.active')}</SelectItem>
+            <SelectItem value="inactive">{t('status.inactive')}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+          <SelectTrigger>
+            <ArrowUpDown className="h-4 w-4" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">{t('recipes.ingredients.sort.name')}</SelectItem>
+            <SelectItem value="code">{t('recipes.ingredients.sort.id')}</SelectItem>
+            <SelectItem value="category">{t('recipes.ingredients.sort.category')}</SelectItem>
+            <SelectItem value="updated">{t('recipes.ingredients.sort.updated')}</SelectItem>
+          </SelectContent>
+        </Select>
+
         <div className="flex items-center gap-2">
           <Switch id="archived" checked={includeArchived} onCheckedChange={setIncludeArchived} />
           <Label htmlFor="archived" className="cursor-pointer text-sm">
@@ -124,9 +204,14 @@ export default function RecipesIngredients() {
         </div>
       </div>
 
-      <p className="mb-3 text-sm text-muted-foreground">
-        {t('recipes.ingredients.countFound', { count: filtered.length })}
-      </p>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {t('recipes.ingredients.countFound', { count: filtered.length })}
+        </p>
+        <Button size="sm" variant="ghost" onClick={clearFilters}>
+          {t('common.clearFilters')}
+        </Button>
+      </div>
 
       {/* Table */}
       {isLoading ? (
@@ -150,67 +235,67 @@ export default function RecipesIngredients() {
           </p>
         )
       ) : (
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-lg border bg-card overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>{t('recipes.ingredients.cols.id')}</TableHead>
                 <TableHead>{t('recipes.ingredients.cols.name')}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t('recipes.ingredients.cols.code')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('recipes.ingredients.cols.type')}</TableHead>
                 <TableHead className="hidden md:table-cell">{t('recipes.ingredients.cols.category')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('recipes.ingredients.cols.unit')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.cols.unit')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.cols.storehouse')}</TableHead>
                 <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.cols.price')}</TableHead>
-                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.cols.storage')}</TableHead>
                 <TableHead>{t('recipes.ingredients.cols.status')}</TableHead>
-                {canManage && <TableHead className="text-right">{t('recipes.ingredients.cols.actions')}</TableHead>}
+                <TableHead className="text-right">{t('recipes.ingredients.cols.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map(ing => {
                 const cat = ing.category_id ? categoryMap[ing.category_id] : null;
                 const unit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
+                const sh = ing.storehouse_id ? storehouseMap[ing.storehouse_id] : null;
                 return (
-                  <TableRow key={ing.id}>
+                  <TableRow key={ing.id} className="cursor-pointer" onClick={() => openView(ing)}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{ing.code ?? '—'}</TableCell>
                     <TableCell>
                       <div className="font-medium">{ing.name_en}</div>
                       {ing.name_vi && <div className="text-xs text-muted-foreground">{ing.name_vi}</div>}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                      {ing.code ?? '—'}
-                    </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">
-                      {cat?.name_en ?? '—'}
+                      {t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm">
-                      {unit?.code ?? '—'}
-                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">{cat?.name_en ?? '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">{unit?.code ?? '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">{sh?.name ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">
-                      {ing.last_purchase_price != null
-                        ? Number(ing.last_purchase_price).toLocaleString()
-                        : t('recipes.ingredients.noPrice')}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <Badge variant="outline">
-                        {t(`recipes.ingredients.storageType.${ing.storage_type}`)}
-                      </Badge>
+                      {ing.price != null
+                        ? `${Number(ing.price).toLocaleString()} ${ing.currency}`
+                        : '—'}
                     </TableCell>
                     <TableCell>
                       <Badge variant={ing.is_active ? 'default' : 'secondary'}>
                         {ing.is_active ? t('status.active') : t('status.inactive')}
                       </Badge>
                     </TableCell>
-                    {canManage && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(ing)} aria-label={t('common.edit')}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => setArchiveTarget(ing)}
-                            aria-label={ing.is_active ? t('recipes.ingredients.archive') : t('recipes.ingredients.restore')}>
-                            {ing.is_active ? <Archive className="h-4 w-4" /> : <ArchiveRestore className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
+                    <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openView(ing)} aria-label={t('common.view') || 'View'}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {canManage && (
+                          <>
+                            <Button size="icon" variant="ghost" onClick={() => openEdit(ing)} aria-label={t('common.edit')}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => setArchiveTarget(ing)}
+                              aria-label={ing.is_active ? t('recipes.ingredients.archive') : t('recipes.ingredients.restore')}>
+                              {ing.is_active ? <Archive className="h-4 w-4" /> : <ArchiveRestore className="h-4 w-4" />}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 );
               })}

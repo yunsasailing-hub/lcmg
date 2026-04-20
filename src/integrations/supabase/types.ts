@@ -428,18 +428,23 @@ export type Database = {
           code: string | null
           created_at: string
           created_by: string | null
+          currency: Database["public"]["Enums"]["currency_code"]
           id: string
+          ingredient_type: Database["public"]["Enums"]["ingredient_type"]
           is_active: boolean
           last_purchase_price: number | null
           name_en: string
           name_vi: string | null
           notes: string | null
+          price: number | null
           purchase_to_base_factor: number
           purchase_unit_id: string | null
           storage_type: Database["public"]["Enums"]["storage_type"]
+          storehouse_id: string | null
           supplier: string | null
           tax_rate: number
           updated_at: string
+          updated_by: string | null
           yield_percent: number
         }
         Insert: {
@@ -449,18 +454,23 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string | null
+          currency?: Database["public"]["Enums"]["currency_code"]
           id?: string
+          ingredient_type?: Database["public"]["Enums"]["ingredient_type"]
           is_active?: boolean
           last_purchase_price?: number | null
           name_en: string
           name_vi?: string | null
           notes?: string | null
+          price?: number | null
           purchase_to_base_factor?: number
           purchase_unit_id?: string | null
           storage_type?: Database["public"]["Enums"]["storage_type"]
+          storehouse_id?: string | null
           supplier?: string | null
           tax_rate?: number
           updated_at?: string
+          updated_by?: string | null
           yield_percent?: number
         }
         Update: {
@@ -470,18 +480,23 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string | null
+          currency?: Database["public"]["Enums"]["currency_code"]
           id?: string
+          ingredient_type?: Database["public"]["Enums"]["ingredient_type"]
           is_active?: boolean
           last_purchase_price?: number | null
           name_en?: string
           name_vi?: string | null
           notes?: string | null
+          price?: number | null
           purchase_to_base_factor?: number
           purchase_unit_id?: string | null
           storage_type?: Database["public"]["Enums"]["storage_type"]
+          storehouse_id?: string | null
           supplier?: string | null
           tax_rate?: number
           updated_at?: string
+          updated_by?: string | null
           yield_percent?: number
         }
         Relationships: [
@@ -504,6 +519,13 @@ export type Database = {
             columns: ["purchase_unit_id"]
             isOneToOne: false
             referencedRelation: "recipe_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredients_storehouse_id_fkey"
+            columns: ["storehouse_id"]
+            isOneToOne: false
+            referencedRelation: "storehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -924,6 +946,33 @@ export type Database = {
           },
         ]
       }
+      storehouses: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1021,6 +1070,7 @@ export type Database = {
         | "late"
         | "escalated"
       checklist_type: "opening" | "afternoon" | "closing"
+      currency_code: "VND" | "USD" | "EUR"
       department:
         | "management"
         | "kitchen"
@@ -1028,6 +1078,7 @@ export type Database = {
         | "service"
         | "bar"
         | "office"
+      ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
       notification_priority: "normal" | "high" | "critical"
       notification_status: "unread" | "read" | "archived"
       notification_type: "notice" | "warning" | "escalation"
@@ -1182,6 +1233,7 @@ export const Constants = {
         "escalated",
       ],
       checklist_type: ["opening", "afternoon", "closing"],
+      currency_code: ["VND", "USD", "EUR"],
       department: [
         "management",
         "kitchen",
@@ -1190,6 +1242,7 @@ export const Constants = {
         "bar",
         "office",
       ],
+      ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
       notification_priority: ["normal", "high", "critical"],
       notification_status: ["unread", "read", "archived"],
       notification_type: ["notice", "warning", "escalation"],
