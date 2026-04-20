@@ -63,6 +63,11 @@ const vi: Translations = {
     refresh: 'Làm mới',
     export: 'Xuất',
     import: 'Nhập',
+    name: 'Tên',
+    total: 'tổng',
+    archived: 'Đã lưu trữ',
+    restored: 'Đã khôi phục',
+    view: 'Xem',
   },
   nav: {
     dashboard: 'Bảng điều khiển',
