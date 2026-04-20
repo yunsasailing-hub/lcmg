@@ -257,6 +257,9 @@ export default function RecipesIngredients() {
                 const cat = ing.category_id ? categoryMap[ing.category_id] : null;
                 const unit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
                 const sh = ing.storehouse_id ? storehouseMap[ing.storehouse_id] : null;
+                const typeName = (ing as any).ingredient_type_id
+                  ? typeMap[(ing as any).ingredient_type_id]?.name_en
+                  : null;
                 return (
                   <TableRow key={ing.id} className="cursor-pointer" onClick={() => openView(ing)}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{ing.code ?? '—'}</TableCell>
@@ -265,7 +268,7 @@ export default function RecipesIngredients() {
                       {ing.name_vi && <div className="text-xs text-muted-foreground">{ing.name_vi}</div>}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">
-                      {t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
+                      {typeName ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">{cat?.name_en ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">{unit?.code ?? '—'}</TableCell>
