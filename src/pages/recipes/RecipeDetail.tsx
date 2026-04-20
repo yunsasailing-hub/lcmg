@@ -5,6 +5,7 @@ import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, Lock } from 'lucid
 import RecipesShell from '@/components/recipes/RecipesShell';
 import RecipeIngredientsTab from '@/components/recipes/RecipeIngredientsTab';
 import RecipeProcedureTab from '@/components/recipes/RecipeProcedureTab';
+import RecipeMediaTab from '@/components/recipes/RecipeMediaTab';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -548,9 +549,12 @@ export default function RecipeDetail() {
           {/* Phase 3: Kitchen Procedure */}
           <RecipeProcedureTab recipeId={recipe.id} canManage={canManage} />
 
+          {/* Phase 4: Media & References */}
+          <RecipeMediaTab recipeId={recipe.id} canManage={canManage} />
+
           {/* Future tab placeholders */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(['media', 'service'] as const).map(key => (
+          <div className="grid gap-3 sm:grid-cols-1">
+            {(['service'] as const).map(key => (
               <Card key={key} className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
                   <Lock className="h-4 w-4" />
