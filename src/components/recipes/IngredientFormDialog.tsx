@@ -75,7 +75,6 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
       setForm({
         code: ingredient.code ?? '',
         name_en: ingredient.name_en ?? '',
-        name_vi: ingredient.name_vi ?? '',
         is_active: ingredient.is_active,
         ingredient_type_id: ingredient.ingredient_type_id ?? '',
         category_id: ingredient.category_id ?? '',
