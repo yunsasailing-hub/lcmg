@@ -22,6 +22,7 @@ import { toast } from '@/hooks/use-toast';
 interface Props {
   recipeId: string;
   currency?: string | null;
+  sellingPrice?: number | null;
   canManage: boolean;
 }
 
@@ -46,7 +47,7 @@ const fmt = (n: number, currency?: string | null) => {
   }
 };
 
-export default function RecipeIngredientsTab({ recipeId, currency, canManage }: Props) {
+export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice, canManage }: Props) {
   const { t } = useTranslation();
   const { data: lines = [], isLoading } = useRecipeIngredients(recipeId);
   const { data: ingredients = [] } = useIngredients(false);
@@ -249,14 +250,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, canManage }: 
             </div>
           )}
 
-          <div className="flex justify-end border-t pt-4">
-            <div className="text-right">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                {t('recipes.lines.totalCost')}
-              </div>
-              <div className="font-heading text-2xl font-semibold tabular-nums">{fmt(total, currency)}</div>
-            </div>
-          </div>
+          <CostSummary total={total} sellingPrice={sellingPrice ?? null} currency={currency} />
         </CardContent>
       </Card>
     );
@@ -380,14 +374,13 @@ export default function RecipeIngredientsTab({ recipeId, currency, canManage }: 
           })}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
-          <Button variant="outline" size="sm" onClick={addLine}>
-            <Plus className="h-4 w-4" /> {t('recipes.lines.addLine')}
-          </Button>
-          <div className="text-right">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">{t('recipes.lines.totalCost')}</div>
-            <div className="font-heading text-xl font-semibold tabular-nums">{fmt(total, currency)}</div>
+        <div className="border-t pt-3">
+          <div className="mb-3 flex justify-end">
+            <Button variant="outline" size="sm" onClick={addLine}>
+              <Plus className="h-4 w-4" /> {t('recipes.lines.addLine')}
+            </Button>
           </div>
+          <CostSummary total={total} sellingPrice={sellingPrice ?? null} currency={currency} />
         </div>
       </CardContent>
     </Card>
