@@ -68,7 +68,8 @@ const sectionTitle = 'mb-3 text-sm font-semibold text-foreground/80 uppercase tr
 
 export default function IngredientFormDialog({ open, onOpenChange, ingredient }: Props) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, hasAnyRole } = useAuth();
+  const canSeeAdvanced = hasAnyRole(['owner', 'manager']);
   const { data: categories = [] } = useRecipeCategories();
   const { data: units = [] } = useRecipeUnits();
   const { data: storehouses = [] } = useStorehouses();
