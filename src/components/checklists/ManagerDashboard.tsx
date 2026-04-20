@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
-  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2, Square, CheckSquare,
+  Clock, CheckCircle2, Filter, CalendarIcon, User, Trash2, Square, CheckSquare, X,
 } from 'lucide-react';
 import { useOverdueWarnings, type AppNotification } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
