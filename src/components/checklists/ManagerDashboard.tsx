@@ -1,15 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import {
   ChevronLeft, ChevronDown, ChevronUp, Circle, CircleCheck, AlertTriangle,
-  Clock, CheckCircle2, ShieldCheck, Filter, CalendarIcon, User, Trash2, Square, CheckSquare,
+  Clock, CheckCircle2, Filter, CalendarIcon, User, Trash2, Square, CheckSquare, X,
 } from 'lucide-react';
 import { useOverdueWarnings, type AppNotification } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,7 +20,6 @@ import {
   useAllChecklists,
   useTemplateTasks,
   useTaskCompletions,
-  useVerifyChecklist,
   useDeleteInstance,
   useBranches,
   type ChecklistFilters,
@@ -158,6 +155,63 @@ function Filters({
   );
 }
 
+// ─── Photo Lightbox ───
+
+function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 sm:p-8 animate-in fade-in"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close image preview"
+        className="absolute top-3 right-3 sm:top-5 sm:right-5 rounded-full bg-background/90 text-foreground p-2 shadow-lg hover:bg-background"
+      >
+        <X className="h-5 w-5" />
+      </button>
+      <img
+        src={src}
+        alt="Checklist photo enlarged"
+        className="max-h-full max-w-full object-contain rounded-md select-none"
+        onClick={(e) => e.stopPropagation()}
+        draggable={false}
+      />
+    </div>
+  );
+}
+
+// ─── Submitter Name Loader ───
+
+import { supabase } from '@/integrations/supabase/client';
+import { formatVNDateTime } from '@/lib/timezone';
+
+function useSubmitterName(userId: string | null | undefined) {
+  const [name, setName] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (!userId) { setName(null); return; }
+    supabase.from('profiles').select('full_name').eq('user_id', userId).maybeSingle()
+      .then(({ data }) => { if (active) setName(data?.full_name ?? null); });
+    return () => { active = false; };
+  }, [userId]);
+  return name;
+}
+
 // ─── Checklist Detail (read-only) ───
 
 function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
@@ -169,10 +223,8 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
 }) {
   const { data: tasks } = useTemplateTasks(templateId);
   const { data: completions, isLoading } = useTaskCompletions(instanceId);
-  const verify = useVerifyChecklist();
   const deleteInstance = useDeleteInstance();
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectionNote, setRejectionNote] = useState('');
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const completionMap = useMemo(() => {
     const map: Record<string, any> = {};
@@ -182,22 +234,10 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
 
   const tpl = instance.template as any;
   const assignee = instance.assignee as any;
-  const canVerify = instance.status === 'completed';
+  const submitterId = (instance as any).assigned_to ?? null;
+  const submitterName = useSubmitterName(submitterId) ?? assignee?.full_name ?? null;
 
-  const handleVerify = () => {
-    verify.mutate({ instanceId, action: 'verified' }, {
-      onSuccess: () => { toast.success('Checklist verified!'); onBack(); },
-      onError: () => toast.error('Failed to verify'),
-    });
-  };
-
-  const handleReject = () => {
-    if (!rejectionNote.trim()) { toast.error('Please provide a reason for rejection'); return; }
-    verify.mutate({ instanceId, action: 'rejected', rejectionNote: rejectionNote.trim() }, {
-      onSuccess: () => { toast.success('Checklist rejected'); onBack(); },
-      onError: () => toast.error('Failed to reject'),
-    });
-  };
+  const isSubmitted = !!instance.submitted_at || ['completed', 'verified'].includes(instance.status);
 
   return (
     <div className="space-y-4">
@@ -216,9 +256,13 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
             )}
           </div>
         </div>
-        <Badge variant={statusConfig[instance.status as ChecklistStatus].variant} className={statusConfig[instance.status as ChecklistStatus].className}>
-          {statusConfig[instance.status as ChecklistStatus].label}
-        </Badge>
+        {isSubmitted ? (
+          <Badge variant="default" className="bg-success text-success-foreground hover:bg-success/80">Submitted</Badge>
+        ) : (
+          <Badge variant={statusConfig[instance.status as ChecklistStatus].variant} className={statusConfig[instance.status as ChecklistStatus].className}>
+            {statusConfig[instance.status as ChecklistStatus].label}
+          </Badge>
+        )}
       </div>
 
       {/* Assignee */}
@@ -227,14 +271,6 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
           <User className="h-4 w-4" />
           <span>{assignee.full_name || 'Unassigned'}</span>
         </div>
-      )}
-
-      {/* Rejection note */}
-      {instance.status === 'rejected' && instance.rejection_note && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{instance.rejection_note}</AlertDescription>
-        </Alert>
       )}
 
       {/* Tasks (read-only) */}
@@ -255,9 +291,14 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
                     : <Circle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />}
                 </div>
                 {c?.photo_url && (
-                  <div>
-                    <img src={c.photo_url} alt="Task photo" className="h-20 w-20 rounded-md object-cover border" />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxSrc(c.photo_url)}
+                    className="block rounded-md overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
+                    aria-label="Open photo preview"
+                  >
+                    <img src={c.photo_url} alt="Task photo" className="h-20 w-20 object-cover" />
+                  </button>
                 )}
                 {c?.comment && <p className="text-xs text-muted-foreground italic">💬 {c.comment}</p>}
               </div>
@@ -274,35 +315,23 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
         </div>
       )}
 
-      {/* Verify / Reject actions */}
-      {canVerify && !rejecting && (
-        <div className="flex gap-3">
-          <Button className="flex-1 bg-success text-success-foreground hover:bg-success/90" onClick={handleVerify} disabled={verify.isPending}>
-            <ShieldCheck className="h-4 w-4 mr-2" /> Verify
-          </Button>
-          <Button variant="destructive" className="flex-1" onClick={() => setRejecting(true)} disabled={verify.isPending}>
-            <AlertTriangle className="h-4 w-4 mr-2" /> Reject
-          </Button>
+      {/* Submission status row (replaces verify/reject area) */}
+      <div className="rounded-lg border bg-card p-3 space-y-1.5 text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Status</span>
+          <Badge variant="default" className="bg-success text-success-foreground hover:bg-success/80">Submitted</Badge>
         </div>
-      )}
-
-      {rejecting && (
-        <div className="space-y-3 rounded-lg border border-destructive/50 p-4">
-          <p className="text-sm font-medium text-destructive">Reason for rejection:</p>
-          <Textarea
-            value={rejectionNote}
-            onChange={e => setRejectionNote(e.target.value)}
-            placeholder="Explain what needs to be fixed..."
-            className="min-h-[80px]"
-          />
-          <div className="flex gap-3">
-            <Button variant="destructive" className="flex-1" onClick={handleReject} disabled={verify.isPending}>
-              Confirm Rejection
-            </Button>
-            <Button variant="outline" onClick={() => { setRejecting(false); setRejectionNote(''); }}>Cancel</Button>
-          </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Submitted at</span>
+          <span className="font-medium text-foreground">
+            {instance.submitted_at ? formatVNDateTime(instance.submitted_at) : '—'}
+          </span>
         </div>
-      )}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Submitted by</span>
+          <span className="font-medium text-foreground truncate">{submitterName || 'Unknown'}</span>
+        </div>
+      </div>
 
       {/* Owner-only: Delete checklist record */}
       {isOwner && (
@@ -336,6 +365,8 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
           </AlertDialog>
         </div>
       )}
+
+      {lightboxSrc && <PhotoLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
     </div>
   );
 }
@@ -604,7 +635,7 @@ export default function ManagerDashboard() {
                           const overdue = isOverdue(instance);
                           const StatusIcon = instance.status === 'pending' ? (overdue ? AlertTriangle : Clock)
                             : instance.status === 'rejected' ? AlertTriangle
-                            : instance.status === 'verified' ? ShieldCheck
+                            : instance.status === 'verified' ? CheckCircle2
                             : CheckCircle2;
 
                           const isItemSelected = selectedIds.has(instance.id);
