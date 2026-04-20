@@ -166,7 +166,7 @@ export function buildExportRows(
   return rows.map((i) => ({
     [COLUMNS.id]: i.code ?? '',
     [COLUMNS.name]: i.name_en ?? '',
-    [COLUMNS.nameVi]: i.name_vi ?? '',
+    
     [COLUMNS.type]: i.ingredient_type_id
       ? typeById.get(i.ingredient_type_id)?.name_en ?? ''
       : '',
