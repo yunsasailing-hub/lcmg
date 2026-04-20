@@ -10,7 +10,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import SearchableCombobox from '@/components/shared/SearchableCombobox';
+import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
 import { useIngredients, useRecipeUnits } from '@/hooks/useIngredients';
 import {
   useRecipeIngredients, useSaveRecipeIngredients,
