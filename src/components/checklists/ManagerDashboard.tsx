@@ -159,13 +159,32 @@ function Filters({
 
 function PhotoLightbox({ src, onClose }: { src: string; onClose: () => void }) {
   useEffect(() => {
+    // Push a history entry so the mobile/browser back button closes the lightbox
+    // first instead of navigating away from the checklist review page.
+    const stateMarker = { __lightbox: true, ts: Date.now() };
+    window.history.pushState(stateMarker, '');
+    let closedViaPop = false;
+
+    const onPop = () => {
+      closedViaPop = true;
+      onClose();
+    };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+
+    window.addEventListener('popstate', onPop);
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
     return () => {
+      window.removeEventListener('popstate', onPop);
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
+      // If the modal was closed via UI (X / overlay / ESC), pop the history
+      // entry we pushed so the user's next back press behaves normally.
+      if (!closedViaPop && window.history.state && (window.history.state as any).__lightbox) {
+        window.history.back();
+      }
     };
   }, [onClose]);
 
