@@ -420,6 +420,36 @@ export type Database = {
           },
         ]
       }
+      ingredient_types: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name_en: string
+          name_vi: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_en: string
+          name_vi?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_en?: string
+          name_vi?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           allergens: string[] | null
@@ -431,6 +461,7 @@ export type Database = {
           currency: Database["public"]["Enums"]["currency_code"]
           id: string
           ingredient_type: Database["public"]["Enums"]["ingredient_type"]
+          ingredient_type_id: string | null
           is_active: boolean
           last_purchase_price: number | null
           name_en: string
@@ -457,6 +488,7 @@ export type Database = {
           currency?: Database["public"]["Enums"]["currency_code"]
           id?: string
           ingredient_type?: Database["public"]["Enums"]["ingredient_type"]
+          ingredient_type_id?: string | null
           is_active?: boolean
           last_purchase_price?: number | null
           name_en: string
@@ -483,6 +515,7 @@ export type Database = {
           currency?: Database["public"]["Enums"]["currency_code"]
           id?: string
           ingredient_type?: Database["public"]["Enums"]["ingredient_type"]
+          ingredient_type_id?: string | null
           is_active?: boolean
           last_purchase_price?: number | null
           name_en?: string
@@ -512,6 +545,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "recipe_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredients_ingredient_type_id_fkey"
+            columns: ["ingredient_type_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_types"
             referencedColumns: ["id"]
           },
           {

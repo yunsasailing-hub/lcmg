@@ -25,7 +25,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import {
   useIngredients, useRecipeCategories, useRecipeUnits, useStorehouses,
-  useArchiveIngredient, INGREDIENT_TYPES,
+  useArchiveIngredient, useIngredientTypes,
   type Ingredient,
 } from '@/hooks/useIngredients';
 import { toast } from '@/hooks/use-toast';
@@ -51,11 +51,13 @@ export default function RecipesIngredients() {
   const [archiveTarget, setArchiveTarget] = useState<Ingredient | null>(null);
 
   const { data: ingredients = [], isLoading } = useIngredients(includeArchived);
-  const { data: categories = [] } = useRecipeCategories();
-  const { data: units = [] } = useRecipeUnits();
-  const { data: storehouses = [] } = useStorehouses();
+  const { data: types = [] } = useIngredientTypes(true);
+  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: units = [] } = useRecipeUnits(true);
+  const { data: storehouses = [] } = useStorehouses(true);
   const archive = useArchiveIngredient();
 
+  const typeMap = useMemo(() => Object.fromEntries(types.map(x => [x.id, x])), [types]);
   const categoryMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
   const storehouseMap = useMemo(() => Object.fromEntries(storehouses.map(s => [s.id, s])), [storehouses]);
@@ -67,7 +69,7 @@ export default function RecipesIngredients() {
         const hay = `${i.name_en} ${i.name_vi ?? ''} ${i.code ?? ''}`.toLowerCase();
         if (!hay.includes(s)) return false;
       }
-      if (typeFilter !== 'all' && i.ingredient_type !== typeFilter) return false;
+      if (typeFilter !== 'all' && (i as any).ingredient_type_id !== typeFilter) return false;
       if (categoryFilter !== 'all' && i.category_id !== categoryFilter) return false;
       if (unitFilter !== 'all' && i.base_unit_id !== unitFilter) return false;
       if (storehouseFilter !== 'all' && i.storehouse_id !== storehouseFilter) return false;
@@ -138,8 +140,8 @@ export default function RecipesIngredients() {
           <SelectTrigger><SelectValue placeholder={t('recipes.ingredients.allTypes')} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('recipes.ingredients.allTypes')}</SelectItem>
-            {INGREDIENT_TYPES.map(it => (
-              <SelectItem key={it} value={it}>{t(`recipes.ingredients.typeLabel.${it}`)}</SelectItem>
+            {types.map(it => (
+              <SelectItem key={it.id} value={it.id}>{it.name_en}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -255,6 +257,9 @@ export default function RecipesIngredients() {
                 const cat = ing.category_id ? categoryMap[ing.category_id] : null;
                 const unit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
                 const sh = ing.storehouse_id ? storehouseMap[ing.storehouse_id] : null;
+                const typeName = (ing as any).ingredient_type_id
+                  ? typeMap[(ing as any).ingredient_type_id]?.name_en
+                  : null;
                 return (
                   <TableRow key={ing.id} className="cursor-pointer" onClick={() => openView(ing)}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{ing.code ?? '—'}</TableCell>
@@ -263,7 +268,7 @@ export default function RecipesIngredients() {
                       {ing.name_vi && <div className="text-xs text-muted-foreground">{ing.name_vi}</div>}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">
-                      {t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
+                      {typeName ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">{cat?.name_en ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">{unit?.code ?? '—'}</TableCell>
