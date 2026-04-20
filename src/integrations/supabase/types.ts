@@ -882,11 +882,63 @@ export type Database = {
           },
         ]
       }
+      recipe_media: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_primary: boolean
+          media_type: Database["public"]["Enums"]["recipe_media_type"]
+          recipe_id: string
+          sort_order: number
+          storage_path: string | null
+          title: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          media_type: Database["public"]["Enums"]["recipe_media_type"]
+          recipe_id: string
+          sort_order?: number
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          media_type?: Database["public"]["Enums"]["recipe_media_type"]
+          recipe_id?: string
+          sort_order?: number
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_media_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_procedures: {
         Row: {
           created_at: string
           duration_minutes: number | null
           id: string
+          image_storage_path: string | null
+          image_url: string | null
           instruction_en: string
           instruction_vi: string | null
           note: string | null
@@ -895,12 +947,16 @@ export type Database = {
           step_number: number
           temperature: string | null
           tool: string | null
+          video_url: string | null
           warning: string | null
+          web_link: string | null
         }
         Insert: {
           created_at?: string
           duration_minutes?: number | null
           id?: string
+          image_storage_path?: string | null
+          image_url?: string | null
           instruction_en: string
           instruction_vi?: string | null
           note?: string | null
@@ -909,12 +965,16 @@ export type Database = {
           step_number: number
           temperature?: string | null
           tool?: string | null
+          video_url?: string | null
           warning?: string | null
+          web_link?: string | null
         }
         Update: {
           created_at?: string
           duration_minutes?: number | null
           id?: string
+          image_storage_path?: string | null
+          image_url?: string | null
           instruction_en?: string
           instruction_vi?: string | null
           note?: string | null
@@ -923,7 +983,9 @@ export type Database = {
           step_number?: number
           temperature?: string | null
           tool?: string | null
+          video_url?: string | null
           warning?: string | null
+          web_link?: string | null
         }
         Relationships: [
           {
@@ -1268,6 +1330,7 @@ export type Database = {
         | "service_prep"
         | "other"
       recipe_kind: "dish" | "prep" | "batch" | "sub_recipe"
+      recipe_media_type: "image" | "video_link" | "web_link" | "file"
       recipe_status: "draft" | "active" | "archived"
       storage_type: "dry" | "chilled" | "frozen" | "ambient"
       unit_type: "weight" | "volume" | "count" | "other"
@@ -1443,6 +1506,7 @@ export const Constants = {
         "other",
       ],
       recipe_kind: ["dish", "prep", "batch", "sub_recipe"],
+      recipe_media_type: ["image", "video_link", "web_link", "file"],
       recipe_status: ["draft", "active", "archived"],
       storage_type: ["dry", "chilled", "frozen", "ambient"],
       unit_type: ["weight", "volume", "count", "other"],
