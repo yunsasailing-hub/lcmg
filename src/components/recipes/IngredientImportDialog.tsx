@@ -339,7 +339,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                         <TableRow key={r.rowNumber}>
                           <TableCell className="text-xs text-muted-foreground">{r.rowNumber}</TableCell>
                           <TableCell>{sevBadge(r.severity)}</TableCell>
-                          <TableCell className="text-xs uppercase">{r.action}</TableCell>
+                          <TableCell>{actBadge(r.action)}</TableCell>
                           <TableCell className="font-mono text-xs">{r.raw[COLUMNS.id]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.name]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.type]}</TableCell>
