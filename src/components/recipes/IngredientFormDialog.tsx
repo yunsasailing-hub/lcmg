@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useRecipeCategories, useRecipeUnits, useStorehouses, useUpsertIngredient,
-  isIngredientCodeTaken, INGREDIENT_TYPES, CURRENCIES,
-  type Ingredient, type IngredientType, type CurrencyCode,
+  useIngredientTypes, isIngredientCodeTaken, mapNameToLegacyEnum,
+  CURRENCIES,
+  type Ingredient, type CurrencyCode,
 } from '@/hooks/useIngredients';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -20,15 +21,9 @@ import { Switch } from '@/components/ui/switch';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from '@/components/ui/command';
-import { ChevronDown, Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ChevronDown } from 'lucide-react';
+import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
 import { toast } from '@/hooks/use-toast';
-
-type StorageType = 'dry' | 'chilled' | 'frozen' | 'ambient';
 
 interface Props {
   open: boolean;
@@ -43,12 +38,11 @@ const emptyForm = {
   name_vi: '',
   is_active: true,
   // Classification
-  ingredient_type: 'ingredient' as IngredientType,
+  ingredient_type_id: '',
   category_id: '',
   base_unit_id: '',
   // Storage
   storehouse_id: '',
-  storage_type: 'dry' as StorageType,
   // Pricing
   price: '',
   currency: 'VND' as CurrencyCode,
@@ -70,10 +64,14 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
   const { t } = useTranslation();
   const { user, hasAnyRole } = useAuth();
   const canSeeAdvanced = hasAnyRole(['owner', 'manager']);
+
+  // Settings-managed lists
+  const { data: types = [] } = useIngredientTypes();
   const { data: categories = [] } = useRecipeCategories();
   const { data: units = [] } = useRecipeUnits();
   const { data: storehouses = [] } = useStorehouses();
   const upsert = useUpsertIngredient();
+
   const [form, setForm] = useState(emptyForm);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -85,11 +83,10 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
           name_en: ingredient.name_en ?? '',
           name_vi: ingredient.name_vi ?? '',
           is_active: ingredient.is_active,
-          ingredient_type: ingredient.ingredient_type,
+          ingredient_type_id: ingredient.ingredient_type_id ?? '',
           category_id: ingredient.category_id ?? '',
           base_unit_id: ingredient.base_unit_id ?? '',
           storehouse_id: ingredient.storehouse_id ?? '',
-          storage_type: (ingredient.storage_type ?? 'dry') as StorageType,
           price: ingredient.price != null ? String(ingredient.price) : '',
           currency: ingredient.currency,
           notes: ingredient.notes ?? '',
@@ -111,6 +108,37 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm(prev => ({ ...prev, [k]: v }));
 
+  // Build option lists. If editing and the saved option is now archived, include it so the value still displays.
+  const typeOptions = (() => {
+    const list = types.map(x => ({ id: x.id, label: x.name_en, sublabel: x.name_vi ?? undefined }));
+    if (form.ingredient_type_id && !list.some(o => o.id === form.ingredient_type_id)) {
+      list.unshift({ id: form.ingredient_type_id, label: t('common.archived'), sublabel: undefined });
+    }
+    return list;
+  })();
+  const categoryOptions = (() => {
+    const list = categories.map(c => ({ id: c.id, label: c.name_en, sublabel: c.name_vi ?? undefined }));
+    if (form.category_id && !list.some(o => o.id === form.category_id)) {
+      list.unshift({ id: form.category_id, label: t('common.archived'), sublabel: undefined });
+    }
+    return list;
+  })();
+  const unitOptions = (() => {
+    const list = units.map(u => ({ id: u.id, label: `${u.code} — ${u.name_en}`, sublabel: u.name_vi ?? undefined }));
+    if (form.base_unit_id && !list.some(o => o.id === form.base_unit_id)) {
+      list.unshift({ id: form.base_unit_id, label: t('common.archived'), sublabel: undefined });
+    }
+    return list;
+  })();
+  const purchaseUnitOptions = units.map(u => ({ id: u.id, label: `${u.code} — ${u.name_en}`, sublabel: u.name_vi ?? undefined }));
+  const storehouseOptions = (() => {
+    const list = storehouses.map(s => ({ id: s.id, label: s.name }));
+    if (form.storehouse_id && !list.some(o => o.id === form.storehouse_id)) {
+      list.unshift({ id: form.storehouse_id, label: t('common.archived') });
+    }
+    return list;
+  })();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -125,7 +153,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
       toast({ title: t('common.error'), description: t('recipes.ingredients.errors.nameRequired'), variant: 'destructive' });
       return;
     }
-    if (!form.ingredient_type) {
+    if (!form.ingredient_type_id) {
       toast({ title: t('common.error'), description: t('recipes.ingredients.errors.typeRequired'), variant: 'destructive' });
       return;
     }
@@ -145,17 +173,20 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         return;
       }
 
+      const selectedType = types.find(t2 => t2.id === form.ingredient_type_id);
+      const legacyEnum = selectedType ? mapNameToLegacyEnum(selectedType.name_en) : 'other';
+
       const payload = {
         ...(ingredient?.id ? { id: ingredient.id } : {}),
         code,
         name_en: nameEn,
         name_vi: form.name_vi.trim() || null,
         is_active: form.is_active,
-        ingredient_type: form.ingredient_type,
+        ingredient_type: legacyEnum,
+        ingredient_type_id: form.ingredient_type_id,
         category_id: form.category_id,
         base_unit_id: form.base_unit_id,
         storehouse_id: form.storehouse_id || null,
-        storage_type: form.storage_type,
         price: form.price ? Number(form.price) : null,
         currency: form.currency,
         notes: form.notes.trim() || null,
@@ -170,7 +201,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
           : null,
         ...(ingredient ? {} : { created_by: user?.id ?? null }),
       };
-      await upsert.mutateAsync(payload);
+      await upsert.mutateAsync(payload as any);
       toast({ title: ingredient ? t('recipes.ingredients.updated') : t('recipes.ingredients.created') });
       onOpenChange(false);
     } catch (err) {
@@ -178,8 +209,6 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
       toast({ title: t('common.error'), description: msg, variant: 'destructive' });
     }
   };
-
-  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -213,7 +242,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                 <Switch id="active" checked={form.is_active}
                   onCheckedChange={v => set('is_active', v)} />
                 <Label htmlFor="active" className="cursor-pointer">
-                  {t('recipes.ingredients.fields.activeStatus')}: {form.is_active ? t('common.yes') : t('common.no')}
+                  {t('recipes.ingredients.fields.activeStatus')}: {form.is_active ? t('common.yes') : t('recipes.ingredients.statusNot')}
                 </Label>
               </div>
             </div>
@@ -225,36 +254,36 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>{t('recipes.ingredients.fields.type')} *</Label>
-                <Select value={form.ingredient_type} onValueChange={v => set('ingredient_type', v as IngredientType)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {INGREDIENT_TYPES.map(it => (
-                      <SelectItem key={it} value={it}>{t(`recipes.ingredients.typeLabel.${it}`)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableCombobox
+                  value={form.ingredient_type_id}
+                  onChange={v => set('ingredient_type_id', v)}
+                  options={typeOptions}
+                  placeholder={t('common.selectPlaceholder')}
+                  searchPlaceholder={t('common.search')}
+                  emptyText={t('common.noResults')}
+                />
               </div>
               <div>
                 <Label>{t('recipes.ingredients.fields.category')} *</Label>
-                <Select value={form.category_id} onValueChange={v => set('category_id', v)}>
-                  <SelectTrigger><SelectValue placeholder={t('common.selectPlaceholder')} /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name_en}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableCombobox
+                  value={form.category_id}
+                  onChange={v => set('category_id', v)}
+                  options={categoryOptions}
+                  placeholder={t('common.selectPlaceholder')}
+                  searchPlaceholder={t('common.search')}
+                  emptyText={t('common.noResults')}
+                />
               </div>
               <div className="sm:col-span-2">
                 <Label>{t('recipes.ingredients.fields.baseUnit')} *</Label>
-                <Select value={form.base_unit_id} onValueChange={v => set('base_unit_id', v)}>
-                  <SelectTrigger><SelectValue placeholder={t('common.selectPlaceholder')} /></SelectTrigger>
-                  <SelectContent>
-                    {units.map(u => (
-                      <SelectItem key={u.id} value={u.id}>{u.code} — {u.name_en}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableCombobox
+                  value={form.base_unit_id}
+                  onChange={v => set('base_unit_id', v)}
+                  options={unitOptions}
+                  placeholder={t('common.selectPlaceholder')}
+                  searchPlaceholder={t('common.search')}
+                  emptyText={t('common.noResults')}
+                />
               </div>
             </div>
           </section>
@@ -264,14 +293,15 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
             <h3 className={sectionTitle}>{t('recipes.ingredients.sections.storage')}</h3>
             <div>
               <Label>{t('recipes.ingredients.fields.storehouse')}</Label>
-              <StorehouseCombobox
+              <SearchableCombobox
                 value={form.storehouse_id}
                 onChange={v => set('storehouse_id', v)}
-                options={storehouses.map(s => ({ id: s.id, name: s.name }))}
+                options={storehouseOptions}
                 placeholder={t('common.selectPlaceholder')}
                 searchPlaceholder={t('common.search')}
                 emptyText={t('common.noResults')}
                 noneLabel={t('common.none')}
+                allowNone
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 {t('recipes.ingredients.fields.storehouseHelp')}
@@ -322,16 +352,16 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>{t('recipes.ingredients.fields.purchaseUnit')}</Label>
-                  <Select value={form.purchase_unit_id || 'none'}
-                    onValueChange={v => set('purchase_unit_id', v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t('common.none')}</SelectItem>
-                      {units.map(u => (
-                        <SelectItem key={u.id} value={u.id}>{u.code} — {u.name_en}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableCombobox
+                    value={form.purchase_unit_id}
+                    onChange={v => set('purchase_unit_id', v)}
+                    options={purchaseUnitOptions}
+                    placeholder={t('common.selectPlaceholder')}
+                    searchPlaceholder={t('common.search')}
+                    emptyText={t('common.noResults')}
+                    noneLabel={t('common.none')}
+                    allowNone
+                  />
                 </div>
                 <div>
                   <Label>{t('recipes.ingredients.fields.purchaseFactor')}</Label>
@@ -380,68 +410,5 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-interface StorehouseComboboxProps {
-  value: string;
-  onChange: (value: string) => void;
-  options: { id: string; name: string }[];
-  placeholder: string;
-  searchPlaceholder: string;
-  emptyText: string;
-  noneLabel: string;
-}
-
-function StorehouseCombobox({
-  value, onChange, options, placeholder, searchPlaceholder, emptyText, noneLabel,
-}: StorehouseComboboxProps) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find(o => o.id === value);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            'w-full justify-between font-normal',
-            !selected && 'text-muted-foreground',
-          )}
-        >
-          {selected ? selected.name : placeholder}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              <CommandItem
-                value="__none__"
-                onSelect={() => { onChange(''); setOpen(false); }}
-              >
-                <Check className={cn('mr-2 h-4 w-4', !value ? 'opacity-100' : 'opacity-0')} />
-                {noneLabel}
-              </CommandItem>
-              {options.map(o => (
-                <CommandItem
-                  key={o.id}
-                  value={o.name}
-                  onSelect={() => { onChange(o.id); setOpen(false); }}
-                >
-                  <Check className={cn('mr-2 h-4 w-4', value === o.id ? 'opacity-100' : 'opacity-0')} />
-                  {o.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
   );
 }
