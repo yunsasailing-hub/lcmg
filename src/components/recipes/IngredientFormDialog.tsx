@@ -379,3 +379,66 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
     </Dialog>
   );
 }
+
+interface StorehouseComboboxProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: { id: string; name: string }[];
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyText: string;
+  noneLabel: string;
+}
+
+function StorehouseCombobox({
+  value, onChange, options, placeholder, searchPlaceholder, emptyText, noneLabel,
+}: StorehouseComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find(o => o.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'w-full justify-between font-normal',
+            !selected && 'text-muted-foreground',
+          )}
+        >
+          {selected ? selected.name : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__none__"
+                onSelect={() => { onChange(''); setOpen(false); }}
+              >
+                <Check className={cn('mr-2 h-4 w-4', !value ? 'opacity-100' : 'opacity-0')} />
+                {noneLabel}
+              </CommandItem>
+              {options.map(o => (
+                <CommandItem
+                  key={o.id}
+                  value={o.name}
+                  onSelect={() => { onChange(o.id); setOpen(false); }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', value === o.id ? 'opacity-100' : 'opacity-0')} />
+                  {o.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
