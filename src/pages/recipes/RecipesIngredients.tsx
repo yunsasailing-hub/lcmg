@@ -76,7 +76,7 @@ export default function RecipesIngredients() {
     const s = search.trim().toLowerCase();
     const out = ingredients.filter(i => {
       if (s) {
-        const hay = `${i.name_en} ${i.name_vi ?? ''} ${i.code ?? ''}`.toLowerCase();
+        const hay = `${i.name_en} ${i.code ?? ''}`.toLowerCase();
         if (!hay.includes(s)) return false;
       }
       if (typeFilter !== 'all' && (i as any).ingredient_type_id !== typeFilter) return false;
@@ -329,7 +329,6 @@ export default function RecipesIngredients() {
                     <TableCell className="font-mono text-xs text-muted-foreground">{ing.code ?? '—'}</TableCell>
                     <TableCell>
                       <div className="font-medium">{ing.name_en}</div>
-                      {ing.name_vi && <div className="text-xs text-muted-foreground">{ing.name_vi}</div>}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">
                       {typeName ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
