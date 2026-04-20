@@ -140,8 +140,8 @@ export default function RecipesIngredients() {
           <SelectTrigger><SelectValue placeholder={t('recipes.ingredients.allTypes')} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('recipes.ingredients.allTypes')}</SelectItem>
-            {INGREDIENT_TYPES.map(it => (
-              <SelectItem key={it} value={it}>{t(`recipes.ingredients.typeLabel.${it}`)}</SelectItem>
+            {types.map(it => (
+              <SelectItem key={it.id} value={it.id}>{it.name_en}</SelectItem>
             ))}
           </SelectContent>
         </Select>
