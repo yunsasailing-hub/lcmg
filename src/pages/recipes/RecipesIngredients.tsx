@@ -69,7 +69,7 @@ export default function RecipesIngredients() {
         const hay = `${i.name_en} ${i.name_vi ?? ''} ${i.code ?? ''}`.toLowerCase();
         if (!hay.includes(s)) return false;
       }
-      if (typeFilter !== 'all' && i.ingredient_type !== typeFilter) return false;
+      if (typeFilter !== 'all' && (i as any).ingredient_type_id !== typeFilter) return false;
       if (categoryFilter !== 'all' && i.category_id !== categoryFilter) return false;
       if (unitFilter !== 'all' && i.base_unit_id !== unitFilter) return false;
       if (storehouseFilter !== 'all' && i.storehouse_id !== storehouseFilter) return false;
