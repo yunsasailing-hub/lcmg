@@ -263,16 +263,15 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
             <h3 className={sectionTitle}>{t('recipes.ingredients.sections.storage')}</h3>
             <div>
               <Label>{t('recipes.ingredients.fields.storehouse')}</Label>
-              <Select value={form.storehouse_id || 'none'}
-                onValueChange={v => set('storehouse_id', v === 'none' ? '' : v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('common.none')}</SelectItem>
-                  {storehouses.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <StorehouseCombobox
+                value={form.storehouse_id}
+                onChange={v => set('storehouse_id', v)}
+                options={storehouses.map(s => ({ id: s.id, name: s.name }))}
+                placeholder={t('common.selectPlaceholder')}
+                searchPlaceholder={t('common.search')}
+                emptyText={t('common.noResults')}
+                noneLabel={t('common.none')}
+              />
               <p className="mt-1 text-xs text-muted-foreground">
                 {t('recipes.ingredients.fields.storehouseHelp')}
               </p>
