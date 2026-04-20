@@ -3,10 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Plus, Pencil, Archive, ArchiveRestore, Search, Carrot, Eye, ArrowUpDown,
+  Download, Upload,
 } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import EmptyState from '@/components/shared/EmptyState';
 import IngredientFormDialog from '@/components/recipes/IngredientFormDialog';
+import IngredientImportDialog from '@/components/recipes/IngredientImportDialog';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuLabel, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { buildExportRows, downloadXlsx } from '@/lib/ingredientImportExport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -36,7 +43,7 @@ type SortKey = 'name' | 'code' | 'category' | 'updated';
 export default function RecipesIngredients() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { hasAnyRole } = useAuth();
+  const { hasAnyRole, user } = useAuth();
   const canManage = hasAnyRole(['owner', 'manager']);
 
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -49,6 +56,7 @@ export default function RecipesIngredients() {
   const [prefixFilter, setPrefixFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Ingredient | null>(null);
 
@@ -116,11 +124,53 @@ export default function RecipesIngredients() {
     setPrefixFilter('all');
   };
 
-  const actions = canManage ? (
-    <Button onClick={openAdd} size="sm">
-      <Plus className="h-4 w-4" /> {t('recipes.ingredients.add')}
-    </Button>
-  ) : null;
+  const handleExport = (scope: 'all' | 'active' | 'filtered') => {
+    const filteredIds = scope === 'filtered' ? new Set(filtered.map((i) => i.id)) : undefined;
+    const rows = buildExportRows(
+      ingredients,
+      { types, categories, units, storehouses },
+      { scope, filteredIds, exportedBy: user?.email ?? user?.id ?? '' },
+    );
+    if (rows.length === 0) {
+      toast({ title: t('common.error'), description: 'No rows to export.', variant: 'destructive' });
+      return;
+    }
+    downloadXlsx(rows, { types, categories, units, storehouses }, {
+      scope,
+      filteredIds,
+      exportedBy: user?.email ?? user?.id ?? '',
+    });
+    toast({ title: 'Export ready', description: `${rows.length} rows exported.` });
+  };
+
+  const actions = (
+    <div className="flex items-center gap-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline">
+            <Download className="h-4 w-4" /> Export
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Export ingredients</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleExport('active')}>Active only</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExport('all')}>All (incl. archived)</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExport('filtered')}>Filtered results</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {canManage && (
+        <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+          <Upload className="h-4 w-4" /> Import
+        </Button>
+      )}
+      {canManage && (
+        <Button onClick={openAdd} size="sm">
+          <Plus className="h-4 w-4" /> {t('recipes.ingredients.add')}
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <RecipesShell
@@ -328,6 +378,8 @@ export default function RecipesIngredients() {
         onOpenChange={setDialogOpen}
         ingredient={editing}
       />
+
+      <IngredientImportDialog open={importOpen} onOpenChange={setImportOpen} />
 
       <AlertDialog open={!!archiveTarget} onOpenChange={(o) => !o && setArchiveTarget(null)}>
         <AlertDialogContent>
