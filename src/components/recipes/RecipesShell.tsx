@@ -8,7 +8,7 @@ import {
   Ruler, FileSpreadsheet, Settings,
 } from 'lucide-react';
 
-const TABS = [
+const TABS: ReadonlyArray<{ to: string; end?: boolean; icon: typeof LayoutDashboard; key: string }> = [
   { to: '/recipes', end: true, icon: LayoutDashboard, key: 'dashboard' },
   { to: '/recipes/ingredients', icon: Carrot, key: 'ingredients' },
   { to: '/recipes/list', icon: CookingPot, key: 'recipes' },
@@ -16,7 +16,7 @@ const TABS = [
   { to: '/recipes/units', icon: Ruler, key: 'units' },
   { to: '/recipes/import-export', icon: FileSpreadsheet, key: 'importExport' },
   { to: '/recipes/settings', icon: Settings, key: 'settings' },
-] as const;
+];
 
 interface Props {
   title: string;
