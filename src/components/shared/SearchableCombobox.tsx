@@ -32,8 +32,9 @@ export function SearchableCombobox({
 }: Props) {
   const [open, setOpen] = useState(false);
   const selected = options.find(o => o.id === value);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -47,16 +48,22 @@ export function SearchableCombobox({
             className,
           )}
         >
-          <span className="truncate">
+          <span className="truncate text-left">
             {selected ? selected.label : placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
+      <PopoverContent
+        align="start"
+        side="bottom"
+        sideOffset={6}
+        collisionPadding={8}
+        className="z-[70] w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)] max-w-[min(24rem,calc(100vw-2rem))] p-0"
+      >
+        <Command className="overflow-hidden rounded-md">
+          <CommandInput placeholder={searchPlaceholder} className="h-10" />
+          <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
               {allowNone && (
@@ -75,9 +82,9 @@ export function SearchableCombobox({
                   onSelect={() => { onChange(o.id); setOpen(false); }}
                 >
                   <Check className={cn('mr-2 h-4 w-4', value === o.id ? 'opacity-100' : 'opacity-0')} />
-                  <div className="flex flex-col">
-                    <span>{o.label}</span>
-                    {o.sublabel && <span className="text-xs text-muted-foreground">{o.sublabel}</span>}
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate">{o.label}</span>
+                    {o.sublabel && <span className="truncate text-xs text-muted-foreground">{o.sublabel}</span>}
                   </div>
                 </CommandItem>
               ))}
