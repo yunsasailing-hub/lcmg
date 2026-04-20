@@ -56,6 +56,7 @@ export default function RecipesIngredients() {
   const [prefixFilter, setPrefixFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Ingredient | null>(null);
 
