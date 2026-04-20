@@ -260,8 +260,9 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
             Import Ingredients
           </DialogTitle>
           <DialogDescription>
-            Upload an Excel (.xlsx) or CSV file. Values are matched case-insensitively against
-            active option lists. Rows with missing required fields or invalid options are skipped.
+            Upload an Excel (.xlsx) or CSV file. Rows are matched by <strong>ID</strong>: existing
+            IDs are <strong>replaced</strong> (all import-supported fields overwritten, internal
+            UUID preserved); new IDs are <strong>created</strong>. Invalid rows are skipped.
           </DialogDescription>
         </DialogHeader>
 
