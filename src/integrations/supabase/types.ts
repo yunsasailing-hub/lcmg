@@ -420,6 +420,42 @@ export type Database = {
           },
         ]
       }
+      ingredient_branches: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          ingredient_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          ingredient_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          ingredient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_branches_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredient_types: {
         Row: {
           created_at: string
@@ -456,13 +492,16 @@ export type Database = {
           base_unit_id: string | null
           category_id: string | null
           code: string | null
+          cost_updated_at: string | null
           created_at: string
           created_by: string | null
           currency: Database["public"]["Enums"]["currency_code"]
+          departments: Database["public"]["Enums"]["department"][]
           id: string
           ingredient_type: Database["public"]["Enums"]["ingredient_type"]
           ingredient_type_id: string | null
           is_active: boolean
+          is_global: boolean
           last_purchase_price: number | null
           name_en: string
           name_vi: string | null
@@ -483,13 +522,16 @@ export type Database = {
           base_unit_id?: string | null
           category_id?: string | null
           code?: string | null
+          cost_updated_at?: string | null
           created_at?: string
           created_by?: string | null
           currency?: Database["public"]["Enums"]["currency_code"]
+          departments?: Database["public"]["Enums"]["department"][]
           id?: string
           ingredient_type?: Database["public"]["Enums"]["ingredient_type"]
           ingredient_type_id?: string | null
           is_active?: boolean
+          is_global?: boolean
           last_purchase_price?: number | null
           name_en: string
           name_vi?: string | null
@@ -510,13 +552,16 @@ export type Database = {
           base_unit_id?: string | null
           category_id?: string | null
           code?: string | null
+          cost_updated_at?: string | null
           created_at?: string
           created_by?: string | null
           currency?: Database["public"]["Enums"]["currency_code"]
+          departments?: Database["public"]["Enums"]["department"][]
           id?: string
           ingredient_type?: Database["public"]["Enums"]["ingredient_type"]
           ingredient_type_id?: string | null
           is_active?: boolean
+          is_global?: boolean
           last_purchase_price?: number | null
           name_en?: string
           name_vi?: string | null
