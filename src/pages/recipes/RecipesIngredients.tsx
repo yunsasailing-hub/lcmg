@@ -51,11 +51,13 @@ export default function RecipesIngredients() {
   const [archiveTarget, setArchiveTarget] = useState<Ingredient | null>(null);
 
   const { data: ingredients = [], isLoading } = useIngredients(includeArchived);
-  const { data: categories = [] } = useRecipeCategories();
-  const { data: units = [] } = useRecipeUnits();
-  const { data: storehouses = [] } = useStorehouses();
+  const { data: types = [] } = useIngredientTypes(true);
+  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: units = [] } = useRecipeUnits(true);
+  const { data: storehouses = [] } = useStorehouses(true);
   const archive = useArchiveIngredient();
 
+  const typeMap = useMemo(() => Object.fromEntries(types.map(x => [x.id, x])), [types]);
   const categoryMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
   const storehouseMap = useMemo(() => Object.fromEntries(storehouses.map(s => [s.id, s])), [storehouses]);
