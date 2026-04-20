@@ -77,8 +77,9 @@ export default function RecipeIngredientsTab({ recipeId, currency, canManage }: 
 
   const ingredientOptions = useMemo(
     () => ingredients.map(i => ({
-      value: i.id,
-      label: `${i.code ? i.code + ' — ' : ''}${i.name_en}`,
+      id: i.id,
+      label: i.name_en,
+      sublabel: i.code ?? undefined,
     })),
     [ingredients],
   );
