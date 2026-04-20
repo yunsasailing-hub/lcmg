@@ -340,6 +340,9 @@ const en = {
         fixBeforeSave: 'Please fix invalid lines before saving.',
       },
     },
+    ingredients: {
+      title: 'Ingredients',
+      subtitle: 'Master list of raw materials used across recipes',
       add: 'Add Ingredient',
       edit: 'Edit Ingredient',
       searchPlaceholder: 'Search by ID or name…',
