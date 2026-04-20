@@ -92,6 +92,17 @@ export default function OptionListManager({
         }
       }
       payload.sort_order = Number(payload.sort_order) || 0;
+
+      // Duplicate guard on the primary label across active+archived rows (case-insensitive).
+      const primaryNew = String(primaryLabel({ ...(editing ?? {} as Row), ...payload })).trim().toLowerCase();
+      if (primaryNew) {
+        const dup = rows.find(r => r.id !== editing?.id && primaryLabel(r).trim().toLowerCase() === primaryNew);
+        if (dup) {
+          toast({ title: t('common.error'), description: `Duplicate value: "${primaryLabel(dup)}"`, variant: 'destructive' });
+          return;
+        }
+      }
+
       await upsert.mutateAsync(payload);
       toast({ title: editing ? t('common.update') + ' ✓' : t('common.create') + ' ✓' });
       setOpen(false);

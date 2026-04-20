@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   useIngredient, useRecipeCategories, useRecipeUnits, useStorehouses, useArchiveIngredient,
 } from '@/hooks/useIngredients';
+import { classifyByPrefix, PREFIX_CLASS_LABEL } from '@/lib/ingredientClassification';
 import { toast } from '@/hooks/use-toast';
 
 const formatDateTime = (iso?: string | null) => {
@@ -109,7 +110,10 @@ export default function IngredientDetail() {
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <Field label={t('recipes.ingredients.fields.id')}>
-                <span className="font-mono">{ing.code ?? '—'}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{ing.code ?? '—'}</span>
+                  <Badge variant="outline">{PREFIX_CLASS_LABEL[classifyByPrefix(ing.code)]}</Badge>
+                </div>
               </Field>
               <Field label={t('recipes.ingredients.fields.activeStatus')}>
                 <Badge variant={ing.is_active ? 'default' : 'secondary'}>
