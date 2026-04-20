@@ -20,11 +20,19 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranches } from '@/hooks/useChecklists';
+import { useRecipeCategories } from '@/hooks/useIngredients';
 import {
-  useRecipes, useArchiveRecipe, RECIPE_KINDS, RECIPE_STATUSES,
+  useRecipes, useArchiveRecipe, useRecipeTypes,
+  RECIPE_DEPARTMENTS,
   type Recipe,
 } from '@/hooks/useRecipes';
 import { toast } from '@/hooks/use-toast';
+
+const formatDate = (iso?: string | null) => {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString(); } catch { return iso; }
+};
 
 export default function RecipesList() {
   const { t } = useTranslation();
@@ -34,25 +42,44 @@ export default function RecipesList() {
 
   const [includeArchived, setIncludeArchived] = useState(false);
   const [search, setSearch] = useState('');
-  const [kindFilter, setKindFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [deptFilter, setDeptFilter] = useState<string>('all');
+  const [branchFilter, setBranchFilter] = useState<string>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('all'); // all|yes|not
   const [archiveTarget, setArchiveTarget] = useState<Recipe | null>(null);
 
-  const { data: recipes = [], isLoading } = useRecipes(includeArchived);
+  const { data: recipes = [], isLoading } = useRecipes(true); // fetch all, filter client-side
+  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: types = [] } = useRecipeTypes(true);
+  const { data: branches = [] } = useBranches();
   const archive = useArchiveRecipe();
+
+  const categoryMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories]);
+  const typeMap = useMemo(() => Object.fromEntries(types.map(x => [x.id, x])), [types]);
+  const branchMap = useMemo(() => Object.fromEntries(branches.map(b => [b.id, b])), [branches]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return recipes.filter(r => {
+      if (!includeArchived && !r.is_active) return false;
       if (s) {
         const hay = `${r.name_en} ${r.code ?? ''}`.toLowerCase();
         if (!hay.includes(s)) return false;
       }
-      if (kindFilter !== 'all' && r.kind !== kindFilter) return false;
-      if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+      if (categoryFilter !== 'all' && r.category_id !== categoryFilter) return false;
+      if (typeFilter !== 'all' && r.recipe_type_id !== typeFilter) return false;
+      if (deptFilter !== 'all' && r.department !== deptFilter) return false;
+      if (branchFilter !== 'all') {
+        if (branchFilter === '__global__') {
+          if (r.branch_id) return false;
+        } else if (r.branch_id !== branchFilter) return false;
+      }
+      if (activeFilter === 'yes' && !r.is_active) return false;
+      if (activeFilter === 'not' && r.is_active) return false;
       return true;
     });
-  }, [recipes, search, kindFilter, statusFilter]);
+  }, [recipes, includeArchived, search, categoryFilter, typeFilter, deptFilter, branchFilter, activeFilter]);
 
   const handleArchive = async () => {
     if (!archiveTarget) return;
@@ -81,8 +108,8 @@ export default function RecipesList() {
         ) : null
       }
     >
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="mb-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -92,28 +119,57 @@ export default function RecipesList() {
               className="pl-9"
             />
           </div>
-          <Select value={kindFilter} onValueChange={setKindFilter}>
-            <SelectTrigger className="sm:w-44"><SelectValue /></SelectTrigger>
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <Switch id="arch" checked={includeArchived} onCheckedChange={setIncludeArchived} />
+            <Label htmlFor="arch" className="text-sm">{t('recipes.list.includeArchived')}</Label>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('recipes.list.allKinds')}</SelectItem>
-              {RECIPE_KINDS.map(k => (
-                <SelectItem key={k} value={k}>{t(`recipes.kind.${k}`)}</SelectItem>
+              <SelectItem value="all">{t('recipes.list.allCategories')}</SelectItem>
+              {categories.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name_en}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="sm:w-44"><SelectValue /></SelectTrigger>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('recipes.list.allTypes')}</SelectItem>
+              {types.map(x => (
+                <SelectItem key={x.id} value={x.id}>{x.name_en}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={deptFilter} onValueChange={setDeptFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('recipes.list.allDepartments')}</SelectItem>
+              {RECIPE_DEPARTMENTS.map(d => (
+                <SelectItem key={d} value={d}>{t(`departments.${d}`)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={branchFilter} onValueChange={setBranchFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('recipes.list.allBranches')}</SelectItem>
+              <SelectItem value="__global__">{t('recipes.list.global')}</SelectItem>
+              {branches.map(b => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={activeFilter} onValueChange={setActiveFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('recipes.list.allStatuses')}</SelectItem>
-              {RECIPE_STATUSES.map(s => (
-                <SelectItem key={s} value={s}>{t(`recipes.status.${s}`)}</SelectItem>
-              ))}
+              <SelectItem value="yes">{t('recipes.list.activeYes')}</SelectItem>
+              <SelectItem value="not">{t('recipes.list.activeNot')}</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch id="arch" checked={includeArchived} onCheckedChange={setIncludeArchived} />
-          <Label htmlFor="arch" className="text-sm">{t('recipes.list.includeArchived')}</Label>
         </div>
       </div>
 
@@ -138,8 +194,12 @@ export default function RecipesList() {
               <TableRow>
                 <TableHead>{t('recipes.list.cols.code')}</TableHead>
                 <TableHead>{t('recipes.list.cols.name')}</TableHead>
-                <TableHead>{t('recipes.list.cols.kind')}</TableHead>
-                <TableHead>{t('recipes.list.cols.status')}</TableHead>
+                <TableHead>{t('recipes.list.cols.category')}</TableHead>
+                <TableHead>{t('recipes.list.cols.type')}</TableHead>
+                <TableHead>{t('recipes.list.cols.department')}</TableHead>
+                <TableHead>{t('recipes.list.cols.branch')}</TableHead>
+                <TableHead>{t('recipes.list.cols.active')}</TableHead>
+                <TableHead>{t('recipes.list.cols.updated')}</TableHead>
                 <TableHead className="text-right">{t('recipes.list.cols.actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -155,27 +215,28 @@ export default function RecipesList() {
                       {r.name_en}
                     </button>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{t(`recipes.kind.${r.kind}`)}</Badge>
+                  <TableCell className="text-sm">{r.category_id ? categoryMap[r.category_id]?.name_en ?? '—' : '—'}</TableCell>
+                  <TableCell className="text-sm">{r.recipe_type_id ? typeMap[r.recipe_type_id]?.name_en ?? '—' : '—'}</TableCell>
+                  <TableCell className="text-sm">{r.department ? t(`departments.${r.department}`) : '—'}</TableCell>
+                  <TableCell className="text-sm">
+                    {r.branch_id ? branchMap[r.branch_id]?.name ?? '—' : <span className="text-muted-foreground">{t('recipes.list.global')}</span>}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={r.status === 'active' ? 'default' : 'secondary'}>
-                      {t(`recipes.status.${r.status}`)}
+                    <Badge variant={r.is_active ? 'default' : 'secondary'}>
+                      {r.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
                     </Badge>
-                    {!r.is_active && (
-                      <Badge variant="outline" className="ml-2">{t('common.archived')}</Badge>
-                    )}
                   </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{formatDate(r.updated_at)}</TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="ghost" onClick={() => navigate(`/recipes/list/${r.id}`)}>
+                    <Button size="sm" variant="ghost" onClick={() => navigate(`/recipes/list/${r.id}`)} title={t('common.view') as string}>
                       <Eye className="h-4 w-4" />
                     </Button>
                     {canManage && (
                       <>
-                        <Button size="sm" variant="ghost" onClick={() => navigate(`/recipes/list/${r.id}?edit=1`)}>
+                        <Button size="sm" variant="ghost" onClick={() => navigate(`/recipes/list/${r.id}?edit=1`)} title={t('common.edit') as string}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setArchiveTarget(r)}>
+                        <Button size="sm" variant="ghost" onClick={() => setArchiveTarget(r)} title={r.is_active ? t('recipes.list.archive') as string : t('recipes.list.restore') as string}>
                           {r.is_active ? <Archive className="h-4 w-4" /> : <ArchiveRestore className="h-4 w-4" />}
                         </Button>
                       </>

@@ -917,6 +917,36 @@ export type Database = {
           },
         ]
       }
+      recipe_types: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name_en: string
+          name_vi: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_en: string
+          name_vi?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_en?: string
+          name_vi?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       recipe_units: {
         Row: {
           base_unit_code: string | null
@@ -962,55 +992,82 @@ export type Database = {
       recipes: {
         Row: {
           branch_id: string | null
+          category_id: string | null
           code: string | null
           created_at: string
           created_by: string | null
+          currency: Database["public"]["Enums"]["currency_code"]
           department: Database["public"]["Enums"]["department"] | null
           description: string | null
           id: string
+          internal_memo: string | null
           is_active: boolean
           kind: Database["public"]["Enums"]["recipe_kind"]
           name_en: string
           name_vi: string | null
           notes: string | null
+          portion_quantity: number | null
+          portion_unit: string | null
+          recipe_type_id: string | null
+          selling_price: number | null
+          shelf_life: string | null
           status: Database["public"]["Enums"]["recipe_status"]
           updated_at: string
+          updated_by: string | null
           yield_quantity: number | null
           yield_unit_id: string | null
         }
         Insert: {
           branch_id?: string | null
+          category_id?: string | null
           code?: string | null
           created_at?: string
           created_by?: string | null
+          currency?: Database["public"]["Enums"]["currency_code"]
           department?: Database["public"]["Enums"]["department"] | null
           description?: string | null
           id?: string
+          internal_memo?: string | null
           is_active?: boolean
           kind?: Database["public"]["Enums"]["recipe_kind"]
           name_en: string
           name_vi?: string | null
           notes?: string | null
+          portion_quantity?: number | null
+          portion_unit?: string | null
+          recipe_type_id?: string | null
+          selling_price?: number | null
+          shelf_life?: string | null
           status?: Database["public"]["Enums"]["recipe_status"]
           updated_at?: string
+          updated_by?: string | null
           yield_quantity?: number | null
           yield_unit_id?: string | null
         }
         Update: {
           branch_id?: string | null
+          category_id?: string | null
           code?: string | null
           created_at?: string
           created_by?: string | null
+          currency?: Database["public"]["Enums"]["currency_code"]
           department?: Database["public"]["Enums"]["department"] | null
           description?: string | null
           id?: string
+          internal_memo?: string | null
           is_active?: boolean
           kind?: Database["public"]["Enums"]["recipe_kind"]
           name_en?: string
           name_vi?: string | null
           notes?: string | null
+          portion_quantity?: number | null
+          portion_unit?: string | null
+          recipe_type_id?: string | null
+          selling_price?: number | null
+          shelf_life?: string | null
           status?: Database["public"]["Enums"]["recipe_status"]
           updated_at?: string
+          updated_by?: string | null
           yield_quantity?: number | null
           yield_unit_id?: string | null
         }
@@ -1020,6 +1077,20 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_recipe_type_id_fkey"
+            columns: ["recipe_type_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_types"
             referencedColumns: ["id"]
           },
           {
@@ -1163,6 +1234,7 @@ export type Database = {
         | "service"
         | "bar"
         | "office"
+        | "bakery"
       ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
       notification_priority: "normal" | "high" | "critical"
       notification_status: "unread" | "read" | "archived"
@@ -1326,6 +1398,7 @@ export const Constants = {
         "service",
         "bar",
         "office",
+        "bakery",
       ],
       ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
       notification_priority: ["normal", "high", "critical"],
