@@ -34,6 +34,7 @@ const en = {
     search: 'Search',
     searchPlaceholder: 'Search…',
     selectPlaceholder: 'Select',
+    noResults: 'No results found',
     pickDate: 'Pick date',
     anyDate: 'Any date',
     today: 'Today',
