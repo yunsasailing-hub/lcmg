@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import RecipesDashboard from './recipes/RecipesDashboard';
 import RecipesIngredients from './recipes/RecipesIngredients';
+import IngredientDetail from './recipes/IngredientDetail';
 import RecipesPlaceholder from './recipes/RecipesPlaceholder';
 
 export default function Recipes() {
@@ -8,6 +9,7 @@ export default function Recipes() {
     <Routes>
       <Route index element={<RecipesDashboard />} />
       <Route path="ingredients" element={<RecipesIngredients />} />
+      <Route path="ingredients/:id" element={<IngredientDetail />} />
       <Route path="list" element={<RecipesPlaceholder titleKey="recipes" />} />
       <Route path="categories" element={<RecipesPlaceholder titleKey="categories" />} />
       <Route path="units" element={<RecipesPlaceholder titleKey="units" />} />
