@@ -367,6 +367,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
               </div>
             </CollapsibleContent>
           </Collapsible>
+          )}
 
           <DialogFooter className="sticky bottom-0 -mx-6 px-6 py-3 bg-background border-t sm:border-0 sm:bg-transparent sm:static sm:mx-0 sm:px-0 sm:py-0 z-10">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
