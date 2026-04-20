@@ -142,9 +142,25 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
       if (r.severity === 'invalid' || !r.parsed) continue;
       try {
         if (r.existingId) {
+          // REPLACE: overwrite all import-supported fields on existing UUID.
+          // Internal UUID stays unchanged. Non-imported fields are left as-is.
           const { error } = await supabase
             .from('ingredients')
-            .update({ ...r.parsed, updated_by: user?.id ?? null })
+            .update({
+              code: r.parsed.code,
+              name_en: r.parsed.name_en,
+              name_vi: r.parsed.name_vi,
+              ingredient_type: r.parsed.ingredient_type,
+              ingredient_type_id: r.parsed.ingredient_type_id,
+              category_id: r.parsed.category_id,
+              base_unit_id: r.parsed.base_unit_id,
+              storehouse_id: r.parsed.storehouse_id,
+              notes: r.parsed.notes,
+              is_active: r.parsed.is_active,
+              price: r.parsed.price,
+              currency: r.parsed.currency,
+              updated_by: user?.id ?? null,
+            })
             .eq('id', r.existingId);
           if (error) throw error;
           updated++;
