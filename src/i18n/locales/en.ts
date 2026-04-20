@@ -340,7 +340,11 @@ const en = {
         fixBeforeSave: 'Please fix invalid lines before saving.',
       },
     },
-    ingredients: {
+    summary: {
+      sellingPrice: 'Selling price',
+      foodCostPct: 'Food cost %',
+      noSellingPrice: 'Set selling price',
+    },
       title: 'Ingredients',
       subtitle: 'Master list of raw materials used across recipes',
       add: 'Add Ingredient',
