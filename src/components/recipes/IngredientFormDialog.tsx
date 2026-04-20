@@ -194,7 +194,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         ...(ingredient?.id ? { id: ingredient.id } : {}),
         code,
         name_en: nameEn,
-        name_vi: form.name_vi.trim() || null,
+        name_vi: null,
         is_active: form.is_active,
         ingredient_type: legacyEnum,
         ingredient_type_id: form.ingredient_type_id,
