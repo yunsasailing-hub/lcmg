@@ -386,3 +386,52 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     </Card>
   );
 }
+
+function CostSummary({
+  total,
+  sellingPrice,
+  currency,
+}: {
+  total: number;
+  sellingPrice: number | null;
+  currency?: string | null;
+}) {
+  const { t } = useTranslation();
+  const hasSelling = sellingPrice != null && Number(sellingPrice) > 0;
+  const foodCostPct = hasSelling ? (total / Number(sellingPrice)) * 100 : null;
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t('recipes.lines.totalCost')}
+          </div>
+          <div className="font-heading text-xl font-semibold tabular-nums">
+            {fmt(total, currency)}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t('recipes.summary.sellingPrice')}
+          </div>
+          <div className="font-heading text-xl font-semibold tabular-nums">
+            {hasSelling ? fmt(Number(sellingPrice), currency) : '—'}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t('recipes.summary.foodCostPct')}
+          </div>
+          <div className="font-heading text-xl font-semibold tabular-nums">
+            {foodCostPct != null ? `${foodCostPct.toFixed(1)}%` : (
+              <span className="text-base font-normal text-muted-foreground">
+                {t('recipes.summary.noSellingPrice')}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
