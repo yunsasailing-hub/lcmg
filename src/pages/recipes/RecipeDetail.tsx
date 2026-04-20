@@ -540,9 +540,12 @@ export default function RecipeDetail() {
             </CardContent>
           </Card>
 
+          {/* Phase 2: Ingredients & Cost */}
+          <RecipeIngredientsTab recipeId={recipe.id} currency={recipe.currency} canManage={canManage} />
+
           {/* Future tab placeholders */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {(['ingredients', 'procedure', 'media', 'service'] as const).map(key => (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(['procedure', 'media', 'service'] as const).map(key => (
               <Card key={key} className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
                   <Lock className="h-4 w-4" />
