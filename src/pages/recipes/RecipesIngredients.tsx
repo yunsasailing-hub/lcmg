@@ -379,6 +379,8 @@ export default function RecipesIngredients() {
         ingredient={editing}
       />
 
+      <IngredientImportDialog open={importOpen} onOpenChange={setImportOpen} />
+
       <AlertDialog open={!!archiveTarget} onOpenChange={(o) => !o && setArchiveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
