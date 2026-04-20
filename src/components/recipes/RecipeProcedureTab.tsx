@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X, AlertTriangle, Upload, Image as ImageIcon, Video, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,6 +13,7 @@ import {
   useRecipeProcedures, useSaveRecipeProcedures, PROCEDURE_TYPES,
   type ProcedureStepInput, type ProcedureType,
 } from '@/hooks/useRecipeProcedures';
+import { uploadRecipeMediaFile } from '@/hooks/useRecipeMedia';
 import { toast } from '@/hooks/use-toast';
 
 interface Props {
@@ -48,6 +49,10 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
         duration_minutes: s.duration_minutes,
         temperature: s.temperature,
         note: s.note,
+        image_url: s.image_url ?? null,
+        image_storage_path: s.image_storage_path ?? null,
+        video_url: s.video_url ?? null,
+        web_link: s.web_link ?? null,
       })));
     }
   }, [steps, editing]);
@@ -67,6 +72,10 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
         duration_minutes: null,
         temperature: null,
         note: null,
+        image_url: null,
+        image_storage_path: null,
+        video_url: null,
+        web_link: null,
       },
     ]);
   };
