@@ -28,6 +28,7 @@ import {
   useArchiveIngredient, useIngredientTypes,
   type Ingredient,
 } from '@/hooks/useIngredients';
+import { classifyByPrefix } from '@/lib/ingredientClassification';
 import { toast } from '@/hooks/use-toast';
 
 type SortKey = 'name' | 'code' | 'category' | 'updated';
@@ -45,6 +46,7 @@ export default function RecipesIngredients() {
   const [unitFilter, setUnitFilter] = useState<string>('all');
   const [storehouseFilter, setStorehouseFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [prefixFilter, setPrefixFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
@@ -75,6 +77,7 @@ export default function RecipesIngredients() {
       if (storehouseFilter !== 'all' && i.storehouse_id !== storehouseFilter) return false;
       if (statusFilter === 'active' && !i.is_active) return false;
       if (statusFilter === 'inactive' && i.is_active) return false;
+      if (prefixFilter !== 'all' && classifyByPrefix(i.code) !== prefixFilter) return false;
       return true;
     });
     out.sort((a, b) => {
@@ -90,7 +93,7 @@ export default function RecipesIngredients() {
       }
     });
     return out;
-  }, [ingredients, search, typeFilter, categoryFilter, unitFilter, storehouseFilter, statusFilter, sortBy, categoryMap]);
+  }, [ingredients, search, typeFilter, categoryFilter, unitFilter, storehouseFilter, statusFilter, prefixFilter, sortBy, categoryMap]);
 
   const openAdd = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (ing: Ingredient) => { setEditing(ing); setDialogOpen(true); };
@@ -110,6 +113,7 @@ export default function RecipesIngredients() {
   const clearFilters = () => {
     setSearch(''); setTypeFilter('all'); setCategoryFilter('all');
     setUnitFilter('all'); setStorehouseFilter('all'); setStatusFilter('all');
+    setPrefixFilter('all');
   };
 
   const actions = canManage ? (
@@ -182,6 +186,16 @@ export default function RecipesIngredients() {
             <SelectItem value="all">{t('recipes.ingredients.allStatuses')}</SelectItem>
             <SelectItem value="active">{t('status.active')}</SelectItem>
             <SelectItem value="inactive">{t('status.inactive')}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={prefixFilter} onValueChange={setPrefixFilter}>
+          <SelectTrigger><SelectValue placeholder="All classifications" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All classifications</SelectItem>
+            <SelectItem value="food">Food (10…)</SelectItem>
+            <SelectItem value="drinks">Drinks (20…)</SelectItem>
+            <SelectItem value="unclassified">Unclassified</SelectItem>
           </SelectContent>
         </Select>
 
