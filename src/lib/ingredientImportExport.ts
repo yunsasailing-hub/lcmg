@@ -27,7 +27,6 @@ import { CURRENCIES, mapNameToLegacyEnum } from '@/hooks/useIngredients';
 export const COLUMNS = {
   id: 'ID',
   name: 'Name',
-  nameVi: 'Name (VI)',
   type: 'Type',
   category: 'Ingredient Category',
   unit: 'Unit',
@@ -41,7 +40,6 @@ export const COLUMNS = {
 export const EXPORT_HEADER_ORDER = [
   COLUMNS.id,
   COLUMNS.name,
-  COLUMNS.nameVi,
   COLUMNS.type,
   COLUMNS.category,
   COLUMNS.unit,
