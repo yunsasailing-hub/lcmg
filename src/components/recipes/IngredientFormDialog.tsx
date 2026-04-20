@@ -309,7 +309,8 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
               placeholder={t('recipes.ingredients.fields.notes')} />
           </section>
 
-          {/* Advanced */}
+          {/* Advanced — only Owner/Manager */}
+          {canSeeAdvanced && (
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
             <CollapsibleTrigger asChild>
               <Button type="button" variant="outline" size="sm" className="w-full justify-between">
