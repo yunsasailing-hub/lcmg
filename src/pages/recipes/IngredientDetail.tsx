@@ -133,7 +133,7 @@ export default function IngredientDetail() {
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <Field label={t('recipes.ingredients.fields.type')}>
-                {t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
+                {withArchivedSuffix(type?.name_en ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`), type?.is_active)}
               </Field>
               <Field label={t('recipes.ingredients.fields.category')}>{cat?.name_en ?? '—'}</Field>
               <Field label={t('recipes.ingredients.fields.baseUnit')}>
