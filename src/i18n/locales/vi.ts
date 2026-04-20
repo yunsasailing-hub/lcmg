@@ -36,6 +36,7 @@ const vi: Translations = {
     search: 'Tìm kiếm',
     searchPlaceholder: 'Tìm kiếm…',
     selectPlaceholder: 'Chọn',
+    noResults: 'Không có kết quả',
     pickDate: 'Chọn ngày',
     anyDate: 'Mọi ngày',
     today: 'Hôm nay',
