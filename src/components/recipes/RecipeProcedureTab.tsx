@@ -166,6 +166,22 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
     setErrors({});
   };
 
+  // Per-step image upload state
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const handleStepImageUpload = async (key: string, file: File) => {
+    setUploadingKey(key);
+    try {
+      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file);
+      patch(key, { image_url: publicUrl, image_storage_path: path });
+    } catch (err: any) {
+      toast({ title: t('recipes.media.uploadFailed'), description: err?.message, variant: 'destructive' });
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
   // -------------------- VIEW MODE --------------------
   if (!editing) {
     return (
@@ -210,6 +226,23 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                     <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
                       <span className="font-semibold">{t('recipes.procedure.cols.note')}:</span> {s.note}
                     </p>
+                  )}
+                  {(s.image_url || s.video_url || s.web_link) && (
+                    <div className="mt-3 space-y-2">
+                      {s.image_url && (
+                        <img src={s.image_url} alt="" className="max-h-48 rounded-md border object-cover" />
+                      )}
+                      {s.video_url && (
+                        <a href={s.video_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <Video className="h-3.5 w-3.5" /> {s.video_url} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                      {s.web_link && (
+                        <a href={s.web_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <LinkIcon className="h-3.5 w-3.5" /> {s.web_link} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
                   )}
                 </li>
               ))}
