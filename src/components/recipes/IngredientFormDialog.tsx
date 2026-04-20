@@ -34,7 +34,6 @@ interface Props {
 const emptyForm = {
   code: '',
   name_en: '',
-  name_vi: '',
   is_active: true,
   ingredient_type_id: '',
   category_id: '',
