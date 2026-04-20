@@ -384,6 +384,7 @@ const vi: Translations = {
         fixBeforeSave: 'Vui lòng sửa các bước lỗi trước khi lưu.',
       },
     },
+    summary: {
       sellingPrice: 'Giá bán',
       foodCostPct: 'Tỷ lệ chi phí thực phẩm',
       noSellingPrice: 'Đặt giá bán',
