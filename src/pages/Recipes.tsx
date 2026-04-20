@@ -15,7 +15,7 @@ export default function Recipes() {
       <Route path="categories" element={<RecipesPlaceholder titleKey="categories" />} />
       <Route path="units" element={<RecipesPlaceholder titleKey="units" />} />
       <Route path="import-export" element={<RecipesPlaceholder titleKey="importExport" />} />
-      <Route path="settings" element={<RecipesPlaceholder titleKey="settings" />} />
+      <Route path="settings" element={<RecipesSettings />} />
     </Routes>
   );
 }
