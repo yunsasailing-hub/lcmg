@@ -342,6 +342,9 @@ const vi: Translations = {
         fixBeforeSave: 'Vui lòng sửa các dòng lỗi trước khi lưu.',
       },
     },
+    ingredients: {
+      title: 'Nguyên liệu',
+      subtitle: 'Danh sách nguyên liệu thô dùng trong công thức',
       add: 'Thêm nguyên liệu',
       edit: 'Sửa nguyên liệu',
       searchPlaceholder: 'Tìm theo ID hoặc tên…',
