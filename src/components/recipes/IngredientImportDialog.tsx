@@ -307,7 +307,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                 <AlertCircle className="h-3 w-3" /> {counts.invalid} invalid
               </Badge>
               <span className="ml-auto text-muted-foreground">
-                Will create {counts.create} · update {counts.update}
+                {counts.create} NEW · {counts.update} REPLACE
               </span>
             </div>
 
