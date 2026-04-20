@@ -55,7 +55,19 @@ export const EXPORT_HEADER_ORDER = [
 // ---------- Types ----------
 
 export type RowSeverity = 'valid' | 'warning' | 'invalid';
+/**
+ * - 'create'  → ID not found in DB → will INSERT a new ingredient (label: NEW)
+ * - 'update'  → ID matches an existing ingredient → will REPLACE all import-supported
+ *              fields on that record (UUID preserved). Label: REPLACE.
+ * - 'skip'    → row failed validation; will not be imported. Label: INVALID.
+ */
 export type RowAction = 'create' | 'update' | 'skip';
+
+export const ACTION_LABEL: Record<RowAction, string> = {
+  create: 'NEW',
+  update: 'REPLACE',
+  skip: 'INVALID',
+};
 
 export interface ImportRow {
   rowNumber: number; // 1-based, including header? -> we treat as data-row index starting at 2

@@ -20,11 +20,13 @@ import {
   useIngredients, useIngredientTypes, useRecipeCategories, useRecipeUnits, useStorehouses,
 } from '@/hooks/useIngredients';
 import {
+  ACTION_LABEL,
   COLUMNS,
   readFileAsRows,
   validateRows,
   type ImportRow,
   type ImportSummary,
+  type RowAction,
   type RowSeverity,
 } from '@/lib/ingredientImportExport';
 import { useQueryClient } from '@tanstack/react-query';
@@ -140,9 +142,25 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
       if (r.severity === 'invalid' || !r.parsed) continue;
       try {
         if (r.existingId) {
+          // REPLACE: overwrite all import-supported fields on existing UUID.
+          // Internal UUID stays unchanged. Non-imported fields are left as-is.
           const { error } = await supabase
             .from('ingredients')
-            .update({ ...r.parsed, updated_by: user?.id ?? null })
+            .update({
+              code: r.parsed.code,
+              name_en: r.parsed.name_en,
+              name_vi: r.parsed.name_vi,
+              ingredient_type: r.parsed.ingredient_type,
+              ingredient_type_id: r.parsed.ingredient_type_id,
+              category_id: r.parsed.category_id,
+              base_unit_id: r.parsed.base_unit_id,
+              storehouse_id: r.parsed.storehouse_id,
+              notes: r.parsed.notes,
+              is_active: r.parsed.is_active,
+              price: r.parsed.price,
+              currency: r.parsed.currency,
+              updated_by: user?.id ?? null,
+            })
             .eq('id', r.existingId);
           if (error) throw error;
           updated++;
@@ -219,6 +237,20 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
     );
   };
 
+  const actBadge = (a: RowAction) => {
+    const cls =
+      a === 'create'
+        ? 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30'
+        : a === 'update'
+          ? 'bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-500/30'
+          : 'bg-muted text-muted-foreground border-border';
+    return (
+      <Badge variant="outline" className={cls}>
+        {ACTION_LABEL[a]}
+      </Badge>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-h-[92vh] max-w-5xl overflow-hidden flex flex-col">
@@ -228,8 +260,9 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
             Import Ingredients
           </DialogTitle>
           <DialogDescription>
-            Upload an Excel (.xlsx) or CSV file. Values are matched case-insensitively against
-            active option lists. Rows with missing required fields or invalid options are skipped.
+            Upload an Excel (.xlsx) or CSV file. Rows are matched by <strong>ID</strong>: existing
+            IDs are <strong>replaced</strong> (all import-supported fields overwritten, internal
+            UUID preserved); new IDs are <strong>created</strong>. Invalid rows are skipped.
           </DialogDescription>
         </DialogHeader>
 
@@ -275,7 +308,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                 <AlertCircle className="h-3 w-3" /> {counts.invalid} invalid
               </Badge>
               <span className="ml-auto text-muted-foreground">
-                Will create {counts.create} · update {counts.update}
+                {counts.create} NEW · {counts.update} REPLACE
               </span>
             </div>
 
@@ -307,7 +340,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                         <TableRow key={r.rowNumber}>
                           <TableCell className="text-xs text-muted-foreground">{r.rowNumber}</TableCell>
                           <TableCell>{sevBadge(r.severity)}</TableCell>
-                          <TableCell className="text-xs uppercase">{r.action}</TableCell>
+                          <TableCell>{actBadge(r.action)}</TableCell>
                           <TableCell className="font-mono text-xs">{r.raw[COLUMNS.id]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.name]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.type]}</TableCell>
