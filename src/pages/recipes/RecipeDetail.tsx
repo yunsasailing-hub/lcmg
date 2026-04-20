@@ -542,7 +542,7 @@ export default function RecipeDetail() {
           </Card>
 
           {/* Phase 2: Ingredients & Cost */}
-          <RecipeIngredientsTab recipeId={recipe.id} currency={recipe.currency} canManage={canManage} />
+          <RecipeIngredientsTab recipeId={recipe.id} currency={recipe.currency} sellingPrice={recipe.selling_price ?? null} canManage={canManage} />
 
           {/* Future tab placeholders */}
           <div className="grid gap-3 sm:grid-cols-3">
