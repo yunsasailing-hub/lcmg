@@ -109,6 +109,9 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
       !s.tool?.trim() &&
       !s.temperature?.trim() &&
       !s.note?.trim() &&
+      !s.image_url &&
+      !s.video_url?.trim() &&
+      !s.web_link?.trim() &&
       (s.duration_minutes == null);
 
     const cleaned = draft.filter(s => !isEmpty(s)).map((s, i) => ({ ...s, step_number: i + 1 }));
@@ -145,6 +148,10 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
             ? Number(s.duration_minutes) : null,
           temperature: s.temperature?.trim() || null,
           note: s.note?.trim() || null,
+          image_url: s.image_url || null,
+          image_storage_path: s.image_storage_path || null,
+          video_url: s.video_url?.trim() || null,
+          web_link: s.web_link?.trim() || null,
         })),
       });
       toast({ title: t('recipes.procedure.saved') });
