@@ -20,7 +20,12 @@ import { Switch } from '@/components/ui/switch';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command';
+import { ChevronDown, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
 type StorageType = 'dry' | 'chilled' | 'frozen' | 'ambient';
@@ -258,16 +263,15 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
             <h3 className={sectionTitle}>{t('recipes.ingredients.sections.storage')}</h3>
             <div>
               <Label>{t('recipes.ingredients.fields.storehouse')}</Label>
-              <Select value={form.storehouse_id || 'none'}
-                onValueChange={v => set('storehouse_id', v === 'none' ? '' : v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('common.none')}</SelectItem>
-                  {storehouses.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <StorehouseCombobox
+                value={form.storehouse_id}
+                onChange={v => set('storehouse_id', v)}
+                options={storehouses.map(s => ({ id: s.id, name: s.name }))}
+                placeholder={t('common.selectPlaceholder')}
+                searchPlaceholder={t('common.search')}
+                emptyText={t('common.noResults')}
+                noneLabel={t('common.none')}
+              />
               <p className="mt-1 text-xs text-muted-foreground">
                 {t('recipes.ingredients.fields.storehouseHelp')}
               </p>
@@ -373,5 +377,68 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface StorehouseComboboxProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: { id: string; name: string }[];
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyText: string;
+  noneLabel: string;
+}
+
+function StorehouseCombobox({
+  value, onChange, options, placeholder, searchPlaceholder, emptyText, noneLabel,
+}: StorehouseComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find(o => o.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'w-full justify-between font-normal',
+            !selected && 'text-muted-foreground',
+          )}
+        >
+          {selected ? selected.name : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__none__"
+                onSelect={() => { onChange(''); setOpen(false); }}
+              >
+                <Check className={cn('mr-2 h-4 w-4', !value ? 'opacity-100' : 'opacity-0')} />
+                {noneLabel}
+              </CommandItem>
+              {options.map(o => (
+                <CommandItem
+                  key={o.id}
+                  value={o.name}
+                  onSelect={() => { onChange(o.id); setOpen(false); }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', value === o.id ? 'opacity-100' : 'opacity-0')} />
+                  {o.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
