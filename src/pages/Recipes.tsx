@@ -1,15 +1,18 @@
-import { useTranslation } from 'react-i18next';
-import AppShell from '@/components/layout/AppShell';
-import PageHeader from '@/components/shared/PageHeader';
-import EmptyState from '@/components/shared/EmptyState';
-import { CookingPot } from 'lucide-react';
+import { Routes, Route } from 'react-router-dom';
+import RecipesDashboard from './recipes/RecipesDashboard';
+import RecipesIngredients from './recipes/RecipesIngredients';
+import RecipesPlaceholder from './recipes/RecipesPlaceholder';
 
 export default function Recipes() {
-  const { t } = useTranslation();
   return (
-    <AppShell>
-      <PageHeader title={t('pages.recipes.title')} description={t('pages.recipes.subtitle')} />
-      <EmptyState icon={CookingPot} title={t('pages.recipes.emptyTitle')} description={t('pages.recipes.emptyDesc')} />
-    </AppShell>
+    <Routes>
+      <Route index element={<RecipesDashboard />} />
+      <Route path="ingredients" element={<RecipesIngredients />} />
+      <Route path="list" element={<RecipesPlaceholder titleKey="recipes" />} />
+      <Route path="categories" element={<RecipesPlaceholder titleKey="categories" />} />
+      <Route path="units" element={<RecipesPlaceholder titleKey="units" />} />
+      <Route path="import-export" element={<RecipesPlaceholder titleKey="importExport" />} />
+      <Route path="settings" element={<RecipesPlaceholder titleKey="settings" />} />
+    </Routes>
   );
 }
