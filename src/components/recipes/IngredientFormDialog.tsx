@@ -68,7 +68,8 @@ const sectionTitle = 'mb-3 text-sm font-semibold text-foreground/80 uppercase tr
 
 export default function IngredientFormDialog({ open, onOpenChange, ingredient }: Props) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, hasAnyRole } = useAuth();
+  const canSeeAdvanced = hasAnyRole(['owner', 'manager']);
   const { data: categories = [] } = useRecipeCategories();
   const { data: units = [] } = useRecipeUnits();
   const { data: storehouses = [] } = useStorehouses();
@@ -308,7 +309,8 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
               placeholder={t('recipes.ingredients.fields.notes')} />
           </section>
 
-          {/* Advanced */}
+          {/* Advanced — only Owner/Manager */}
+          {canSeeAdvanced && (
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
             <CollapsibleTrigger asChild>
               <Button type="button" variant="outline" size="sm" className="w-full justify-between">
@@ -365,6 +367,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
               </div>
             </CollapsibleContent>
           </Collapsible>
+          )}
 
           <DialogFooter className="sticky bottom-0 -mx-6 px-6 py-3 bg-background border-t sm:border-0 sm:bg-transparent sm:static sm:mx-0 sm:px-0 sm:py-0 z-10">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
