@@ -345,6 +345,7 @@ const en = {
       foodCostPct: 'Food cost %',
       noSellingPrice: 'Set selling price',
     },
+    ingredients: {
       title: 'Ingredients',
       subtitle: 'Master list of raw materials used across recipes',
       add: 'Add Ingredient',
