@@ -997,6 +997,77 @@ export type Database = {
           },
         ]
       }
+      recipe_service_info: {
+        Row: {
+          allergens_to_mention: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          image_storage_path: string | null
+          image_url: string | null
+          key_ingredients: string | null
+          pairing_suggestion: string | null
+          recipe_id: string
+          service_warning: string | null
+          short_description: string | null
+          staff_explanation: string | null
+          taste_profile: string | null
+          updated_at: string
+          updated_by: string | null
+          upselling_notes: string | null
+          video_url: string | null
+          web_link: string | null
+        }
+        Insert: {
+          allergens_to_mention?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_storage_path?: string | null
+          image_url?: string | null
+          key_ingredients?: string | null
+          pairing_suggestion?: string | null
+          recipe_id: string
+          service_warning?: string | null
+          short_description?: string | null
+          staff_explanation?: string | null
+          taste_profile?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          upselling_notes?: string | null
+          video_url?: string | null
+          web_link?: string | null
+        }
+        Update: {
+          allergens_to_mention?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_storage_path?: string | null
+          image_url?: string | null
+          key_ingredients?: string | null
+          pairing_suggestion?: string | null
+          recipe_id?: string
+          service_warning?: string | null
+          short_description?: string | null
+          staff_explanation?: string | null
+          taste_profile?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          upselling_notes?: string | null
+          video_url?: string | null
+          web_link?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_service_info_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: true
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_types: {
         Row: {
           created_at: string
