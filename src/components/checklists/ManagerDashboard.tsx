@@ -604,7 +604,7 @@ export default function ManagerDashboard() {
                           const overdue = isOverdue(instance);
                           const StatusIcon = instance.status === 'pending' ? (overdue ? AlertTriangle : Clock)
                             : instance.status === 'rejected' ? AlertTriangle
-                            : instance.status === 'verified' ? ShieldCheck
+                            : instance.status === 'verified' ? CheckCircle2
                             : CheckCircle2;
 
                           const isItemSelected = selectedIds.has(instance.id);
