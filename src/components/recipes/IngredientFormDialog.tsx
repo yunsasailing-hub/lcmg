@@ -141,12 +141,12 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
   );
 
   const unitOptions = useMemo(
-    () => buildManagedOptions(units, form.base_unit_id, (item) => `${item.code} — ${item.name_en}`, (item) => item.name_vi ?? undefined),
+    () => buildManagedOptions(units, form.base_unit_id, (item) => item.name_en, (item) => item.name_vi ?? undefined),
     [units, form.base_unit_id, archivedLabel],
   );
 
   const purchaseUnitOptions = useMemo(
-    () => buildManagedOptions(units, form.purchase_unit_id, (item) => `${item.code} — ${item.name_en}`, (item) => item.name_vi ?? undefined),
+    () => buildManagedOptions(units, form.purchase_unit_id, (item) => item.name_en, (item) => item.name_vi ?? undefined),
     [units, form.purchase_unit_id, archivedLabel],
   );
 
