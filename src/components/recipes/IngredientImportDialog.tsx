@@ -20,11 +20,13 @@ import {
   useIngredients, useIngredientTypes, useRecipeCategories, useRecipeUnits, useStorehouses,
 } from '@/hooks/useIngredients';
 import {
+  ACTION_LABEL,
   COLUMNS,
   readFileAsRows,
   validateRows,
   type ImportRow,
   type ImportSummary,
+  type RowAction,
   type RowSeverity,
 } from '@/lib/ingredientImportExport';
 import { useQueryClient } from '@tanstack/react-query';
