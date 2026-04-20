@@ -173,7 +173,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
     }
   };
 
-  const storageOpts: StorageType[] = ['dry', 'chilled', 'frozen', 'ambient'];
+  
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
