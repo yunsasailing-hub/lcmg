@@ -382,6 +382,7 @@ const en = {
         fixBeforeSave: 'Please fix invalid steps before saving.',
       },
     },
+    summary: {
       sellingPrice: 'Selling price',
       foodCostPct: 'Food cost %',
       noSellingPrice: 'Set selling price',
