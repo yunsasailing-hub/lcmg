@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useIngredient, useRecipeCategories, useRecipeUnits, useStorehouses, useArchiveIngredient,
+  useIngredient, useRecipeCategories, useRecipeUnits, useStorehouses, useArchiveIngredient, useIngredientTypes,
 } from '@/hooks/useIngredients';
 import { classifyByPrefix, PREFIX_CLASS_LABEL } from '@/lib/ingredientClassification';
 import { toast } from '@/hooks/use-toast';
@@ -40,9 +40,10 @@ export default function IngredientDetail() {
   const canManage = hasAnyRole(['owner', 'manager']);
 
   const { data: ing, isLoading } = useIngredient(id);
-  const { data: categories = [] } = useRecipeCategories();
-  const { data: units = [] } = useRecipeUnits();
-  const { data: storehouses = [] } = useStorehouses();
+  const { data: types = [] } = useIngredientTypes(true);
+  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: units = [] } = useRecipeUnits(true);
+  const { data: storehouses = [] } = useStorehouses(true);
   const archive = useArchiveIngredient();
 
   const [editOpen, setEditOpen] = useState(false);
@@ -67,9 +68,14 @@ export default function IngredientDetail() {
     );
   }
 
-  const cat = ing.category_id ? categories.find(c => c.id === ing.category_id) : null;
-  const unit = ing.base_unit_id ? units.find(u => u.id === ing.base_unit_id) : null;
-  const sh = ing.storehouse_id ? storehouses.find(s => s.id === ing.storehouse_id) : null;
+  const type = ing.ingredient_type_id ? types.find((item) => item.id === ing.ingredient_type_id) : null;
+  const cat = ing.category_id ? categories.find((item) => item.id === ing.category_id) : null;
+  const unit = ing.base_unit_id ? units.find((item) => item.id === ing.base_unit_id) : null;
+  const sh = ing.storehouse_id ? storehouses.find((item) => item.id === ing.storehouse_id) : null;
+  const withArchivedSuffix = (label?: string | null, isActive?: boolean) => {
+    if (!label) return '—';
+    return isActive === false ? `${label} (${t('common.archived')})` : label;
+  };
 
   const handleArchiveToggle = async () => {
     try {
@@ -135,9 +141,9 @@ export default function IngredientDetail() {
               <Field label={t('recipes.ingredients.fields.type')}>
                 {withArchivedSuffix(type?.name_en ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`), type?.is_active)}
               </Field>
-              <Field label={t('recipes.ingredients.fields.category')}>{cat?.name_en ?? '—'}</Field>
+              <Field label={t('recipes.ingredients.fields.category')}>{withArchivedSuffix(cat?.name_en, cat?.is_active)}</Field>
               <Field label={t('recipes.ingredients.fields.baseUnit')}>
-                {unit ? `${unit.code} — ${unit.name_en}` : '—'}
+                {withArchivedSuffix(unit ? `${unit.code} — ${unit.name_en}` : null, unit?.is_active)}
               </Field>
             </div>
           </CardContent>
@@ -149,7 +155,7 @@ export default function IngredientDetail() {
               {t('recipes.ingredients.sections.storage')}
             </h3>
             <div>
-              <Field label={t('recipes.ingredients.fields.storehouse')}>{sh?.name ?? '—'}</Field>
+              <Field label={t('recipes.ingredients.fields.storehouse')}>{withArchivedSuffix(sh?.name, sh?.is_active)}</Field>
             </div>
           </CardContent>
         </Card>
