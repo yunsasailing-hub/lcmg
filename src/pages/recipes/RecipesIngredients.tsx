@@ -43,7 +43,7 @@ type SortKey = 'name' | 'code' | 'category' | 'updated';
 export default function RecipesIngredients() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { hasAnyRole } = useAuth();
+  const { hasAnyRole, user } = useAuth();
   const canManage = hasAnyRole(['owner', 'manager']);
 
   const [includeArchived, setIncludeArchived] = useState(false);
