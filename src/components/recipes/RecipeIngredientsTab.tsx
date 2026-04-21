@@ -299,13 +299,19 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                 </TableHeader>
                 <TableBody>
                   {draft.map((l, idx) => {
-                    const { ing, baseUnit, avgCostPerBaseUnit, lineCost, adjusted } = computeRow(l);
+                    const { ing, baseUnit, avgCostPerBaseUnit, lineCost, adjusted, subRecipe } = computeRow(l);
                     return (
                       <TableRow key={l._key}>
                         <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                         <TableCell>
-                          <div className="font-medium">{ing?.name_en ?? '—'}</div>
-                          <div className="font-mono text-xs text-muted-foreground">{ing?.code ?? ''}</div>
+                          <div className="font-medium">
+                            {subRecipe ? subRecipe.name_en : (ing?.name_en ?? '—')}
+                          </div>
+                          <div className="font-mono text-xs text-muted-foreground">
+                            {subRecipe
+                              ? `${subRecipe.code ?? ''} · ${t('recipes.lines.sourceRecipe')}`
+                              : (ing?.code ?? '')}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{l.quantity}</TableCell>
                         <TableCell>{l.unit_id ? unitMap[l.unit_id]?.code ?? '—' : '—'}</TableCell>
@@ -422,7 +428,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                   <div className="sm:col-span-5">
                     <label className="text-xs text-muted-foreground">{t('recipes.lines.cols.ingredient')} *</label>
                     <SearchableCombobox
-                      value={l.ingredient_id ?? ''}
+                      value={l.sub_recipe_id ? `${RECIPE_PREFIX}${l.sub_recipe_id}` : (l.ingredient_id ?? '')}
                       onChange={(v) => onPickIngredient(l._key, v || null)}
                       options={ingredientOptions}
                       placeholder={t('recipes.lines.searchIngredient') as string}
@@ -636,13 +642,13 @@ function TableEditor({
                   <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                   <TableCell>
                     <SearchableCombobox
-                      value={l.ingredient_id ?? ''}
+                      value={l.sub_recipe_id ? `${RECIPE_PREFIX}${l.sub_recipe_id}` : (l.ingredient_id ?? '')}
                       onChange={(v) => onPickIngredient(l._key, v || null)}
                       options={ingredientOptions}
                       placeholder={t('recipes.lines.searchIngredient') as string}
                       searchPlaceholder={t('recipes.lines.searchIngredient') as string}
                       emptyText={t('recipes.lines.noIngredients') as string}
-                      autoOpen={lastAddedKey === l._key && !l.ingredient_id}
+                      autoOpen={lastAddedKey === l._key && !l.ingredient_id && !l.sub_recipe_id}
                     />
                     {err?.ingredient && (
                       <p className="mt-1 text-xs text-destructive">{err.ingredient}</p>
