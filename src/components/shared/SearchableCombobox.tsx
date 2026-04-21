@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,14 +24,21 @@ interface Props {
   allowNone?: boolean;
   disabled?: boolean;
   className?: string;
+  autoOpen?: boolean;
 }
 
 export function SearchableCombobox({
   value, onChange, options, placeholder, searchPlaceholder, emptyText,
-  noneLabel, allowNone = false, disabled, className,
+  noneLabel, allowNone = false, disabled, className, autoOpen = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const selected = options.find(o => o.id === value);
+
+  useEffect(() => {
+    if (autoOpen) setOpen(true);
+    // run only on mount when autoOpen is set
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
