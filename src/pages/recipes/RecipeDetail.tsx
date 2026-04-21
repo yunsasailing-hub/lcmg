@@ -165,6 +165,60 @@ export default function RecipeDetail() {
   const typeMap = useMemo(() => Object.fromEntries(types.map(x => [x.id, x])), [types]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
   const branchMap = useMemo(() => Object.fromEntries(branches.map(b => [b.id, b])), [branches]);
+  const ingredientMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
+
+  const handleExportPdf = () => {
+    if (!recipe) return;
+    try {
+      exportRecipeToPdf({
+        recipe,
+        ingredients: recipeLines,
+        procedures,
+        media: mediaItems,
+        serviceInfo,
+        ingredientMap: ingredientMap as any,
+        unitMap: unitMap as any,
+        categoryMap: categoryMap as any,
+        typeMap: typeMap as any,
+        labels: {
+          printedOn: t('recipes.list.pdf.printedOn'),
+          ingredients: t('recipes.list.sections.ingredients'),
+          procedure: t('recipes.list.sections.procedure'),
+          media: t('recipes.list.sections.media'),
+          service: t('recipes.list.sections.service'),
+          colIngredient: t('recipes.lines.cols.ingredient'),
+          colQty: t('recipes.lines.cols.qty'),
+          colUnit: t('recipes.lines.cols.unit'),
+          colAdjPct: t('recipes.lines.cols.adjPct'),
+          colCost: t('recipes.lines.cols.adjusted'),
+          totalCost: t('recipes.lines.totalCost'),
+          foodCostPct: t('recipes.lines.foodCostPct'),
+          recipeId: t('recipes.list.fields.code'),
+          category: t('recipes.list.fields.category'),
+          type: t('recipes.list.fields.type'),
+          department: t('recipes.list.fields.department'),
+          yield: t('recipes.list.fields.yieldQuantity'),
+          portion: t('recipes.list.fields.portionQuantity'),
+          sellingPrice: t('recipes.list.fields.sellingPrice'),
+          shelfLife: t('recipes.list.fields.shelfLife'),
+          warning: t('recipes.list.pdf.warning'),
+          tool: t('recipes.list.pdf.tool'),
+          duration: t('recipes.list.pdf.duration'),
+          temperature: t('recipes.list.pdf.temperature'),
+          note: t('recipes.list.pdf.note'),
+          minutes: t('recipes.list.pdf.minutes'),
+          shortDescription: t('recipes.list.pdf.shortDescription'),
+          keyIngredients: t('recipes.list.pdf.keyIngredients'),
+          allergens: t('recipes.list.pdf.allergens'),
+          pairing: t('recipes.list.pdf.pairing'),
+          upselling: t('recipes.list.pdf.upselling'),
+          taste: t('recipes.list.pdf.taste'),
+        },
+      });
+    } catch (e: any) {
+      toast({ title: t('common.error'), description: e?.message, variant: 'destructive' });
+    }
+  };
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setForm(prev => ({ ...prev, [k]: v }));
