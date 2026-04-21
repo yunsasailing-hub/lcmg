@@ -138,8 +138,25 @@ const safeFilename = (name: string, code: string | null): string => {
 };
 
 // ---------- Main entry ----------
-export function exportRecipeToPdf(payload: RecipePdfPayload): void {
-  const html = buildPrintHtml(payload);
+export async function exportRecipeToPdf(payload: RecipePdfPayload): Promise<void> {
+  // Pre-fetch all recipe images and inline as base64 so the print iframe
+  // never has to wait on network/CORS-restricted resources.
+  const includeImages = payload.includeImages !== false;
+  let preparedPayload = payload;
+  if (includeImages) {
+    const images = payload.media.filter(m => m.media_type === 'image');
+    const urlMap = await inlineImagesAsDataUrls(images.map(m => m.url));
+    preparedPayload = {
+      ...payload,
+      media: payload.media.map(m =>
+        m.media_type === 'image' && urlMap[m.url]
+          ? { ...m, url: urlMap[m.url] }
+          : m,
+      ),
+    };
+  }
+
+  const html = buildPrintHtml(preparedPayload);
   const filename = safeFilename(payload.recipe.name_en, payload.recipe.code).replace(/\.pdf$/, '');
 
   // Use a hidden iframe in the current page — no popup, no blocker.
@@ -185,16 +202,71 @@ export function exportRecipeToPdf(payload: RecipePdfPayload): void {
     if (doc) {
       try { doc.title = filename; } catch { /* noop */ }
     }
-    const fontsReady = (iframe.contentDocument as any)?.fonts?.ready;
-    if (fontsReady && typeof fontsReady.then === 'function') {
-      fontsReady.then(() => setTimeout(triggerPrint, 250));
-    } else {
-      setTimeout(triggerPrint, 500);
-    }
+    const doc2 = iframe.contentDocument;
+    const fontsReady = (doc2 as any)?.fonts?.ready;
+    const imagesReady = doc2 ? waitForImages(doc2) : Promise.resolve();
+    Promise.all([
+      fontsReady && typeof fontsReady.then === 'function' ? fontsReady : Promise.resolve(),
+      imagesReady,
+    ]).then(() => setTimeout(triggerPrint, 150));
   };
 
   // srcdoc avoids cross-origin/document.write quirks and works inside embedded previews.
   iframe.srcdoc = html;
+}
+
+// ---------- Image preloading helpers ----------
+
+/** Wait for all <img> elements inside a document to finish loading (or fail). */
+function waitForImages(doc: Document, timeoutMs = 8000): Promise<void> {
+  const imgs = Array.from(doc.images || []);
+  if (imgs.length === 0) return Promise.resolve();
+  const perImage = imgs.map(img => {
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return new Promise<void>(resolve => {
+      const done = () => resolve();
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+    });
+  });
+  return Promise.race([
+    Promise.all(perImage).then(() => undefined),
+    new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
+  ]);
+}
+
+/**
+ * Fetch each URL and convert to a base64 data URL. Falls back to the original
+ * URL if the fetch fails (CORS, 404, etc.) so the PDF still attempts to render
+ * something rather than breaking the whole export.
+ */
+async function inlineImagesAsDataUrls(urls: string[]): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(urls.filter(Boolean)));
+  const entries = await Promise.all(
+    unique.map(async (url) => {
+      // Already a data URL — keep as-is.
+      if (url.startsWith('data:')) return [url, url] as const;
+      try {
+        const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+        if (!res.ok) return [url, url] as const;
+        const blob = await res.blob();
+        const dataUrl = await blobToDataUrl(blob);
+        return [url, dataUrl] as const;
+      } catch {
+        return [url, url] as const;
+      }
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }
 
 // ---------- HTML builder ----------
