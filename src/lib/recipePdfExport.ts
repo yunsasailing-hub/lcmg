@@ -458,6 +458,19 @@ function buildPrintHtml(p: RecipePdfPayload): string {
         </div>
         <div class="step-body">
           <p class="step-text">${nl2br(s.instruction_en)}</p>
+          ${includeImages && s.image_url ? `
+            <div class="step-image-wrap">
+              <img
+                src="${escapeHtml(s.image_url)}"
+                alt="Step ${s.step_number}"
+                crossorigin="anonymous"
+                loading="eager"
+                decoding="sync"
+                data-export-image="true"
+                class="step-image"
+              />
+            </div>
+          ` : ''}
           ${meta.length ? `<div class="step-meta">${meta.join(' · ')}</div>` : ''}
           ${s.warning ? `<div class="step-warn"><strong>${escapeHtml(labels.warning)}:</strong> ${escapeHtml(s.warning)}</div>` : ''}
           ${s.note ? `<div class="step-note"><strong>${escapeHtml(labels.note)}:</strong> ${escapeHtml(s.note)}</div>` : ''}
@@ -475,7 +488,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     <div class="media-grid">
       ${heroImages.map(m => `
         <figure>
-          <img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.title ?? '')}" crossorigin="anonymous"/>
+          <img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.title ?? '')}" crossorigin="anonymous" loading="eager" decoding="sync" data-export-image="true"/>
           ${m.title ? `<figcaption>${escapeHtml(m.title)}</figcaption>` : ''}
         </figure>
       `).join('')}
@@ -485,6 +498,19 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   // ---- Service info ----
   const si = p.serviceInfo;
   const siHtml = si ? `
+    ${includeImages && si.image_url ? `
+      <div class="service-image-wrap">
+        <img
+          src="${escapeHtml(si.image_url)}"
+          alt="${escapeHtml(recipe.name_en)}"
+          crossorigin="anonymous"
+          loading="eager"
+          decoding="sync"
+          data-export-image="true"
+          class="service-image"
+        />
+      </div>
+    ` : ''}
     ${si.short_description ? `<div class="si-row"><div class="si-label">${escapeHtml(labels.shortDescription)}</div><div>${nl2br(si.short_description)}</div></div>` : ''}
     ${si.key_ingredients ? `<div class="si-row"><div class="si-label">${escapeHtml(labels.keyIngredients)}</div><div>${nl2br(si.key_ingredients)}</div></div>` : ''}
     ${si.taste_profile ? `<div class="si-row"><div class="si-label">${escapeHtml(labels.taste)}</div><div>${nl2br(si.taste_profile)}</div></div>` : ''}
@@ -633,6 +659,20 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   }
   .step-body { flex: 1; }
   .step-text { margin: 0 0 4px 0; font-size: 11pt; }
+  .step-image-wrap {
+    margin: 6px 0 8px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .step-image {
+    display: block;
+    width: 100%;
+    max-width: 88mm;
+    max-height: 56mm;
+    object-fit: cover;
+    border: 1px solid #000;
+    border-radius: 4px;
+  }
   .step-meta { font-size: 9.5pt; color: #222; }
   .step-warn {
     margin-top: 4px;
@@ -690,6 +730,19 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     font-weight: 600;
     color: #000;
     font-size: 10pt;
+  }
+  .service-image-wrap {
+    margin: 0 0 10px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .service-image {
+    display: block;
+    width: 100%;
+    max-height: 72mm;
+    object-fit: cover;
+    border: 1px solid #000;
+    border-radius: 4px;
   }
 
   footer.print-footer {
