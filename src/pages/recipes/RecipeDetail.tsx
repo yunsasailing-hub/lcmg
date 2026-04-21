@@ -178,6 +178,7 @@ export default function RecipeDetail() {
         procedures,
         media: mediaItems,
         serviceInfo,
+        includeImages: includeImagesInPdf,
         ingredientMap: ingredientMap as any,
         unitMap: unitMap as any,
         categoryMap: categoryMap as any,
