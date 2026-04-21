@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Image as ImageIcon, Video, Link as LinkIcon, FileText, Upload, Trash2, Star, ExternalLink, Plus,
+  Image as ImageIcon, Video, Link as LinkIcon, FileText, Upload, Trash2, Star, ExternalLink, Plus, Pencil, Check,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
   const [webUrl, setWebUrl] = useState('');
   const [webTitle, setWebTitle] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<RecipeMediaRow | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const images = media.filter(m => m.media_type === 'image');
   const primary = images.find(m => m.is_primary) ?? images[0];
@@ -48,6 +49,10 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
   const videos = media.filter(m => m.media_type === 'video_link');
   const webs = media.filter(m => m.media_type === 'web_link');
   const files = media.filter(m => m.media_type === 'file');
+
+  // In consultation (read) mode we hide editing chrome; managers click Edit to add/remove.
+  const isReadMode = !editing;
+  const totalMedia = media.length;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -138,25 +143,43 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
 
   return (
     <Card>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-5 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="font-heading text-lg font-semibold">{t('recipes.media.title')}</h3>
-            <p className="text-xs text-muted-foreground">{t('recipes.media.hint')}</p>
+            <h3 className="font-heading text-xl font-semibold">{t('recipes.media.title')}</h3>
+            {editing && (
+              <p className="mt-1 text-xs text-muted-foreground">{t('recipes.media.hint')}</p>
+            )}
           </div>
+          {canManage && (
+            <Button
+              size="sm"
+              variant={editing ? 'default' : 'outline'}
+              onClick={() => setEditing(v => !v)}
+            >
+              {editing ? <Check className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+              {editing ? t('common.done') : t('common.edit')}
+            </Button>
+          )}
         </div>
+
+        {/* Compact empty state when nothing exists and we're not editing */}
+        {!isLoading && isReadMode && totalMedia === 0 && (
+          <p className="text-sm text-muted-foreground">{t('recipes.media.empty')}</p>
+        )}
 
         {isLoading ? (
           <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-        ) : (
+        ) : (isReadMode && totalMedia === 0) ? null : (
           <>
             {/* Main image */}
+            {(editing || primary) && (
             <section className="space-y-2">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('recipes.media.mainImage')}
               </h4>
               <div className="flex flex-wrap items-start gap-4">
-                <div className="aspect-square w-40 overflow-hidden rounded-md border bg-muted">
+                <div className={`aspect-square overflow-hidden rounded-md border bg-muted ${primary ? 'w-56 sm:w-64' : 'w-40'}`}>
                   {primary ? (
                     <img src={primary.url} alt={primary.title ?? 'Main'} className="h-full w-full object-cover" />
                   ) : (
@@ -165,7 +188,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                     </div>
                   )}
                 </div>
-                {canManage && (
+                {canManage && editing && (
                   <div className="space-y-2">
                     <input
                       ref={imageInputRef}
@@ -179,6 +202,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                 )}
               </div>
             </section>
+            )}
 
             {/* Additional images */}
             {additional.length > 0 && (
@@ -190,7 +214,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                   {additional.map(m => (
                     <div key={m.id} className="group relative overflow-hidden rounded-md border bg-muted">
                       <img src={m.url} alt={m.title ?? ''} className="aspect-square w-full object-cover" />
-                      {canManage && (
+                      {canManage && editing && (
                         <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-background/80 p-1 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPrimary(m)} title={t('recipes.media.makePrimary') as string}>
                             <Star className="h-3.5 w-3.5" />
@@ -207,6 +231,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
             )}
 
             {/* Video links */}
+            {(editing || videos.length > 0) && (
             <section className="space-y-2">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('recipes.media.videoLinks')}
@@ -222,7 +247,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <Button size="icon" variant="ghost" asChild><a href={m.url} target="_blank" rel="noreferrer" title={t('recipes.media.open') as string}><ExternalLink className="h-4 w-4" /></a></Button>
-                      {canManage && (
+                      {canManage && editing && (
                         <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(m)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -230,9 +255,9 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                     </div>
                   </li>
                 ))}
-                {videos.length === 0 && <p className="text-xs text-muted-foreground">{t('recipes.media.empty')}</p>}
+                {videos.length === 0 && editing && <p className="text-xs text-muted-foreground">{t('recipes.media.empty')}</p>}
               </ul>
-              {canManage && (
+              {canManage && editing && (
                 <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                   <Input placeholder={t('recipes.media.videoUrl') as string} value={videoUrl} onChange={e => setVideoUrl(e.target.value)} />
                   <Input placeholder={t('recipes.media.titlePlaceholder') as string} value={videoTitle} onChange={e => setVideoTitle(e.target.value)} />
@@ -242,8 +267,10 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                 </div>
               )}
             </section>
+            )}
 
             {/* Web links */}
+            {(editing || webs.length > 0) && (
             <section className="space-y-2">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('recipes.media.webLinks')}
@@ -259,7 +286,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <Button size="icon" variant="ghost" asChild><a href={m.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>
-                      {canManage && (
+                      {canManage && editing && (
                         <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(m)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -267,9 +294,9 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                     </div>
                   </li>
                 ))}
-                {webs.length === 0 && <p className="text-xs text-muted-foreground">{t('recipes.media.empty')}</p>}
+                {webs.length === 0 && editing && <p className="text-xs text-muted-foreground">{t('recipes.media.empty')}</p>}
               </ul>
-              {canManage && (
+              {canManage && editing && (
                 <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                   <Input placeholder={t('recipes.media.webUrl') as string} value={webUrl} onChange={e => setWebUrl(e.target.value)} />
                   <Input placeholder={t('recipes.media.titlePlaceholder') as string} value={webTitle} onChange={e => setWebTitle(e.target.value)} />
@@ -279,8 +306,10 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                 </div>
               )}
             </section>
+            )}
 
             {/* Files */}
+            {(editing || files.length > 0) && (
             <section className="space-y-2">
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('recipes.media.files')}
@@ -296,7 +325,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <Button size="icon" variant="ghost" asChild><a href={m.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>
-                      {canManage && (
+                      {canManage && editing && (
                         <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(m)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -304,9 +333,9 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                     </div>
                   </li>
                 ))}
-                {files.length === 0 && <p className="text-xs text-muted-foreground">{t('recipes.media.empty')}</p>}
+                {files.length === 0 && editing && <p className="text-xs text-muted-foreground">{t('recipes.media.empty')}</p>}
               </ul>
-              {canManage && (
+              {canManage && editing && (
                 <>
                   <input ref={fileInputRef} type="file" hidden onChange={handleFileUpload} />
                   <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
@@ -315,6 +344,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                 </>
               )}
             </section>
+            )}
           </>
         )}
 

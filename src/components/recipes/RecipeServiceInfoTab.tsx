@@ -75,12 +75,15 @@ function fromRow(row: RecipeServiceInfoRow | null): FormState {
   };
 }
 
-const ReadField = ({ label, value }: { label: string; value: string | null }) => (
-  <div>
-    <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-    <p className="mt-1 whitespace-pre-wrap text-sm">{value && value.trim() ? value : '—'}</p>
-  </div>
-);
+const ReadField = ({ label, value }: { label: string; value: string | null }) => {
+  if (!value || !value.trim()) return null;
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <p className="mt-1 whitespace-pre-wrap text-base leading-relaxed text-foreground/90">{value}</p>
+    </div>
+  );
+};
 
 export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
   const { t } = useTranslation();
@@ -169,11 +172,11 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
 
   return (
     <Card>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-5 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <h3 className="font-heading text-base font-semibold">{t('recipes.service.title')}</h3>
+            <h3 className="font-heading text-xl font-semibold">{t('recipes.service.title')}</h3>
             <Badge variant="secondary" className="text-[10px] uppercase">{t('recipes.service.audience')}</Badge>
           </div>
           {!editing && canManage && (
@@ -182,7 +185,9 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
             </Button>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">{t('recipes.service.hint')}</p>
+        {editing && (
+          <p className="text-xs text-muted-foreground">{t('recipes.service.hint')}</p>
+        )}
 
         {editing && canManage ? (
           <div className="space-y-5">

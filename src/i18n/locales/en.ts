@@ -12,6 +12,7 @@ const en = {
     back: 'Back',
     add: 'Add',
     remove: 'Remove',
+    done: 'Done',
     create: 'Create',
     update: 'Update',
     submit: 'Submit',
