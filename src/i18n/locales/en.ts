@@ -329,6 +329,8 @@ const en = {
       tableView: 'Table view',
       quickAdd: 'Add row',
       invalidRow: 'Invalid row',
+      duplicate: 'Duplicate row',
+      lines: 'Lines',
       cols: {
         ingredient: 'Ingredient',
         qty: 'Qty',
