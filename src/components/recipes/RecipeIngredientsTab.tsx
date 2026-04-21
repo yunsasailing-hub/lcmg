@@ -264,7 +264,29 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
       <CardContent className="space-y-4 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-heading text-lg font-semibold">{t('recipes.lines.editTitle')}</h3>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-md border bg-muted/30 p-0.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === 'form' ? 'default' : 'ghost'}
+                className="h-8 gap-1"
+                onClick={() => setViewMode('form')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('recipes.lines.formView')}</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === 'table' ? 'default' : 'ghost'}
+                className="h-8 gap-1"
+                onClick={() => setViewMode('table')}
+              >
+                <Rows3 className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('recipes.lines.tableView')}</span>
+              </Button>
+            </div>
             <Button variant="outline" size="sm" onClick={cancel} disabled={save.isPending}>
               <X className="h-4 w-4" /> {t('common.cancel')}
             </Button>
@@ -274,6 +296,21 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
           </div>
         </div>
 
+        {viewMode === 'table' ? (
+          <TableEditor
+            draft={draft}
+            errors={errors}
+            ingredientOptions={ingredientOptions}
+            units={units}
+            currency={currency}
+            computeRow={computeRow}
+            onPickIngredient={onPickIngredient}
+            patch={patch}
+            removeLine={removeLine}
+            moveLine={moveLine}
+            addLine={addLine}
+          />
+        ) : (
         <div className="space-y-3">
           {draft.length === 0 && (
             <p className="text-sm text-muted-foreground">{t('recipes.lines.emptyEdit')}</p>
@@ -375,13 +412,16 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
             );
           })}
         </div>
+        )}
 
         <div className="border-t pt-3">
-          <div className="mb-3 flex justify-end">
-            <Button variant="outline" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4" /> {t('recipes.lines.addLine')}
-            </Button>
-          </div>
+          {viewMode === 'form' && (
+            <div className="mb-3 flex justify-end">
+              <Button variant="outline" size="sm" onClick={addLine}>
+                <Plus className="h-4 w-4" /> {t('recipes.lines.addLine')}
+              </Button>
+            </div>
+          )}
           <CostSummary total={total} sellingPrice={sellingPrice ?? null} currency={currency} />
         </div>
       </CardContent>
