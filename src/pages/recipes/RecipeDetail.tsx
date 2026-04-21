@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, BookOpen, Carrot, CookingPot, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, BookOpen, Carrot, CookingPot, Image as ImageIcon, Sparkles, FileDown } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import RecipeIngredientsTab from '@/components/recipes/RecipeIngredientsTab';
 import RecipeProcedureTab from '@/components/recipes/RecipeProcedureTab';
@@ -23,12 +23,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranches } from '@/hooks/useChecklists';
-import { useRecipeCategories, useRecipeUnits } from '@/hooks/useIngredients';
+import { useRecipeCategories, useRecipeUnits, useIngredients } from '@/hooks/useIngredients';
 import {
   useRecipe, useUpsertRecipe, useArchiveRecipe, useRecipeTypes, isRecipeCodeTaken,
+  useRecipeIngredients,
   RECIPE_CURRENCIES, RECIPE_DEPARTMENTS,
   type CurrencyCode, type RecipeDepartment,
 } from '@/hooks/useRecipes';
+import { useRecipeProcedures } from '@/hooks/useRecipeProcedures';
+import { useRecipeMedia } from '@/hooks/useRecipeMedia';
+import { useRecipeServiceInfo } from '@/hooks/useRecipeServiceInfo';
+import { exportRecipeToPdf } from '@/lib/recipePdfExport';
 import { toast } from '@/hooks/use-toast';
 
 const NONE = '__none__';
