@@ -50,6 +50,10 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
   const webs = media.filter(m => m.media_type === 'web_link');
   const files = media.filter(m => m.media_type === 'file');
 
+  // In consultation (read) mode we hide editing chrome; managers click Edit to add/remove.
+  const isReadMode = !editing;
+  const totalMedia = media.length;
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
