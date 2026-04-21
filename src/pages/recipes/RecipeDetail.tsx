@@ -81,6 +81,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+/** Compact info chip used in the consultation header strip. Hides itself when value is empty. */
+function InfoChip({ label, value }: { label: string; value: React.ReactNode }) {
+  const empty = value === null || value === undefined || value === '' || value === '—';
+  if (empty) return null;
+  return (
+    <div className="min-w-[8rem] rounded-md border bg-muted/30 px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-sm font-semibold text-foreground">{value}</div>
+    </div>
+  );
+}
+
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="space-y-4">
     <h3 className="text-sm font-heading font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
