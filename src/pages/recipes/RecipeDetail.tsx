@@ -570,6 +570,18 @@ export default function RecipeDetail() {
                 <Button size="sm" variant="ghost" onClick={() => navigate('/recipes/list')}>
                   <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">{t('common.back')}</span>
                 </Button>
+                <label
+                  htmlFor="pdf-include-images"
+                  className="hidden md:inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground cursor-pointer select-none"
+                  title={t('recipes.list.pdf.includeImagesHint')}
+                >
+                  <Checkbox
+                    id="pdf-include-images"
+                    checked={includeImagesInPdf}
+                    onCheckedChange={v => setIncludeImagesInPdf(v === true)}
+                  />
+                  <span>{t('recipes.list.pdf.includeImages')}</span>
+                </label>
                 <Button size="sm" variant="outline" onClick={handleExportPdf}>
                   <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">{t('recipes.list.pdf.export')}</span>
                 </Button>
