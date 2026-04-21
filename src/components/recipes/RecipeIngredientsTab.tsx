@@ -403,7 +403,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
           )}
 
           {draft.map((l, idx) => {
-            const { ing, lineCost, adjusted, baseUnit } = computeRow(l);
+            const { ing, lineCost, adjusted, baseUnit, subRecipe } = computeRow(l);
             const err = errors[l._key];
             return (
               <div key={l._key} className="rounded-md border p-3 sm:p-4">
@@ -485,7 +485,9 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
 
                   <div className="sm:col-span-12 flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
                     <span>
-                      {ing
+                      {subRecipe
+                        ? `${t('recipes.lines.sourceRecipe')}: ${subRecipe.code ?? '—'} · ${fmt(subRecipe.costPerYieldUnit, currency)}${baseUnit ? ` /${baseUnit.code}` : ''}`
+                        : ing
                         ? `${t('recipes.lines.ingredientCode')}: ${ing.code ?? '—'} · ${t('recipes.lines.basePrice')}: ${fmt(Number(ing.price ?? 0), currency)}${baseUnit ? ` /${baseUnit.code}` : ''}`
                         : t('recipes.lines.noIngredientSelected')}
                     </span>
