@@ -567,6 +567,9 @@ export default function RecipeDetail() {
                 <Button size="sm" variant="ghost" onClick={() => navigate('/recipes/list')}>
                   <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">{t('common.back')}</span>
                 </Button>
+                <Button size="sm" variant="outline" onClick={handleExportPdf}>
+                  <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">{t('recipes.list.pdf.export')}</span>
+                </Button>
                 {canManage && (
                   <>
                     <Button size="sm" onClick={() => setEditing(true)}>
