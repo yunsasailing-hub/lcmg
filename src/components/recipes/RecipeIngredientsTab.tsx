@@ -16,7 +16,9 @@ import { useIngredients, useRecipeUnits } from '@/hooks/useIngredients';
 import {
   useRecipeIngredients, useSaveRecipeIngredients,
   computeLineCost, applyAdjustment,
+  useRecipesAsIngredient,
   type RecipeLineInput,
+  type RecipeAsIngredientOption,
 } from '@/hooks/useRecipes';
 import { toast } from '@/hooks/use-toast';
 
@@ -34,6 +36,8 @@ interface DraftLine extends RecipeLineInput {
 const newKey = () => Math.random().toString(36).slice(2);
 
 const toDraft = (l: RecipeLineInput): DraftLine => ({ ...l, _key: l.id ?? newKey() });
+
+const RECIPE_PREFIX = 'rcp:';
 
 const fmt = (n: number, currency?: string | null) => {
   if (!Number.isFinite(n)) return '—';
@@ -53,6 +57,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const { data: lines = [], isLoading } = useRecipeIngredients(recipeId);
   const { data: ingredients = [] } = useIngredients(false);
   const { data: units = [] } = useRecipeUnits(true);
+  const { data: recipeIngredientOptions = [] } = useRecipesAsIngredient(recipeId);
   const save = useSaveRecipeIngredients();
 
   const [editing, setEditing] = useState(false);
@@ -64,6 +69,10 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
 
   const ingMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
+  const recipeOptMap = useMemo(
+    () => Object.fromEntries(recipeIngredientOptions.map(r => [r.id, r])) as Record<string, RecipeAsIngredientOption>,
+    [recipeIngredientOptions],
+  );
 
   // Initialize draft when entering edit OR when lines reload
   useEffect(() => {
@@ -76,21 +85,57 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
         cost_adjust_pct: Number((l as any).cost_adjust_pct) || 0,
         prep_note: l.prep_note,
         sort_order: l.sort_order ?? i,
+        sub_recipe_id: (l as any).sub_recipe_id ?? null,
       })));
     }
   }, [lines, editing]);
 
-  const ingredientOptions = useMemo(
-    () => ingredients.map(i => ({
+  // Unified picker options:
+  //  - Ingredient Master items (id = ingredient.id)
+  //  - Recipe-derived items   (id = `rcp:<recipe.id>`, clearly tagged as Recipe)
+  // Recipe-derived items are stored on the line via `sub_recipe_id`, not duplicated into Ingredient Master.
+  const ingredientOptions = useMemo(() => {
+    const base = ingredients.map(i => ({
       id: i.id,
       label: i.name_en,
-      sublabel: i.code ?? undefined,
-    })),
-    [ingredients],
-  );
+      sublabel: i.code ? `${i.code} · ${t('recipes.lines.sourceIngredient')}` : t('recipes.lines.sourceIngredient') as string,
+    }));
+    const recipes = recipeIngredientOptions.map(r => ({
+      id: `${RECIPE_PREFIX}${r.id}`,
+      label: r.name_en,
+      sublabel: `${r.code ?? '—'} · ${t('recipes.lines.sourceRecipe')}`,
+    }));
+    return [...base, ...recipes];
+  }, [ingredients, recipeIngredientOptions, t]);
 
-  // ---- Compute helpers using linked ingredient ----
+  // ---- Compute helpers using linked ingredient OR sub-recipe ----
   const computeRow = (line: DraftLine) => {
+    // Sub-recipe path: cost from recipe's computed cost-per-yield-unit.
+    if (line.sub_recipe_id) {
+      const subRecipe = recipeOptMap[line.sub_recipe_id] ?? null;
+      const lineUnit = line.unit_id ? unitMap[line.unit_id] : null;
+      const yieldUnit = subRecipe?.yield_unit_id ? unitMap[subRecipe.yield_unit_id] : null;
+      // Convert line unit -> recipe yield unit when both share the same unit_type.
+      const sameType = lineUnit && yieldUnit && lineUnit.unit_type === yieldUnit.unit_type;
+      const lineFactor = Number(lineUnit?.factor_to_base ?? 1);
+      const yieldFactor = Number(yieldUnit?.factor_to_base ?? 1) || 1;
+      const qtyInYieldUnit = sameType
+        ? (Number(line.quantity) || 0) * (lineFactor / yieldFactor)
+        : (Number(line.quantity) || 0);
+      const lineCost = qtyInYieldUnit * (subRecipe?.costPerYieldUnit ?? 0);
+      const adjusted = applyAdjustment(lineCost, line.cost_adjust_pct);
+      return {
+        ing: null,
+        lineUnit,
+        baseUnit: yieldUnit,
+        avgCostPerBaseUnit: subRecipe?.costPerYieldUnit ?? 0,
+        lineCost,
+        adjusted,
+        subRecipe,
+      };
+    }
+
+    // Ingredient Master path (unchanged).
     const ing = line.ingredient_id ? ingMap[line.ingredient_id] : null;
     const lineUnit = line.unit_id ? unitMap[line.unit_id] : null;
     const baseUnit = ing?.base_unit_id ? unitMap[ing.base_unit_id] : null;
@@ -106,7 +151,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     const lineCost = computeLineCost(line.quantity, unitFactor, baseFactor, purchasePrice);
     const adjusted = applyAdjustment(lineCost, line.cost_adjust_pct);
 
-    return { ing, lineUnit, baseUnit, avgCostPerBaseUnit, lineCost, adjusted };
+    return { ing, lineUnit, baseUnit, avgCostPerBaseUnit, lineCost, adjusted, subRecipe: null as RecipeAsIngredientOption | null };
   };
 
   const total = useMemo(
@@ -120,7 +165,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     const key = newKey();
     setDraft(d => [
       ...d,
-      { _key: key, ingredient_id: null, unit_id: null, quantity: 0, cost_adjust_pct: 0, prep_note: null, sort_order: d.length },
+      { _key: key, ingredient_id: null, sub_recipe_id: null, unit_id: null, quantity: 0, cost_adjust_pct: 0, prep_note: null, sort_order: d.length },
     ]);
     setLastAddedKey(key);
     setLastEditedKey(key);
@@ -154,11 +199,22 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     setLastEditedKey(key);
   };
 
-  const onPickIngredient = (key: string, ingredientId: string | null) => {
-    const ing = ingredientId ? ingMap[ingredientId] : null;
+  const onPickIngredient = (key: string, pickedId: string | null) => {
+    if (pickedId && pickedId.startsWith(RECIPE_PREFIX)) {
+      // Recipe-derived item: store on sub_recipe_id, clear ingredient_id, default unit to recipe yield unit.
+      const recipeId = pickedId.slice(RECIPE_PREFIX.length);
+      const sub = recipeOptMap[recipeId] ?? null;
+      patch(key, {
+        ingredient_id: null,
+        sub_recipe_id: recipeId,
+        unit_id: sub?.yield_unit_id ?? null,
+      });
+      return;
+    }
+    const ing = pickedId ? ingMap[pickedId] : null;
     patch(key, {
-      ingredient_id: ingredientId,
-      // default unit to ingredient's base unit
+      ingredient_id: pickedId,
+      sub_recipe_id: null,
       unit_id: ing?.base_unit_id ?? null,
     });
   };
@@ -168,7 +224,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     let ok = true;
     draft.forEach(l => {
       const e: { ingredient?: string; quantity?: string } = {};
-      if (!l.ingredient_id) { e.ingredient = t('recipes.lines.errors.ingredientRequired'); ok = false; }
+      if (!l.ingredient_id && !l.sub_recipe_id) { e.ingredient = t('recipes.lines.errors.ingredientRequired'); ok = false; }
       if (!(Number(l.quantity) > 0)) { e.quantity = t('recipes.lines.errors.quantityPositive'); ok = false; }
       if (e.ingredient || e.quantity) errs[l._key] = e;
     });
@@ -187,6 +243,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
         lines: draft.map((l, i) => ({
           id: l.id,
           ingredient_id: l.ingredient_id,
+          sub_recipe_id: l.sub_recipe_id ?? null,
           unit_id: l.unit_id,
           quantity: Number(l.quantity) || 0,
           cost_adjust_pct: Number(l.cost_adjust_pct) || 0,
@@ -242,13 +299,19 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                 </TableHeader>
                 <TableBody>
                   {draft.map((l, idx) => {
-                    const { ing, baseUnit, avgCostPerBaseUnit, lineCost, adjusted } = computeRow(l);
+                    const { ing, baseUnit, avgCostPerBaseUnit, lineCost, adjusted, subRecipe } = computeRow(l);
                     return (
                       <TableRow key={l._key}>
                         <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                         <TableCell>
-                          <div className="font-medium">{ing?.name_en ?? '—'}</div>
-                          <div className="font-mono text-xs text-muted-foreground">{ing?.code ?? ''}</div>
+                          <div className="font-medium">
+                            {subRecipe ? subRecipe.name_en : (ing?.name_en ?? '—')}
+                          </div>
+                          <div className="font-mono text-xs text-muted-foreground">
+                            {subRecipe
+                              ? `${subRecipe.code ?? ''} · ${t('recipes.lines.sourceRecipe')}`
+                              : (ing?.code ?? '')}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{l.quantity}</TableCell>
                         <TableCell>{l.unit_id ? unitMap[l.unit_id]?.code ?? '—' : '—'}</TableCell>
@@ -340,7 +403,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
           )}
 
           {draft.map((l, idx) => {
-            const { ing, lineCost, adjusted, baseUnit } = computeRow(l);
+            const { ing, lineCost, adjusted, baseUnit, subRecipe } = computeRow(l);
             const err = errors[l._key];
             return (
               <div key={l._key} className="rounded-md border p-3 sm:p-4">
@@ -365,7 +428,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                   <div className="sm:col-span-5">
                     <label className="text-xs text-muted-foreground">{t('recipes.lines.cols.ingredient')} *</label>
                     <SearchableCombobox
-                      value={l.ingredient_id ?? ''}
+                      value={l.sub_recipe_id ? `${RECIPE_PREFIX}${l.sub_recipe_id}` : (l.ingredient_id ?? '')}
                       onChange={(v) => onPickIngredient(l._key, v || null)}
                       options={ingredientOptions}
                       placeholder={t('recipes.lines.searchIngredient') as string}
@@ -422,7 +485,9 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
 
                   <div className="sm:col-span-12 flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
                     <span>
-                      {ing
+                      {subRecipe
+                        ? `${t('recipes.lines.sourceRecipe')}: ${subRecipe.code ?? '—'} · ${fmt(subRecipe.costPerYieldUnit, currency)}${baseUnit ? ` /${baseUnit.code}` : ''}`
+                        : ing
                         ? `${t('recipes.lines.ingredientCode')}: ${ing.code ?? '—'} · ${t('recipes.lines.basePrice')}: ${fmt(Number(ing.price ?? 0), currency)}${baseUnit ? ` /${baseUnit.code}` : ''}`
                         : t('recipes.lines.noIngredientSelected')}
                     </span>
@@ -579,13 +644,13 @@ function TableEditor({
                   <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                   <TableCell>
                     <SearchableCombobox
-                      value={l.ingredient_id ?? ''}
+                      value={l.sub_recipe_id ? `${RECIPE_PREFIX}${l.sub_recipe_id}` : (l.ingredient_id ?? '')}
                       onChange={(v) => onPickIngredient(l._key, v || null)}
                       options={ingredientOptions}
                       placeholder={t('recipes.lines.searchIngredient') as string}
                       searchPlaceholder={t('recipes.lines.searchIngredient') as string}
                       emptyText={t('recipes.lines.noIngredients') as string}
-                      autoOpen={lastAddedKey === l._key && !l.ingredient_id}
+                      autoOpen={lastAddedKey === l._key && !l.ingredient_id && !l.sub_recipe_id}
                     />
                     {err?.ingredient && (
                       <p className="mt-1 text-xs text-destructive">{err.ingredient}</p>

@@ -1165,6 +1165,7 @@ export type Database = {
           status: Database["public"]["Enums"]["recipe_status"]
           updated_at: string
           updated_by: string | null
+          use_as_ingredient: boolean
           yield_quantity: number | null
           yield_unit_id: string | null
         }
@@ -1192,6 +1193,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["recipe_status"]
           updated_at?: string
           updated_by?: string | null
+          use_as_ingredient?: boolean
           yield_quantity?: number | null
           yield_unit_id?: string | null
         }
@@ -1219,6 +1221,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["recipe_status"]
           updated_at?: string
           updated_by?: string | null
+          use_as_ingredient?: boolean
           yield_quantity?: number | null
           yield_unit_id?: string | null
         }
