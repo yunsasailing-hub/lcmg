@@ -143,13 +143,30 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
 
   return (
     <Card>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-5 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="font-heading text-lg font-semibold">{t('recipes.media.title')}</h3>
-            <p className="text-xs text-muted-foreground">{t('recipes.media.hint')}</p>
+            <h3 className="font-heading text-xl font-semibold">{t('recipes.media.title')}</h3>
+            {editing && (
+              <p className="mt-1 text-xs text-muted-foreground">{t('recipes.media.hint')}</p>
+            )}
           </div>
+          {canManage && (
+            <Button
+              size="sm"
+              variant={editing ? 'default' : 'outline'}
+              onClick={() => setEditing(v => !v)}
+            >
+              {editing ? <Check className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+              {editing ? t('common.done') : t('common.edit')}
+            </Button>
+          )}
         </div>
+
+        {/* Compact empty state when nothing exists and we're not editing */}
+        {!isLoading && isReadMode && totalMedia === 0 && (
+          <p className="text-sm text-muted-foreground">{t('recipes.media.empty')}</p>
+        )}
 
         {isLoading ? (
           <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
