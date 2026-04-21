@@ -12,6 +12,7 @@ export type Recipe = Database['public']['Tables']['recipes']['Row'] & {
   shelf_life?: string | null;
   internal_memo?: string | null;
   updated_by?: string | null;
+  use_as_ingredient?: boolean | null;
 };
 export type RecipeInsert = Database['public']['Tables']['recipes']['Insert'] & {
   recipe_type_id?: string | null;
@@ -22,6 +23,7 @@ export type RecipeInsert = Database['public']['Tables']['recipes']['Insert'] & {
   portion_unit?: string | null;
   shelf_life?: string | null;
   internal_memo?: string | null;
+  use_as_ingredient?: boolean | null;
 };
 export type RecipeStatus = Database['public']['Enums']['recipe_status'];
 export type RecipeDepartment = Database['public']['Enums']['department'];
@@ -131,6 +133,7 @@ export interface RecipeLineInput {
   cost_adjust_pct: number;
   prep_note: string | null;
   sort_order: number;
+  sub_recipe_id?: string | null;
 }
 
 export function useRecipeIngredients(recipeId: string | undefined) {
@@ -171,7 +174,8 @@ export function useSaveRecipeIngredients() {
       for (const l of lines) {
         const payload: any = {
           recipe_id: recipeId,
-          ingredient_id: l.ingredient_id,
+          ingredient_id: l.sub_recipe_id ? null : l.ingredient_id,
+          sub_recipe_id: l.sub_recipe_id ?? null,
           unit_id: l.unit_id,
           quantity: l.quantity,
           cost_adjust_pct: l.cost_adjust_pct,
