@@ -259,8 +259,9 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     `;
   }).join('') : `<p class="muted">—</p>`;
 
-  // ---- Media (max 2 images) ----
-  const images = p.media.filter(m => m.media_type === 'image');
+  // ---- Media (max 2 images) — skip entirely when includeImages is false ----
+  const includeImages = p.includeImages !== false;
+  const images = includeImages ? p.media.filter(m => m.media_type === 'image') : [];
   images.sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
   const heroImages = images.slice(0, 2);
   const mediaHtml = heroImages.length ? `
