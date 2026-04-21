@@ -57,6 +57,7 @@ interface FormState {
   shelf_life: string;
   description: string;
   internal_memo: string;
+  use_as_ingredient: boolean;
 }
 
 const EMPTY: FormState = {
@@ -76,6 +77,7 @@ const EMPTY: FormState = {
   shelf_life: '',
   description: '',
   internal_memo: '',
+  use_as_ingredient: false,
 };
 
 /** Compact info chip used in the consultation header strip. Hides itself when value is empty. */
@@ -155,6 +157,7 @@ export default function RecipeDetail() {
         shelf_life: recipe.shelf_life ?? '',
         description: recipe.description ?? '',
         internal_memo: recipe.internal_memo ?? '',
+        use_as_ingredient: (recipe as any).use_as_ingredient ?? false,
       });
     }
   }, [recipe, isNew]);
@@ -278,6 +281,7 @@ export default function RecipeDetail() {
         shelf_life: form.shelf_life.trim() || null,
         description: form.description.trim() || null,
         internal_memo: form.internal_memo.trim() || null,
+        use_as_ingredient: form.use_as_ingredient,
         // Keep legacy 'kind' satisfied (NOT NULL DEFAULT 'dish'); leave as-is when editing.
       };
       if (!isNew) payload.id = id;
@@ -376,6 +380,17 @@ export default function RecipeDetail() {
                 <Label htmlFor="active">
                   {t('recipes.list.fields.active')}: {form.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
                 </Label>
+              </div>
+              <div className="flex items-start gap-3 pt-2">
+                <Switch
+                  id="use_as_ingredient"
+                  checked={form.use_as_ingredient}
+                  onCheckedChange={v => update('use_as_ingredient', v)}
+                />
+                <div>
+                  <Label htmlFor="use_as_ingredient">{t('recipes.list.fields.useAsIngredient')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('recipes.list.fields.useAsIngredientHint')}</p>
+                </div>
               </div>
             </Section>
 
