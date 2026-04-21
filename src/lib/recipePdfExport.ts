@@ -140,26 +140,61 @@ const safeFilename = (name: string, code: string | null): string => {
 // ---------- Main entry ----------
 export function exportRecipeToPdf(payload: RecipePdfPayload): void {
   const html = buildPrintHtml(payload);
-  const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1100');
-  if (!w) {
-    alert('Pop-up blocked. Please allow pop-ups for this site to export the recipe.');
-    return;
-  }
-  // Suggested filename when user picks "Save as PDF"
-  w.document.title = safeFilename(payload.recipe.name_en, payload.recipe.code).replace(/\.pdf$/, '');
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+  const filename = safeFilename(payload.recipe.name_en, payload.recipe.code).replace(/\.pdf$/, '');
 
-  // Wait for images to settle, then trigger print
-  const triggerPrint = () => {
-    try { w.focus(); w.print(); } catch { /* noop */ }
+  // Use a hidden iframe in the current page — no popup, no blocker.
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+
+  document.body.appendChild(iframe);
+
+  const cleanup = () => {
+    // Delay removal so the print dialog can read the document.
+    setTimeout(() => {
+      try { document.body.removeChild(iframe); } catch { /* noop */ }
+    }, 1000);
   };
-  if ((w.document as any).fonts?.ready) {
-    (w.document as any).fonts.ready.then(() => setTimeout(triggerPrint, 250));
-  } else {
-    setTimeout(triggerPrint, 500);
-  }
+
+  const triggerPrint = () => {
+    try {
+      const win = iframe.contentWindow;
+      if (!win) {
+        alert('Unable to prepare the PDF view. Please try again.');
+        cleanup();
+        return;
+      }
+      win.focus();
+      win.print();
+    } catch {
+      alert('Your browser blocked the print dialog. Please check browser settings and try again.');
+    } finally {
+      cleanup();
+    }
+  };
+
+  iframe.onload = () => {
+    const doc = iframe.contentDocument;
+    if (doc) {
+      try { doc.title = filename; } catch { /* noop */ }
+    }
+    const fontsReady = (iframe.contentDocument as any)?.fonts?.ready;
+    if (fontsReady && typeof fontsReady.then === 'function') {
+      fontsReady.then(() => setTimeout(triggerPrint, 250));
+    } else {
+      setTimeout(triggerPrint, 500);
+    }
+  };
+
+  // srcdoc avoids cross-origin/document.write quirks and works inside embedded previews.
+  iframe.srcdoc = html;
 }
 
 // ---------- HTML builder ----------
