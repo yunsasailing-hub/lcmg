@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X, LayoutGrid, Rows3 } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X, LayoutGrid, Rows3, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +59,8 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const [draft, setDraft] = useState<DraftLine[]>([]);
   const [errors, setErrors] = useState<Record<string, { ingredient?: string; quantity?: string }>>({});
   const [viewMode, setViewMode] = useState<'form' | 'table'>('form');
+  const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
+  const [lastEditedKey, setLastEditedKey] = useState<string | null>(null);
 
   const ingMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
@@ -115,10 +117,25 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
 
   // ---- Mutations on draft ----
   const addLine = () => {
+    const key = newKey();
     setDraft(d => [
       ...d,
-      { _key: newKey(), ingredient_id: null, unit_id: null, quantity: 0, cost_adjust_pct: 0, prep_note: null, sort_order: d.length },
+      { _key: key, ingredient_id: null, unit_id: null, quantity: 0, cost_adjust_pct: 0, prep_note: null, sort_order: d.length },
     ]);
+    setLastAddedKey(key);
+    setLastEditedKey(key);
+  };
+  const duplicateLine = (key: string) => {
+    const newK = newKey();
+    setDraft(d => {
+      const idx = d.findIndex(l => l._key === key);
+      if (idx < 0) return d;
+      const src = d[idx];
+      const copy: DraftLine = { ...src, id: undefined, _key: newK, sort_order: idx + 1 };
+      const next = [...d.slice(0, idx + 1), copy, ...d.slice(idx + 1)];
+      return next.map((l, i) => ({ ...l, sort_order: i }));
+    });
+    setLastEditedKey(newK);
   };
   const removeLine = (key: string) => setDraft(d => d.filter(l => l._key !== key).map((l, i) => ({ ...l, sort_order: i })));
   const moveLine = (key: string, dir: -1 | 1) => {
@@ -134,6 +151,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const patch = (key: string, p: Partial<DraftLine>) => {
     setDraft(d => d.map(l => l._key === key ? { ...l, ...p } : l));
     setErrors(e => ({ ...e, [key]: { ...e[key], ...(p.ingredient_id !== undefined ? { ingredient: '' } : {}), ...(p.quantity !== undefined ? { quantity: '' } : {}) } }));
+    setLastEditedKey(key);
   };
 
   const onPickIngredient = (key: string, ingredientId: string | null) => {
@@ -309,6 +327,11 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
             removeLine={removeLine}
             moveLine={moveLine}
             addLine={addLine}
+            duplicateLine={duplicateLine}
+            lastAddedKey={lastAddedKey}
+            lastEditedKey={lastEditedKey}
+            sellingPrice={sellingPrice ?? null}
+            total={total}
           />
         ) : (
         <div className="space-y-3">
@@ -498,15 +521,23 @@ interface TableEditorProps {
   removeLine: (key: string) => void;
   moveLine: (key: string, dir: -1 | 1) => void;
   addLine: () => void;
+  duplicateLine: (key: string) => void;
+  lastAddedKey: string | null;
+  lastEditedKey: string | null;
+  total: number;
+  sellingPrice: number | null;
 }
 
 function TableEditor({
   draft, errors, ingredientOptions, units, currency,
   computeRow, onPickIngredient, patch, removeLine, moveLine, addLine,
+  duplicateLine, lastAddedKey, lastEditedKey, total, sellingPrice,
 }: TableEditorProps) {
   const { t } = useTranslation();
+  const hasSelling = sellingPrice != null && Number(sellingPrice) > 0;
+  const foodCostPct = hasSelling ? (total / Number(sellingPrice!)) * 100 : null;
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pb-20">
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
@@ -519,7 +550,7 @@ function TableEditor({
               <TableHead className="w-24 text-right">{t('recipes.lines.cols.adjPct')}</TableHead>
               <TableHead className="w-28 text-right">{t('recipes.lines.cols.lineCost')}</TableHead>
               <TableHead className="w-28 text-right">{t('recipes.lines.cols.adjusted')}</TableHead>
-              <TableHead className="w-24 text-right">{t('common.add')}</TableHead>
+              <TableHead className="w-32 text-right">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -534,8 +565,17 @@ function TableEditor({
               const { baseUnit, avgCostPerBaseUnit, lineCost, adjusted } = computeRow(l);
               const err = errors[l._key];
               const invalid = !!(err?.ingredient || err?.quantity);
+              const isEdited = lastEditedKey === l._key;
+              const isLast = idx === draft.length - 1;
               return (
-                <TableRow key={l._key} className={cn(invalid && 'bg-destructive/5')}>
+                <TableRow
+                  key={l._key}
+                  className={cn(
+                    'transition-colors',
+                    invalid && 'bg-destructive/5',
+                    !invalid && isEdited && 'bg-accent/40',
+                  )}
+                >
                   <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                   <TableCell>
                     <SearchableCombobox
@@ -545,6 +585,7 @@ function TableEditor({
                       placeholder={t('recipes.lines.searchIngredient') as string}
                       searchPlaceholder={t('recipes.lines.searchIngredient') as string}
                       emptyText={t('recipes.lines.noIngredients') as string}
+                      autoOpen={lastAddedKey === l._key && !l.ingredient_id}
                     />
                     {err?.ingredient && (
                       <p className="mt-1 text-xs text-destructive">{err.ingredient}</p>
@@ -556,6 +597,12 @@ function TableEditor({
                       className={cn('h-9 text-right tabular-nums', err?.quantity && 'border-destructive')}
                       value={Number.isFinite(l.quantity) ? l.quantity : 0}
                       onChange={e => patch(l._key, { quantity: e.target.value === '' ? 0 : Number(e.target.value) })}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (isLast) addLine();
+                        }
+                      }}
                     />
                   </TableCell>
                   <TableCell>
@@ -578,6 +625,12 @@ function TableEditor({
                       className="h-9 text-right tabular-nums"
                       value={Number.isFinite(l.cost_adjust_pct) ? l.cost_adjust_pct : 0}
                       onChange={e => patch(l._key, { cost_adjust_pct: e.target.value === '' ? 0 : Number(e.target.value) })}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (isLast) addLine();
+                        }
+                      }}
                     />
                   </TableCell>
                   <TableCell className="text-right text-sm tabular-nums">{fmt(lineCost, currency)}</TableCell>
@@ -589,6 +642,9 @@ function TableEditor({
                       </Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => moveLine(l._key, 1)} disabled={idx === draft.length - 1} title={t('recipes.lines.moveDown') as string}>
                         <ArrowDown className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => duplicateLine(l._key)} title={t('recipes.lines.duplicate') as string}>
+                        <Copy className="h-4 w-4" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeLine(l._key)} title={t('recipes.lines.remove') as string}>
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -605,6 +661,26 @@ function TableEditor({
         <Button variant="outline" size="sm" onClick={addLine}>
           <Plus className="h-4 w-4" /> {t('recipes.lines.quickAdd')}
         </Button>
+      </div>
+      {/* Sticky total cost bar */}
+      <div className="sticky bottom-0 left-0 right-0 z-10 -mx-4 mt-3 border-t bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="text-muted-foreground">{t('recipes.lines.totalCost')}</span>
+            <span className="font-heading text-lg font-semibold tabular-nums">{fmt(total, currency)}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+            <span>
+              {t('recipes.summary.sellingPrice')}:{' '}
+              <span className="tabular-nums text-foreground">{hasSelling ? fmt(Number(sellingPrice), currency) : '—'}</span>
+            </span>
+            <span>
+              {t('recipes.summary.foodCostPct')}:{' '}
+              <span className="tabular-nums text-foreground">{foodCostPct != null ? `${foodCostPct.toFixed(1)}%` : '—'}</span>
+            </span>
+            <span className="text-xs">{t('recipes.lines.lines')}: <span className="tabular-nums text-foreground">{draft.length}</span></span>
+          </div>
+        </div>
       </div>
     </div>
   );

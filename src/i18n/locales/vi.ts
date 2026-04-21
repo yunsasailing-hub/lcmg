@@ -331,6 +331,8 @@ const vi: Translations = {
       tableView: 'Dạng bảng',
       quickAdd: 'Thêm dòng',
       invalidRow: 'Dòng lỗi',
+      duplicate: 'Nhân bản dòng',
+      lines: 'Số dòng',
       cols: {
         ingredient: 'Nguyên liệu',
         qty: 'SL',
