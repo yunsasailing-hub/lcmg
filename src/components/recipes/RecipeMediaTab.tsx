@@ -214,7 +214,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                   {additional.map(m => (
                     <div key={m.id} className="group relative overflow-hidden rounded-md border bg-muted">
                       <img src={m.url} alt={m.title ?? ''} className="aspect-square w-full object-cover" />
-                      {canManage && (
+                      {canManage && editing && (
                         <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-background/80 p-1 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPrimary(m)} title={t('recipes.media.makePrimary') as string}>
                             <Star className="h-3.5 w-3.5" />
