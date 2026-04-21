@@ -115,6 +115,12 @@ export default function RecipeDetail() {
   const { data: types = [] } = useRecipeTypes(true);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: branches = [] } = useBranches();
+  // Data needed for PDF export (only fetched once we have a saved recipe).
+  const { data: ingredients = [] } = useIngredients(true);
+  const { data: recipeLines = [] } = useRecipeIngredients(isNew ? undefined : id);
+  const { data: procedures = [] } = useRecipeProcedures(isNew ? undefined : id);
+  const { data: mediaItems = [] } = useRecipeMedia(isNew ? undefined : id);
+  const { data: serviceInfo = null } = useRecipeServiceInfo(isNew ? undefined : id);
   const upsert = useUpsertRecipe();
   const archive = useArchiveRecipe();
 
