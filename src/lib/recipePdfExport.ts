@@ -143,9 +143,9 @@ export async function exportRecipeToPdf(payload: RecipePdfPayload): Promise<void
   // never has to wait on network/CORS-restricted resources.
   const includeImages = payload.includeImages !== false;
   let preparedPayload = payload;
-  if (includeImages) {
-    const images = payload.media.filter(m => m.media_type === 'image');
-    const urlMap = await inlineImagesAsDataUrls(images.map(m => m.url));
+  const exportImageUrls = includeImages ? collectExportImageUrls(payload) : [];
+  if (exportImageUrls.length > 0) {
+    const urlMap = await inlineImagesAsDataUrls(exportImageUrls);
     preparedPayload = {
       ...payload,
       media: payload.media.map(m =>
@@ -153,6 +153,14 @@ export async function exportRecipeToPdf(payload: RecipePdfPayload): Promise<void
           ? { ...m, url: urlMap[m.url] }
           : m,
       ),
+      procedures: payload.procedures.map(step =>
+        step.image_url && urlMap[step.image_url]
+          ? { ...step, image_url: urlMap[step.image_url] }
+          : step,
+      ),
+      serviceInfo: payload.serviceInfo?.image_url && urlMap[payload.serviceInfo.image_url]
+        ? { ...payload.serviceInfo, image_url: urlMap[payload.serviceInfo.image_url] }
+        : payload.serviceInfo,
     };
   }
 
@@ -203,6 +211,16 @@ export async function exportRecipeToPdf(payload: RecipePdfPayload): Promise<void
       try { doc.title = filename; } catch { /* noop */ }
     }
     const doc2 = iframe.contentDocument;
+    const exportImages = Array.from(doc2?.querySelectorAll<HTMLImageElement>('img[data-export-image="true"]') ?? []);
+    const expectedImageCount = countExportImages(preparedPayload);
+    console.debug('[Recipe PDF export] image check', {
+      expectedImageCount,
+      exportDomImageCount: exportImages.length,
+      sources: exportImages.map((img) => img.getAttribute('src')).filter(Boolean),
+    });
+    if (expectedImageCount > 0 && exportImages.length === 0) {
+      console.warn('[Recipe PDF export] Export DOM is missing expected image elements before print.');
+    }
     const fontsReady = (doc2 as any)?.fonts?.ready;
     const imagesReady = doc2 ? waitForImages(doc2) : Promise.resolve();
     Promise.all([
@@ -246,18 +264,100 @@ async function inlineImagesAsDataUrls(urls: string[]): Promise<Record<string, st
     unique.map(async (url) => {
       // Already a data URL — keep as-is.
       if (url.startsWith('data:')) return [url, url] as const;
-      try {
-        const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
-        if (!res.ok) return [url, url] as const;
-        const blob = await res.blob();
-        const dataUrl = await blobToDataUrl(blob);
-        return [url, dataUrl] as const;
-      } catch {
-        return [url, url] as const;
-      }
+      return [url, await resolveImageSourceForExport(url)] as const;
     }),
   );
   return Object.fromEntries(entries);
+}
+
+function collectExportImageUrls(payload: RecipePdfPayload): string[] {
+  const mediaUrls = payload.media
+    .filter((item) => item.media_type === 'image')
+    .map((item) => item.url);
+  const procedureUrls = payload.procedures
+    .map((step) => step.image_url)
+    .filter((url): url is string => !!url);
+  const serviceUrls = payload.serviceInfo?.image_url ? [payload.serviceInfo.image_url] : [];
+
+  return [...mediaUrls, ...procedureUrls, ...serviceUrls];
+}
+
+function countExportImages(payload: RecipePdfPayload): number {
+  if (payload.includeImages === false) return 0;
+
+  return collectExportImageUrls(payload).length;
+}
+
+async function resolveImageSourceForExport(url: string): Promise<string> {
+  const liveImage = findLoadedLiveImage(url);
+  if (liveImage) {
+    try {
+      return imageToDataUrl(liveImage);
+    } catch {
+      /* continue to network fallback */
+    }
+  }
+
+  try {
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    if (res.ok) {
+      const blob = await res.blob();
+      return await blobToDataUrl(blob);
+    }
+  } catch {
+    /* continue to image preload fallback */
+  }
+
+  try {
+    return await preloadImageAsDataUrl(url);
+  } catch {
+    return url;
+  }
+}
+
+function findLoadedLiveImage(url: string): HTMLImageElement | null {
+  const images = Array.from(document.images ?? []);
+  return images.find((img) => {
+    const src = img.currentSrc || img.src;
+    return src === url && img.complete && img.naturalWidth > 0;
+  }) ?? null;
+}
+
+function preloadImageAsDataUrl(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.decoding = 'sync';
+    img.onload = () => {
+      try {
+        resolve(imageToDataUrl(img));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    img.onerror = () => reject(new Error(`Failed to preload export image: ${url}`));
+    img.src = url;
+  });
+}
+
+function imageToDataUrl(img: HTMLImageElement): string {
+  const maxDimension = 1800;
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
+  if (!width || !height) {
+    throw new Error('Image has no renderable dimensions.');
+  }
+
+  const scale = Math.min(1, maxDimension / Math.max(width, height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas rendering is unavailable.');
+
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.9);
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
