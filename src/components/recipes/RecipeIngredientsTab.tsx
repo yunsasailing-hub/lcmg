@@ -117,10 +117,25 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
 
   // ---- Mutations on draft ----
   const addLine = () => {
+    const key = newKey();
     setDraft(d => [
       ...d,
-      { _key: newKey(), ingredient_id: null, unit_id: null, quantity: 0, cost_adjust_pct: 0, prep_note: null, sort_order: d.length },
+      { _key: key, ingredient_id: null, unit_id: null, quantity: 0, cost_adjust_pct: 0, prep_note: null, sort_order: d.length },
     ]);
+    setLastAddedKey(key);
+    setLastEditedKey(key);
+  };
+  const duplicateLine = (key: string) => {
+    const newK = newKey();
+    setDraft(d => {
+      const idx = d.findIndex(l => l._key === key);
+      if (idx < 0) return d;
+      const src = d[idx];
+      const copy: DraftLine = { ...src, id: undefined, _key: newK, sort_order: idx + 1 };
+      const next = [...d.slice(0, idx + 1), copy, ...d.slice(idx + 1)];
+      return next.map((l, i) => ({ ...l, sort_order: i }));
+    });
+    setLastEditedKey(newK);
   };
   const removeLine = (key: string) => setDraft(d => d.filter(l => l._key !== key).map((l, i) => ({ ...l, sort_order: i })));
   const moveLine = (key: string, dir: -1 | 1) => {
@@ -136,6 +151,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const patch = (key: string, p: Partial<DraftLine>) => {
     setDraft(d => d.map(l => l._key === key ? { ...l, ...p } : l));
     setErrors(e => ({ ...e, [key]: { ...e[key], ...(p.ingredient_id !== undefined ? { ingredient: '' } : {}), ...(p.quantity !== undefined ? { quantity: '' } : {}) } }));
+    setLastEditedKey(key);
   };
 
   const onPickIngredient = (key: string, ingredientId: string | null) => {
