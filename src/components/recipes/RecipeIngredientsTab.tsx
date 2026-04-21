@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X, LayoutGrid, Rows3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
+import { cn } from '@/lib/utils';
 import { useIngredients, useRecipeUnits } from '@/hooks/useIngredients';
 import {
   useRecipeIngredients, useSaveRecipeIngredients,
