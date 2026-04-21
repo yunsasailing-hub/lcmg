@@ -265,22 +265,15 @@ export default function RecipeDetail() {
       title={title}
       description={isNew ? t('recipes.list.subtitle') : t('recipes.list.detailTitle')}
       actions={
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/recipes/list')}>
-            <ArrowLeft className="h-4 w-4" /> {t('common.back')}
-          </Button>
-          {!isNew && canManage && !editing && (
-            <>
-              <Button size="sm" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" /> {t('common.edit')}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setArchiveOpen(true)}>
-                {recipe?.is_active ? <Archive className="h-4 w-4" /> : <ArchiveRestore className="h-4 w-4" />}
-                {recipe?.is_active ? t('recipes.list.archive') : t('recipes.list.restore')}
-              </Button>
-            </>
-          )}
-        </div>
+        // In read mode the sticky toolbar provides Back/Edit/Archive — keep header actions
+        // only for new/editing flows so we don't duplicate controls.
+        (isNew || editing) ? (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/recipes/list')}>
+              <ArrowLeft className="h-4 w-4" /> {t('common.back')}
+            </Button>
+          </div>
+        ) : null
       }
     >
       {!canManage && !isNew && (
