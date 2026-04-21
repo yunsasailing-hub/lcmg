@@ -556,11 +556,11 @@ export default function RecipeDetail() {
               </div>
 
               {recipe.internal_memo && canManage && (
-                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                <div className="rounded-md border bg-muted/40 p-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {t('recipes.list.fields.internalMemo')}
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-sm">{recipe.internal_memo}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/90">{recipe.internal_memo}</p>
                 </div>
               )}
 
