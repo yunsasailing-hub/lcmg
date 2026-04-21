@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X, LayoutGrid, Rows3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
+import { cn } from '@/lib/utils';
 import { useIngredients, useRecipeUnits } from '@/hooks/useIngredients';
 import {
   useRecipeIngredients, useSaveRecipeIngredients,
@@ -57,6 +58,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<DraftLine[]>([]);
   const [errors, setErrors] = useState<Record<string, { ingredient?: string; quantity?: string }>>({});
+  const [viewMode, setViewMode] = useState<'form' | 'table'>('form');
 
   const ingMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
@@ -262,7 +264,29 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
       <CardContent className="space-y-4 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-heading text-lg font-semibold">{t('recipes.lines.editTitle')}</h3>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-md border bg-muted/30 p-0.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === 'form' ? 'default' : 'ghost'}
+                className="h-8 gap-1"
+                onClick={() => setViewMode('form')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('recipes.lines.formView')}</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={viewMode === 'table' ? 'default' : 'ghost'}
+                className="h-8 gap-1"
+                onClick={() => setViewMode('table')}
+              >
+                <Rows3 className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('recipes.lines.tableView')}</span>
+              </Button>
+            </div>
             <Button variant="outline" size="sm" onClick={cancel} disabled={save.isPending}>
               <X className="h-4 w-4" /> {t('common.cancel')}
             </Button>
@@ -272,6 +296,21 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
           </div>
         </div>
 
+        {viewMode === 'table' ? (
+          <TableEditor
+            draft={draft}
+            errors={errors}
+            ingredientOptions={ingredientOptions}
+            units={units}
+            currency={currency}
+            computeRow={computeRow}
+            onPickIngredient={onPickIngredient}
+            patch={patch}
+            removeLine={removeLine}
+            moveLine={moveLine}
+            addLine={addLine}
+          />
+        ) : (
         <div className="space-y-3">
           {draft.length === 0 && (
             <p className="text-sm text-muted-foreground">{t('recipes.lines.emptyEdit')}</p>
@@ -373,13 +412,16 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
             );
           })}
         </div>
+        )}
 
         <div className="border-t pt-3">
-          <div className="mb-3 flex justify-end">
-            <Button variant="outline" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4" /> {t('recipes.lines.addLine')}
-            </Button>
-          </div>
+          {viewMode === 'form' && (
+            <div className="mb-3 flex justify-end">
+              <Button variant="outline" size="sm" onClick={addLine}>
+                <Plus className="h-4 w-4" /> {t('recipes.lines.addLine')}
+              </Button>
+            </div>
+          )}
           <CostSummary total={total} sellingPrice={sellingPrice ?? null} currency={currency} />
         </div>
       </CardContent>
@@ -431,6 +473,138 @@ function CostSummary({
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// -------------------- TABLE EDITOR --------------------
+interface TableEditorProps {
+  draft: DraftLine[];
+  errors: Record<string, { ingredient?: string; quantity?: string }>;
+  ingredientOptions: { id: string; label: string; sublabel?: string }[];
+  units: { id: string; code: string }[];
+  currency?: string | null;
+  computeRow: (line: DraftLine) => {
+    ing: any;
+    lineUnit: any;
+    baseUnit: any;
+    avgCostPerBaseUnit: number;
+    lineCost: number;
+    adjusted: number;
+  };
+  onPickIngredient: (key: string, ingredientId: string | null) => void;
+  patch: (key: string, p: Partial<DraftLine>) => void;
+  removeLine: (key: string) => void;
+  moveLine: (key: string, dir: -1 | 1) => void;
+  addLine: () => void;
+}
+
+function TableEditor({
+  draft, errors, ingredientOptions, units, currency,
+  computeRow, onPickIngredient, patch, removeLine, moveLine, addLine,
+}: TableEditorProps) {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-3">
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">#</TableHead>
+              <TableHead className="min-w-[14rem]">{t('recipes.lines.cols.ingredient')} *</TableHead>
+              <TableHead className="w-24 text-right">{t('recipes.lines.cols.qty')} *</TableHead>
+              <TableHead className="w-28">{t('recipes.lines.cols.unit')}</TableHead>
+              <TableHead className="w-32 text-right">{t('recipes.lines.cols.avgCost')}</TableHead>
+              <TableHead className="w-24 text-right">{t('recipes.lines.cols.adjPct')}</TableHead>
+              <TableHead className="w-28 text-right">{t('recipes.lines.cols.lineCost')}</TableHead>
+              <TableHead className="w-28 text-right">{t('recipes.lines.cols.adjusted')}</TableHead>
+              <TableHead className="w-24 text-right">{t('common.add')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {draft.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
+                  {t('recipes.lines.emptyEdit')}
+                </TableCell>
+              </TableRow>
+            )}
+            {draft.map((l, idx) => {
+              const { baseUnit, avgCostPerBaseUnit, lineCost, adjusted } = computeRow(l);
+              const err = errors[l._key];
+              const invalid = !!(err?.ingredient || err?.quantity);
+              return (
+                <TableRow key={l._key} className={cn(invalid && 'bg-destructive/5')}>
+                  <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                  <TableCell>
+                    <SearchableCombobox
+                      value={l.ingredient_id ?? ''}
+                      onChange={(v) => onPickIngredient(l._key, v || null)}
+                      options={ingredientOptions}
+                      placeholder={t('recipes.lines.searchIngredient') as string}
+                      searchPlaceholder={t('recipes.lines.searchIngredient') as string}
+                      emptyText={t('recipes.lines.noIngredients') as string}
+                    />
+                    {err?.ingredient && (
+                      <p className="mt-1 text-xs text-destructive">{err.ingredient}</p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" inputMode="decimal" min="0" step="any"
+                      className={cn('h-9 text-right tabular-nums', err?.quantity && 'border-destructive')}
+                      value={Number.isFinite(l.quantity) ? l.quantity : 0}
+                      onChange={e => patch(l._key, { quantity: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select value={l.unit_id ?? ''} onValueChange={v => patch(l._key, { unit_id: v || null })}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        {units.map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                    {fmt(avgCostPerBaseUnit, currency)}
+                    {baseUnit ? <span className="ml-1 text-xs">/{baseUnit.code}</span> : null}
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" inputMode="decimal" step="any"
+                      className="h-9 text-right tabular-nums"
+                      value={Number.isFinite(l.cost_adjust_pct) ? l.cost_adjust_pct : 0}
+                      onChange={e => patch(l._key, { cost_adjust_pct: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right text-sm tabular-nums">{fmt(lineCost, currency)}</TableCell>
+                  <TableCell className="text-right text-sm font-medium tabular-nums">{fmt(adjusted, currency)}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-0.5">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => moveLine(l._key, -1)} disabled={idx === 0} title={t('recipes.lines.moveUp') as string}>
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => moveLine(l._key, 1)} disabled={idx === draft.length - 1} title={t('recipes.lines.moveDown') as string}>
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeLine(l._key)} title={t('recipes.lines.remove') as string}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={addLine}>
+          <Plus className="h-4 w-4" /> {t('recipes.lines.quickAdd')}
+        </Button>
       </div>
     </div>
   );

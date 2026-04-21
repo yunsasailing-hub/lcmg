@@ -324,6 +324,11 @@ const en = {
       basePrice: 'Base price',
       noIngredientSelected: 'Select an ingredient to compute cost.',
       notePh: 'Optional note (e.g. diced, brunoise, room temp)',
+      viewMode: 'View',
+      formView: 'Form view',
+      tableView: 'Table view',
+      quickAdd: 'Add row',
+      invalidRow: 'Invalid row',
       cols: {
         ingredient: 'Ingredient',
         qty: 'Qty',

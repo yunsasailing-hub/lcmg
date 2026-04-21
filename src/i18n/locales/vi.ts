@@ -326,6 +326,11 @@ const vi: Translations = {
       basePrice: 'Giá gốc',
       noIngredientSelected: 'Chọn nguyên liệu để tính chi phí.',
       notePh: 'Ghi chú (vd: thái hạt lựu, để nhiệt độ phòng)',
+      viewMode: 'Chế độ',
+      formView: 'Dạng thẻ',
+      tableView: 'Dạng bảng',
+      quickAdd: 'Thêm dòng',
+      invalidRow: 'Dòng lỗi',
       cols: {
         ingredient: 'Nguyên liệu',
         qty: 'SL',
