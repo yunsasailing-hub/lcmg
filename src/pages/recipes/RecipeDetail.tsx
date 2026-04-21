@@ -192,7 +192,7 @@ export default function RecipeDetail() {
           colAdjPct: t('recipes.lines.cols.adjPct'),
           colCost: t('recipes.lines.cols.adjusted'),
           totalCost: t('recipes.lines.totalCost'),
-          foodCostPct: t('recipes.lines.foodCostPct'),
+          foodCostPct: t('recipes.summary.foodCostPct'),
           recipeId: t('recipes.list.fields.code'),
           category: t('recipes.list.fields.category'),
           type: t('recipes.list.fields.type'),
