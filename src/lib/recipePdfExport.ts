@@ -143,9 +143,9 @@ export async function exportRecipeToPdf(payload: RecipePdfPayload): Promise<void
   // never has to wait on network/CORS-restricted resources.
   const includeImages = payload.includeImages !== false;
   let preparedPayload = payload;
-  if (includeImages) {
-    const images = payload.media.filter(m => m.media_type === 'image');
-    const urlMap = await inlineImagesAsDataUrls(images.map(m => m.url));
+  const exportImageUrls = includeImages ? collectExportImageUrls(payload) : [];
+  if (exportImageUrls.length > 0) {
+    const urlMap = await inlineImagesAsDataUrls(exportImageUrls);
     preparedPayload = {
       ...payload,
       media: payload.media.map(m =>
@@ -153,6 +153,14 @@ export async function exportRecipeToPdf(payload: RecipePdfPayload): Promise<void
           ? { ...m, url: urlMap[m.url] }
           : m,
       ),
+      procedures: payload.procedures.map(step =>
+        step.image_url && urlMap[step.image_url]
+          ? { ...step, image_url: urlMap[step.image_url] }
+          : step,
+      ),
+      serviceInfo: payload.serviceInfo?.image_url && urlMap[payload.serviceInfo.image_url]
+        ? { ...payload.serviceInfo, image_url: urlMap[payload.serviceInfo.image_url] }
+        : payload.serviceInfo,
     };
   }
 
@@ -203,6 +211,16 @@ export async function exportRecipeToPdf(payload: RecipePdfPayload): Promise<void
       try { doc.title = filename; } catch { /* noop */ }
     }
     const doc2 = iframe.contentDocument;
+    const exportImages = Array.from(doc2?.querySelectorAll<HTMLImageElement>('img[data-export-image="true"]') ?? []);
+    const expectedImageCount = countExportImages(preparedPayload);
+    console.debug('[Recipe PDF export] image check', {
+      expectedImageCount,
+      exportDomImageCount: exportImages.length,
+      sources: exportImages.map((img) => img.getAttribute('src')).filter(Boolean),
+    });
+    if (expectedImageCount > 0 && exportImages.length === 0) {
+      console.warn('[Recipe PDF export] Export DOM is missing expected image elements before print.');
+    }
     const fontsReady = (doc2 as any)?.fonts?.ready;
     const imagesReady = doc2 ? waitForImages(doc2) : Promise.resolve();
     Promise.all([
@@ -246,18 +264,104 @@ async function inlineImagesAsDataUrls(urls: string[]): Promise<Record<string, st
     unique.map(async (url) => {
       // Already a data URL — keep as-is.
       if (url.startsWith('data:')) return [url, url] as const;
-      try {
-        const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
-        if (!res.ok) return [url, url] as const;
-        const blob = await res.blob();
-        const dataUrl = await blobToDataUrl(blob);
-        return [url, dataUrl] as const;
-      } catch {
-        return [url, url] as const;
-      }
+      return [url, await resolveImageSourceForExport(url)] as const;
     }),
   );
   return Object.fromEntries(entries);
+}
+
+function collectExportImageUrls(payload: RecipePdfPayload): string[] {
+  const mediaUrls = payload.media
+    .filter((item) => item.media_type === 'image')
+    .map((item) => item.url);
+  const procedureUrls = payload.procedures
+    .map((step) => step.image_url)
+    .filter((url): url is string => !!url);
+  const serviceUrls = payload.serviceInfo?.image_url ? [payload.serviceInfo.image_url] : [];
+
+  return [...mediaUrls, ...procedureUrls, ...serviceUrls];
+}
+
+function countExportImages(payload: RecipePdfPayload): number {
+  if (payload.includeImages === false) return 0;
+
+  const heroMediaCount = payload.media.filter((item) => item.media_type === 'image').slice(0, 2).length;
+  const procedureImageCount = payload.procedures.filter((step) => !!step.image_url).length;
+  const serviceImageCount = payload.serviceInfo?.image_url ? 1 : 0;
+
+  return heroMediaCount + procedureImageCount + serviceImageCount;
+}
+
+async function resolveImageSourceForExport(url: string): Promise<string> {
+  const liveImage = findLoadedLiveImage(url);
+  if (liveImage) {
+    try {
+      return imageToDataUrl(liveImage);
+    } catch {
+      /* continue to network fallback */
+    }
+  }
+
+  try {
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    if (res.ok) {
+      const blob = await res.blob();
+      return await blobToDataUrl(blob);
+    }
+  } catch {
+    /* continue to image preload fallback */
+  }
+
+  try {
+    return await preloadImageAsDataUrl(url);
+  } catch {
+    return url;
+  }
+}
+
+function findLoadedLiveImage(url: string): HTMLImageElement | null {
+  const images = Array.from(document.images ?? []);
+  return images.find((img) => {
+    const src = img.currentSrc || img.src;
+    return src === url && img.complete && img.naturalWidth > 0;
+  }) ?? null;
+}
+
+function preloadImageAsDataUrl(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.decoding = 'sync';
+    img.onload = () => {
+      try {
+        resolve(imageToDataUrl(img));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    img.onerror = () => reject(new Error(`Failed to preload export image: ${url}`));
+    img.src = url;
+  });
+}
+
+function imageToDataUrl(img: HTMLImageElement): string {
+  const maxDimension = 1800;
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
+  if (!width || !height) {
+    throw new Error('Image has no renderable dimensions.');
+  }
+
+  const scale = Math.min(1, maxDimension / Math.max(width, height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas rendering is unavailable.');
+
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.9);
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -272,6 +376,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 // ---------- HTML builder ----------
 function buildPrintHtml(p: RecipePdfPayload): string {
   const { recipe, labels } = p;
+  const includeImages = p.includeImages !== false;
 
   const category = recipe.category_id ? p.categoryMap[recipe.category_id]?.name_en ?? '' : '';
   const type = recipe.recipe_type_id ? p.typeMap[recipe.recipe_type_id]?.name_en ?? '' : '';
@@ -358,6 +463,19 @@ function buildPrintHtml(p: RecipePdfPayload): string {
         </div>
         <div class="step-body">
           <p class="step-text">${nl2br(s.instruction_en)}</p>
+          ${includeImages && s.image_url ? `
+            <div class="step-image-wrap">
+              <img
+                src="${escapeHtml(s.image_url)}"
+                alt="Step ${s.step_number}"
+                crossorigin="anonymous"
+                loading="eager"
+                decoding="sync"
+                data-export-image="true"
+                class="step-image"
+              />
+            </div>
+          ` : ''}
           ${meta.length ? `<div class="step-meta">${meta.join(' · ')}</div>` : ''}
           ${s.warning ? `<div class="step-warn"><strong>${escapeHtml(labels.warning)}:</strong> ${escapeHtml(s.warning)}</div>` : ''}
           ${s.note ? `<div class="step-note"><strong>${escapeHtml(labels.note)}:</strong> ${escapeHtml(s.note)}</div>` : ''}
@@ -367,7 +485,6 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   }).join('') : `<p class="muted">—</p>`;
 
   // ---- Media (max 2 images) — skip entirely when includeImages is false ----
-  const includeImages = p.includeImages !== false;
   const images = includeImages ? p.media.filter(m => m.media_type === 'image') : [];
   images.sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
   const heroImages = images.slice(0, 2);
@@ -375,7 +492,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     <div class="media-grid">
       ${heroImages.map(m => `
         <figure>
-          <img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.title ?? '')}" crossorigin="anonymous"/>
+          <img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.title ?? '')}" crossorigin="anonymous" loading="eager" decoding="sync" data-export-image="true"/>
           ${m.title ? `<figcaption>${escapeHtml(m.title)}</figcaption>` : ''}
         </figure>
       `).join('')}
@@ -385,6 +502,19 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   // ---- Service info ----
   const si = p.serviceInfo;
   const siHtml = si ? `
+    ${includeImages && si.image_url ? `
+      <div class="service-image-wrap">
+        <img
+          src="${escapeHtml(si.image_url)}"
+          alt="${escapeHtml(recipe.name_en)}"
+          crossorigin="anonymous"
+          loading="eager"
+          decoding="sync"
+          data-export-image="true"
+          class="service-image"
+        />
+      </div>
+    ` : ''}
     ${si.short_description ? `<div class="si-row"><div class="si-label">${escapeHtml(labels.shortDescription)}</div><div>${nl2br(si.short_description)}</div></div>` : ''}
     ${si.key_ingredients ? `<div class="si-row"><div class="si-label">${escapeHtml(labels.keyIngredients)}</div><div>${nl2br(si.key_ingredients)}</div></div>` : ''}
     ${si.taste_profile ? `<div class="si-row"><div class="si-label">${escapeHtml(labels.taste)}</div><div>${nl2br(si.taste_profile)}</div></div>` : ''}
@@ -533,6 +663,20 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   }
   .step-body { flex: 1; }
   .step-text { margin: 0 0 4px 0; font-size: 11pt; }
+  .step-image-wrap {
+    margin: 6px 0 8px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .step-image {
+    display: block;
+    width: 100%;
+    max-width: 88mm;
+    max-height: 56mm;
+    object-fit: cover;
+    border: 1px solid #000;
+    border-radius: 4px;
+  }
   .step-meta { font-size: 9.5pt; color: #222; }
   .step-warn {
     margin-top: 4px;
@@ -590,6 +734,19 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     font-weight: 600;
     color: #000;
     font-size: 10pt;
+  }
+  .service-image-wrap {
+    margin: 0 0 10px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .service-image {
+    display: block;
+    width: 100%;
+    max-height: 72mm;
+    object-fit: cover;
+    border: 1px solid #000;
+    border-radius: 4px;
   }
 
   footer.print-footer {
