@@ -16,7 +16,9 @@ import { useIngredients, useRecipeUnits } from '@/hooks/useIngredients';
 import {
   useRecipeIngredients, useSaveRecipeIngredients,
   computeLineCost, applyAdjustment,
+  useRecipesAsIngredient,
   type RecipeLineInput,
+  type RecipeAsIngredientOption,
 } from '@/hooks/useRecipes';
 import { toast } from '@/hooks/use-toast';
 
@@ -34,6 +36,8 @@ interface DraftLine extends RecipeLineInput {
 const newKey = () => Math.random().toString(36).slice(2);
 
 const toDraft = (l: RecipeLineInput): DraftLine => ({ ...l, _key: l.id ?? newKey() });
+
+const RECIPE_PREFIX = 'rcp:';
 
 const fmt = (n: number, currency?: string | null) => {
   if (!Number.isFinite(n)) return '—';
@@ -53,6 +57,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const { data: lines = [], isLoading } = useRecipeIngredients(recipeId);
   const { data: ingredients = [] } = useIngredients(false);
   const { data: units = [] } = useRecipeUnits(true);
+  const { data: recipeIngredientOptions = [] } = useRecipesAsIngredient(recipeId);
   const save = useSaveRecipeIngredients();
 
   const [editing, setEditing] = useState(false);
@@ -64,6 +69,10 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
 
   const ingMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
+  const recipeOptMap = useMemo(
+    () => Object.fromEntries(recipeIngredientOptions.map(r => [r.id, r])) as Record<string, RecipeAsIngredientOption>,
+    [recipeIngredientOptions],
+  );
 
   // Initialize draft when entering edit OR when lines reload
   useEffect(() => {
@@ -76,21 +85,57 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
         cost_adjust_pct: Number((l as any).cost_adjust_pct) || 0,
         prep_note: l.prep_note,
         sort_order: l.sort_order ?? i,
+        sub_recipe_id: (l as any).sub_recipe_id ?? null,
       })));
     }
   }, [lines, editing]);
 
-  const ingredientOptions = useMemo(
-    () => ingredients.map(i => ({
+  // Unified picker options:
+  //  - Ingredient Master items (id = ingredient.id)
+  //  - Recipe-derived items   (id = `rcp:<recipe.id>`, clearly tagged as Recipe)
+  // Recipe-derived items are stored on the line via `sub_recipe_id`, not duplicated into Ingredient Master.
+  const ingredientOptions = useMemo(() => {
+    const base = ingredients.map(i => ({
       id: i.id,
       label: i.name_en,
-      sublabel: i.code ?? undefined,
-    })),
-    [ingredients],
-  );
+      sublabel: i.code ? `${i.code} · ${t('recipes.lines.sourceIngredient')}` : t('recipes.lines.sourceIngredient') as string,
+    }));
+    const recipes = recipeIngredientOptions.map(r => ({
+      id: `${RECIPE_PREFIX}${r.id}`,
+      label: r.name_en,
+      sublabel: `${r.code ?? '—'} · ${t('recipes.lines.sourceRecipe')}`,
+    }));
+    return [...base, ...recipes];
+  }, [ingredients, recipeIngredientOptions, t]);
 
-  // ---- Compute helpers using linked ingredient ----
+  // ---- Compute helpers using linked ingredient OR sub-recipe ----
   const computeRow = (line: DraftLine) => {
+    // Sub-recipe path: cost from recipe's computed cost-per-yield-unit.
+    if (line.sub_recipe_id) {
+      const subRecipe = recipeOptMap[line.sub_recipe_id] ?? null;
+      const lineUnit = line.unit_id ? unitMap[line.unit_id] : null;
+      const yieldUnit = subRecipe?.yield_unit_id ? unitMap[subRecipe.yield_unit_id] : null;
+      // Convert line unit -> recipe yield unit when both share the same unit_type.
+      const sameType = lineUnit && yieldUnit && lineUnit.unit_type === yieldUnit.unit_type;
+      const lineFactor = Number(lineUnit?.factor_to_base ?? 1);
+      const yieldFactor = Number(yieldUnit?.factor_to_base ?? 1) || 1;
+      const qtyInYieldUnit = sameType
+        ? (Number(line.quantity) || 0) * (lineFactor / yieldFactor)
+        : (Number(line.quantity) || 0);
+      const lineCost = qtyInYieldUnit * (subRecipe?.costPerYieldUnit ?? 0);
+      const adjusted = applyAdjustment(lineCost, line.cost_adjust_pct);
+      return {
+        ing: null,
+        lineUnit,
+        baseUnit: yieldUnit,
+        avgCostPerBaseUnit: subRecipe?.costPerYieldUnit ?? 0,
+        lineCost,
+        adjusted,
+        subRecipe,
+      };
+    }
+
+    // Ingredient Master path (unchanged).
     const ing = line.ingredient_id ? ingMap[line.ingredient_id] : null;
     const lineUnit = line.unit_id ? unitMap[line.unit_id] : null;
     const baseUnit = ing?.base_unit_id ? unitMap[ing.base_unit_id] : null;
@@ -106,7 +151,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     const lineCost = computeLineCost(line.quantity, unitFactor, baseFactor, purchasePrice);
     const adjusted = applyAdjustment(lineCost, line.cost_adjust_pct);
 
-    return { ing, lineUnit, baseUnit, avgCostPerBaseUnit, lineCost, adjusted };
+    return { ing, lineUnit, baseUnit, avgCostPerBaseUnit, lineCost, adjusted, subRecipe: null as RecipeAsIngredientOption | null };
   };
 
   const total = useMemo(
