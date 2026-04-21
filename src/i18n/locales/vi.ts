@@ -322,6 +322,8 @@ const vi: Translations = {
         pairing: 'Gợi ý kết hợp',
         upselling: 'Gợi ý bán thêm',
         taste: 'Hương vị',
+        includeImages: 'Kèm hình ảnh',
+        includeImagesHint: 'Bỏ chọn để bỏ qua phần Hình ảnh và giảm dung lượng tệp.',
       },
     },
     lines: {
