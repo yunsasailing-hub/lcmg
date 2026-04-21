@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X, LayoutGrid, Rows3 } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, Pencil, X, LayoutGrid, Rows3, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +59,8 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const [draft, setDraft] = useState<DraftLine[]>([]);
   const [errors, setErrors] = useState<Record<string, { ingredient?: string; quantity?: string }>>({});
   const [viewMode, setViewMode] = useState<'form' | 'table'>('form');
+  const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
+  const [lastEditedKey, setLastEditedKey] = useState<string | null>(null);
 
   const ingMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
