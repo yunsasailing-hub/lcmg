@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Image as ImageIcon, Video, Link as LinkIcon, FileText, Upload, Trash2, Star, ExternalLink, Plus,
+  Image as ImageIcon, Video, Link as LinkIcon, FileText, Upload, Trash2, Star, ExternalLink, Plus, Pencil, Check,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
   const [webUrl, setWebUrl] = useState('');
   const [webTitle, setWebTitle] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<RecipeMediaRow | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const images = media.filter(m => m.media_type === 'image');
   const primary = images.find(m => m.is_primary) ?? images[0];
