@@ -72,15 +72,6 @@ const EMPTY: FormState = {
   internal_memo: '',
 };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-sm font-medium">{children}</div>
-    </div>
-  );
-}
-
 /** Compact info chip used in the consultation header strip. Hides itself when value is empty. */
 function InfoChip({ label, value }: { label: string; value: React.ReactNode }) {
   const empty = value === null || value === undefined || value === '' || value === '—';
