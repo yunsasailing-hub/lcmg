@@ -605,16 +605,24 @@ export default function RecipeDetail() {
           </Card>
 
           {/* Phase 2: Ingredients & Cost */}
-          <RecipeIngredientsTab recipeId={recipe.id} currency={recipe.currency} sellingPrice={recipe.selling_price ?? null} canManage={canManage} />
+          <section id="sec-ingredients" className="scroll-mt-24">
+            <RecipeIngredientsTab recipeId={recipe.id} currency={recipe.currency} sellingPrice={recipe.selling_price ?? null} canManage={canManage} />
+          </section>
 
           {/* Phase 3: Kitchen Procedure */}
-          <RecipeProcedureTab recipeId={recipe.id} canManage={canManage} />
+          <section id="sec-procedure" className="scroll-mt-24">
+            <RecipeProcedureTab recipeId={recipe.id} canManage={canManage} />
+          </section>
 
           {/* Phase 4: Media & References */}
-          <RecipeMediaTab recipeId={recipe.id} canManage={canManage} />
+          <section id="sec-media" className="scroll-mt-24">
+            <RecipeMediaTab recipeId={recipe.id} canManage={canManage} />
+          </section>
 
           {/* Phase 5: Service / Sales Information */}
-          <RecipeServiceInfoTab recipeId={recipe.id} canManage={canManage} />
+          <section id="sec-service" className="scroll-mt-24">
+            <RecipeServiceInfoTab recipeId={recipe.id} canManage={canManage} />
+          </section>
         </div>
       ) : null}
 
