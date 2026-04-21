@@ -477,3 +477,135 @@ function CostSummary({
     </div>
   );
 }
+
+// -------------------- TABLE EDITOR --------------------
+interface TableEditorProps {
+  draft: DraftLine[];
+  errors: Record<string, { ingredient?: string; quantity?: string }>;
+  ingredientOptions: { id: string; label: string; sublabel?: string }[];
+  units: { id: string; code: string }[];
+  currency?: string | null;
+  computeRow: (line: DraftLine) => {
+    ing: any;
+    lineUnit: any;
+    baseUnit: any;
+    avgCostPerBaseUnit: number;
+    lineCost: number;
+    adjusted: number;
+  };
+  onPickIngredient: (key: string, ingredientId: string | null) => void;
+  patch: (key: string, p: Partial<DraftLine>) => void;
+  removeLine: (key: string) => void;
+  moveLine: (key: string, dir: -1 | 1) => void;
+  addLine: () => void;
+}
+
+function TableEditor({
+  draft, errors, ingredientOptions, units, currency,
+  computeRow, onPickIngredient, patch, removeLine, moveLine, addLine,
+}: TableEditorProps) {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-3">
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">#</TableHead>
+              <TableHead className="min-w-[14rem]">{t('recipes.lines.cols.ingredient')} *</TableHead>
+              <TableHead className="w-24 text-right">{t('recipes.lines.cols.qty')} *</TableHead>
+              <TableHead className="w-28">{t('recipes.lines.cols.unit')}</TableHead>
+              <TableHead className="w-32 text-right">{t('recipes.lines.cols.avgCost')}</TableHead>
+              <TableHead className="w-24 text-right">{t('recipes.lines.cols.adjPct')}</TableHead>
+              <TableHead className="w-28 text-right">{t('recipes.lines.cols.lineCost')}</TableHead>
+              <TableHead className="w-28 text-right">{t('recipes.lines.cols.adjusted')}</TableHead>
+              <TableHead className="w-24 text-right">{t('common.add')}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {draft.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
+                  {t('recipes.lines.emptyEdit')}
+                </TableCell>
+              </TableRow>
+            )}
+            {draft.map((l, idx) => {
+              const { baseUnit, avgCostPerBaseUnit, lineCost, adjusted } = computeRow(l);
+              const err = errors[l._key];
+              const invalid = !!(err?.ingredient || err?.quantity);
+              return (
+                <TableRow key={l._key} className={cn(invalid && 'bg-destructive/5')}>
+                  <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                  <TableCell>
+                    <SearchableCombobox
+                      value={l.ingredient_id ?? ''}
+                      onChange={(v) => onPickIngredient(l._key, v || null)}
+                      options={ingredientOptions}
+                      placeholder={t('recipes.lines.searchIngredient') as string}
+                      searchPlaceholder={t('recipes.lines.searchIngredient') as string}
+                      emptyText={t('recipes.lines.noIngredients') as string}
+                    />
+                    {err?.ingredient && (
+                      <p className="mt-1 text-xs text-destructive">{err.ingredient}</p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" inputMode="decimal" min="0" step="any"
+                      className={cn('h-9 text-right tabular-nums', err?.quantity && 'border-destructive')}
+                      value={Number.isFinite(l.quantity) ? l.quantity : 0}
+                      onChange={e => patch(l._key, { quantity: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select value={l.unit_id ?? ''} onValueChange={v => patch(l._key, { unit_id: v || null })}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        {units.map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                    {fmt(avgCostPerBaseUnit, currency)}
+                    {baseUnit ? <span className="ml-1 text-xs">/{baseUnit.code}</span> : null}
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" inputMode="decimal" step="any"
+                      className="h-9 text-right tabular-nums"
+                      value={Number.isFinite(l.cost_adjust_pct) ? l.cost_adjust_pct : 0}
+                      onChange={e => patch(l._key, { cost_adjust_pct: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right text-sm tabular-nums">{fmt(lineCost, currency)}</TableCell>
+                  <TableCell className="text-right text-sm font-medium tabular-nums">{fmt(adjusted, currency)}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-0.5">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => moveLine(l._key, -1)} disabled={idx === 0} title={t('recipes.lines.moveUp') as string}>
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => moveLine(l._key, 1)} disabled={idx === draft.length - 1} title={t('recipes.lines.moveDown') as string}>
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeLine(l._key)} title={t('recipes.lines.remove') as string}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={addLine}>
+          <Plus className="h-4 w-4" /> {t('recipes.lines.quickAdd')}
+        </Button>
+      </div>
+    </div>
+  );
+}
