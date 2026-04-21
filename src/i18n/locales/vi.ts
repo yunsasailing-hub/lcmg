@@ -15,6 +15,7 @@ const vi: Translations = {
     add: 'Thêm',
     remove: 'Gỡ',
     create: 'Tạo',
+    done: 'Xong',
     update: 'Cập nhật',
     submit: 'Gửi',
     saving: 'Đang lưu…',
