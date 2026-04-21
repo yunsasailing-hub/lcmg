@@ -127,6 +127,7 @@ export default function RecipeDetail() {
 
   const [editing, setEditing] = useState(isNew || searchParams.get('edit') === '1');
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [includeImagesInPdf, setIncludeImagesInPdf] = useState(true);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
