@@ -493,65 +493,80 @@ export default function RecipeDetail() {
         </Card>
       ) : recipe ? (
         <div className="space-y-6">
+          {/* Compact consultation hero — recipe sheet style */}
           <Card>
-            <CardContent className="space-y-6 p-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={recipe.is_active ? 'default' : 'secondary'}>
-                  {recipe.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
-                </Badge>
-                {recipe.recipe_type_id && (
-                  <Badge variant="outline">{typeMap[recipe.recipe_type_id]?.name_en ?? '—'}</Badge>
-                )}
-                {recipe.category_id && (
-                  <Badge variant="outline">{categoryMap[recipe.category_id]?.name_en ?? '—'}</Badge>
-                )}
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t('recipes.list.fields.code')}>
-                  <span className="font-mono">{recipe.code ?? '—'}</span>
-                </Field>
-                <Field label={t('recipes.list.fields.name')}>{recipe.name_en}</Field>
-                <Field label={t('recipes.list.fields.category')}>
-                  {recipe.category_id ? categoryMap[recipe.category_id]?.name_en ?? '—' : '—'}
-                </Field>
-                <Field label={t('recipes.list.fields.type')}>
-                  {recipe.recipe_type_id ? typeMap[recipe.recipe_type_id]?.name_en ?? '—' : '—'}
-                </Field>
-                <Field label={t('recipes.list.fields.department')}>
-                  {recipe.department ? t(`departments.${recipe.department}`) : '—'}
-                </Field>
-                <Field label={t('recipes.list.fields.branch')}>
-                  {recipe.branch_id ? branchMap[recipe.branch_id]?.name ?? '—' : t('recipes.list.global')}
-                </Field>
-                <Field label={t('recipes.list.fields.sellingPrice')}>
-                  {recipe.selling_price != null ? `${recipe.selling_price} ${recipe.currency ?? ''}` : '—'}
-                </Field>
-                <Field label={t('recipes.list.fields.currency')}>{recipe.currency ?? '—'}</Field>
-                <Field label={t('recipes.list.fields.yieldQuantity')}>{recipe.yield_quantity ?? '—'}</Field>
-                <Field label={t('recipes.list.fields.yieldUnit')}>
-                  {recipe.yield_unit_id ? unitMap[recipe.yield_unit_id]?.code ?? '—' : '—'}
-                </Field>
-                <Field label={t('recipes.list.fields.portionQuantity')}>{recipe.portion_quantity ?? '—'}</Field>
-                <Field label={t('recipes.list.fields.portionUnit')}>{recipe.portion_unit ?? '—'}</Field>
-                <div className="sm:col-span-2">
-                  <Field label={t('recipes.list.fields.shelfLife')}>{recipe.shelf_life ?? '—'}</Field>
-                </div>
-                <div className="sm:col-span-2">
-                  <Field label={t('recipes.list.fields.description')}>
-                    <p className="whitespace-pre-wrap font-normal">{recipe.description ?? '—'}</p>
-                  </Field>
-                </div>
-                <div className="sm:col-span-2">
-                  <Field label={t('recipes.list.fields.internalMemo')}>
-                    <p className="whitespace-pre-wrap font-normal">{recipe.internal_memo ?? '—'}</p>
-                  </Field>
+            <CardContent className="space-y-4 p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={recipe.is_active ? 'default' : 'secondary'}>
+                      {recipe.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
+                    </Badge>
+                    {recipe.recipe_type_id && (
+                      <Badge variant="outline">{typeMap[recipe.recipe_type_id]?.name_en ?? '—'}</Badge>
+                    )}
+                    {recipe.category_id && (
+                      <Badge variant="outline">{categoryMap[recipe.category_id]?.name_en ?? '—'}</Badge>
+                    )}
+                    {recipe.department && (
+                      <Badge variant="outline">{t(`departments.${recipe.department}`)}</Badge>
+                    )}
+                  </div>
+                  <h2 className="font-heading text-2xl font-semibold leading-tight sm:text-3xl">
+                    {recipe.name_en}
+                  </h2>
+                  {recipe.code && (
+                    <div className="font-mono text-xs text-muted-foreground">{recipe.code}</div>
+                  )}
+                  {recipe.description && (
+                    <p className="max-w-3xl whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
+                      {recipe.description}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
-                <Field label={t('recipes.list.audit.createdAt')}>{formatDateTime(recipe.created_at)}</Field>
-                <Field label={t('recipes.list.audit.updatedAt')}>{formatDateTime(recipe.updated_at)}</Field>
+              {/* Compact info strip — chips hide themselves when empty */}
+              <div className="flex flex-wrap gap-2 border-t pt-4">
+                <InfoChip
+                  label={t('recipes.list.fields.sellingPrice')}
+                  value={recipe.selling_price != null ? `${recipe.selling_price} ${recipe.currency ?? ''}` : null}
+                />
+                <InfoChip
+                  label={t('recipes.list.fields.yieldQuantity')}
+                  value={
+                    recipe.yield_quantity != null
+                      ? `${recipe.yield_quantity} ${recipe.yield_unit_id ? unitMap[recipe.yield_unit_id]?.code ?? '' : ''}`.trim()
+                      : null
+                  }
+                />
+                <InfoChip
+                  label={t('recipes.list.fields.portionQuantity')}
+                  value={
+                    recipe.portion_quantity != null
+                      ? `${recipe.portion_quantity} ${recipe.portion_unit ?? ''}`.trim()
+                      : null
+                  }
+                />
+                <InfoChip label={t('recipes.list.fields.shelfLife')} value={recipe.shelf_life} />
+                <InfoChip
+                  label={t('recipes.list.fields.branch')}
+                  value={recipe.branch_id ? branchMap[recipe.branch_id]?.name ?? null : t('recipes.list.global')}
+                />
+              </div>
+
+              {recipe.internal_memo && canManage && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                    {t('recipes.list.fields.internalMemo')}
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-sm">{recipe.internal_memo}</p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-x-6 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
+                <span>{t('recipes.list.audit.createdAt')}: {formatDateTime(recipe.created_at)}</span>
+                <span>{t('recipes.list.audit.updatedAt')}: {formatDateTime(recipe.updated_at)}</span>
               </div>
             </CardContent>
           </Card>
