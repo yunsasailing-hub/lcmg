@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, BookOpen, Carrot, CookingPot, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, BookOpen, Carrot, CookingPot, Image as ImageIcon, Sparkles, FileDown } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import RecipeIngredientsTab from '@/components/recipes/RecipeIngredientsTab';
 import RecipeProcedureTab from '@/components/recipes/RecipeProcedureTab';
@@ -23,12 +23,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranches } from '@/hooks/useChecklists';
-import { useRecipeCategories, useRecipeUnits } from '@/hooks/useIngredients';
+import { useRecipeCategories, useRecipeUnits, useIngredients } from '@/hooks/useIngredients';
 import {
   useRecipe, useUpsertRecipe, useArchiveRecipe, useRecipeTypes, isRecipeCodeTaken,
+  useRecipeIngredients,
   RECIPE_CURRENCIES, RECIPE_DEPARTMENTS,
   type CurrencyCode, type RecipeDepartment,
 } from '@/hooks/useRecipes';
+import { useRecipeProcedures } from '@/hooks/useRecipeProcedures';
+import { useRecipeMedia } from '@/hooks/useRecipeMedia';
+import { useRecipeServiceInfo } from '@/hooks/useRecipeServiceInfo';
+import { exportRecipeToPdf } from '@/lib/recipePdfExport';
 import { toast } from '@/hooks/use-toast';
 
 const NONE = '__none__';
@@ -110,6 +115,12 @@ export default function RecipeDetail() {
   const { data: types = [] } = useRecipeTypes(true);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: branches = [] } = useBranches();
+  // Data needed for PDF export (only fetched once we have a saved recipe).
+  const { data: ingredients = [] } = useIngredients(true);
+  const { data: recipeLines = [] } = useRecipeIngredients(isNew ? undefined : id);
+  const { data: procedures = [] } = useRecipeProcedures(isNew ? undefined : id);
+  const { data: mediaItems = [] } = useRecipeMedia(isNew ? undefined : id);
+  const { data: serviceInfo = null } = useRecipeServiceInfo(isNew ? undefined : id);
   const upsert = useUpsertRecipe();
   const archive = useArchiveRecipe();
 
@@ -154,6 +165,60 @@ export default function RecipeDetail() {
   const typeMap = useMemo(() => Object.fromEntries(types.map(x => [x.id, x])), [types]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
   const branchMap = useMemo(() => Object.fromEntries(branches.map(b => [b.id, b])), [branches]);
+  const ingredientMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
+
+  const handleExportPdf = () => {
+    if (!recipe) return;
+    try {
+      exportRecipeToPdf({
+        recipe,
+        ingredients: recipeLines,
+        procedures,
+        media: mediaItems,
+        serviceInfo,
+        ingredientMap: ingredientMap as any,
+        unitMap: unitMap as any,
+        categoryMap: categoryMap as any,
+        typeMap: typeMap as any,
+        labels: {
+          printedOn: t('recipes.list.pdf.printedOn'),
+          ingredients: t('recipes.list.sections.ingredients'),
+          procedure: t('recipes.list.sections.procedure'),
+          media: t('recipes.list.sections.media'),
+          service: t('recipes.list.sections.service'),
+          colIngredient: t('recipes.lines.cols.ingredient'),
+          colQty: t('recipes.lines.cols.qty'),
+          colUnit: t('recipes.lines.cols.unit'),
+          colAdjPct: t('recipes.lines.cols.adjPct'),
+          colCost: t('recipes.lines.cols.adjusted'),
+          totalCost: t('recipes.lines.totalCost'),
+          foodCostPct: t('recipes.summary.foodCostPct'),
+          recipeId: t('recipes.list.fields.code'),
+          category: t('recipes.list.fields.category'),
+          type: t('recipes.list.fields.type'),
+          department: t('recipes.list.fields.department'),
+          yield: t('recipes.list.fields.yieldQuantity'),
+          portion: t('recipes.list.fields.portionQuantity'),
+          sellingPrice: t('recipes.list.fields.sellingPrice'),
+          shelfLife: t('recipes.list.fields.shelfLife'),
+          warning: t('recipes.list.pdf.warning'),
+          tool: t('recipes.list.pdf.tool'),
+          duration: t('recipes.list.pdf.duration'),
+          temperature: t('recipes.list.pdf.temperature'),
+          note: t('recipes.list.pdf.note'),
+          minutes: t('recipes.list.pdf.minutes'),
+          shortDescription: t('recipes.list.pdf.shortDescription'),
+          keyIngredients: t('recipes.list.pdf.keyIngredients'),
+          allergens: t('recipes.list.pdf.allergens'),
+          pairing: t('recipes.list.pdf.pairing'),
+          upselling: t('recipes.list.pdf.upselling'),
+          taste: t('recipes.list.pdf.taste'),
+        },
+      });
+    } catch (e: any) {
+      toast({ title: t('common.error'), description: e?.message, variant: 'destructive' });
+    }
+  };
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setForm(prev => ({ ...prev, [k]: v }));
@@ -501,6 +566,9 @@ export default function RecipeDetail() {
               <div className="flex flex-wrap items-center gap-1.5">
                 <Button size="sm" variant="ghost" onClick={() => navigate('/recipes/list')}>
                   <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">{t('common.back')}</span>
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleExportPdf}>
+                  <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">{t('recipes.list.pdf.export')}</span>
                 </Button>
                 {canManage && (
                   <>
