@@ -66,6 +66,9 @@ export interface RecipePdfPayload {
 
   // i18n
   labels: PdfLabels;
+
+  /** When false, skip the Media section entirely (smaller file, faster print). Default true. */
+  includeImages?: boolean;
 }
 
 export interface PdfLabels {
@@ -256,8 +259,9 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     `;
   }).join('') : `<p class="muted">—</p>`;
 
-  // ---- Media (max 2 images) ----
-  const images = p.media.filter(m => m.media_type === 'image');
+  // ---- Media (max 2 images) — skip entirely when includeImages is false ----
+  const includeImages = p.includeImages !== false;
+  const images = includeImages ? p.media.filter(m => m.media_type === 'image') : [];
   images.sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
   const heroImages = images.slice(0, 2);
   const mediaHtml = heroImages.length ? `
@@ -297,14 +301,13 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   html, body { padding: 0; margin: 0; }
   body {
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    color: #111;
+    color: #000;
+    background: #fff;
     font-size: 11pt;
     line-height: 1.4;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
   h1, h2, h3, h4 { margin: 0; font-weight: 700; }
-  .muted { color: #666; }
+  .muted { color: #444; }
   .small { font-size: 9pt; }
   .num { font-variant-numeric: tabular-nums; }
   .right { text-align: right; }
@@ -313,7 +316,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
 
   /* Header */
   .hdr {
-    border-bottom: 2px solid #111;
+    border-bottom: 2px solid #000;
     padding-bottom: 8px;
     margin-bottom: 12px;
   }
@@ -324,7 +327,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   .hdr .meta {
     margin-top: 2px;
     font-size: 9.5pt;
-    color: #555;
+    color: #333;
   }
   .chips {
     display: flex;
@@ -334,7 +337,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     font-size: 10pt;
   }
   .chips div span.k {
-    color: #666;
+    color: #444;
     font-size: 8.5pt;
     text-transform: uppercase;
     letter-spacing: .03em;
@@ -348,82 +351,94 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     font-size: 12.5pt;
     text-transform: uppercase;
     letter-spacing: .04em;
-    border-bottom: 1px solid #999;
+    border-bottom: 1px solid #000;
     padding-bottom: 3px;
     margin-bottom: 8px;
   }
 
-  /* Ingredients table */
+  /* Ingredients table — compact, low-ink, aligned numbers */
   .ing-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 10.5pt;
+    font-size: 10pt;
   }
   .ing-table th {
     text-align: left;
-    border-bottom: 1px solid #444;
-    padding: 4px 6px;
-    background: #f3f3f3;
-    font-size: 9.5pt;
+    border-bottom: 1px solid #000;
+    padding: 3px 6px;
+    background: #fff;
+    font-size: 9pt;
     text-transform: uppercase;
     letter-spacing: .03em;
   }
   .ing-table td {
-    padding: 4px 6px;
-    border-bottom: 1px solid #eee;
+    padding: 2px 6px;
+    border-bottom: 1px solid #ddd;
     vertical-align: top;
+    line-height: 1.25;
+  }
+  .ing-table td.num,
+  .ing-table th.right {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
   .ing-table tfoot td {
-    border-top: 1px solid #444;
+    border-top: 1px solid #000;
     border-bottom: none;
-    padding-top: 6px;
+    padding-top: 5px;
   }
   .ing-table tr { page-break-inside: avoid; break-inside: avoid; }
 
-  /* Procedure steps */
+  /* Procedure steps — clear separation, larger numbers */
   .step {
     display: flex;
-    gap: 10px;
-    margin: 8px 0;
+    gap: 12px;
+    margin: 10px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
     page-break-inside: avoid;
     break-inside: avoid;
   }
+  .step:last-child { border-bottom: none; }
   .step-head {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 56px;
+    min-width: 60px;
   }
   .step-num {
-    background: #111;
+    background: #000;
     color: #fff;
-    width: 26px; height: 26px;
+    width: 32px; height: 32px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center; justify-content: center;
     font-weight: 700;
-    font-size: 11pt;
+    font-size: 13pt;
   }
   .step-type {
-    font-size: 8.5pt;
+    font-size: 8pt;
     text-transform: uppercase;
-    color: #555;
-    margin-top: 4px;
+    color: #000;
+    margin-top: 5px;
+    font-weight: 600;
+    letter-spacing: .04em;
   }
   .step-body { flex: 1; }
   .step-text { margin: 0 0 4px 0; font-size: 11pt; }
-  .step-meta { font-size: 9.5pt; color: #444; }
+  .step-meta { font-size: 9.5pt; color: #222; }
   .step-warn {
     margin-top: 4px;
-    border-left: 3px solid #b00;
+    border-left: 3px solid #000;
     padding-left: 8px;
     font-size: 10pt;
-    color: #800;
+    color: #000;
+    font-weight: 600;
   }
   .step-note {
     margin-top: 4px;
     font-size: 9.5pt;
-    color: #555;
+    color: #333;
     font-style: italic;
   }
 
@@ -443,12 +458,12 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     width: 100%;
     max-height: 70mm;
     object-fit: cover;
-    border: 1px solid #ddd;
+    border: 1px solid #000;
     border-radius: 4px;
   }
   .media-grid figcaption {
     font-size: 9pt;
-    color: #555;
+    color: #333;
     margin-top: 3px;
     text-align: center;
   }
@@ -458,7 +473,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     display: flex;
     gap: 10px;
     padding: 4px 0;
-    border-bottom: 1px dashed #e5e5e5;
+    border-bottom: 1px dashed #bbb;
     page-break-inside: avoid;
     break-inside: avoid;
   }
@@ -466,22 +481,26 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   .si-label {
     width: 38%;
     font-weight: 600;
-    color: #444;
+    color: #000;
     font-size: 10pt;
   }
 
   footer.print-footer {
     margin-top: 14px;
     padding-top: 6px;
-    border-top: 1px solid #ccc;
+    border-top: 1px solid #000;
     font-size: 9pt;
-    color: #777;
+    color: #333;
     display: flex;
     justify-content: space-between;
   }
 
   @media print {
     .no-print { display: none !important; }
+    /* Pure black/white, low-ink: no backgrounds, no shadows */
+    * { background: transparent !important; box-shadow: none !important; text-shadow: none !important; }
+    body { color: #000 !important; }
+    .step-num { background: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
 </head>

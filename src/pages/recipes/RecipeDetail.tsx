@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -126,6 +127,7 @@ export default function RecipeDetail() {
 
   const [editing, setEditing] = useState(isNew || searchParams.get('edit') === '1');
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [includeImagesInPdf, setIncludeImagesInPdf] = useState(true);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -176,6 +178,7 @@ export default function RecipeDetail() {
         procedures,
         media: mediaItems,
         serviceInfo,
+        includeImages: includeImagesInPdf,
         ingredientMap: ingredientMap as any,
         unitMap: unitMap as any,
         categoryMap: categoryMap as any,
@@ -567,6 +570,18 @@ export default function RecipeDetail() {
                 <Button size="sm" variant="ghost" onClick={() => navigate('/recipes/list')}>
                   <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">{t('common.back')}</span>
                 </Button>
+                <label
+                  htmlFor="pdf-include-images"
+                  className="hidden md:inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground cursor-pointer select-none"
+                  title={t('recipes.list.pdf.includeImagesHint')}
+                >
+                  <Checkbox
+                    id="pdf-include-images"
+                    checked={includeImagesInPdf}
+                    onCheckedChange={v => setIncludeImagesInPdf(v === true)}
+                  />
+                  <span>{t('recipes.list.pdf.includeImages')}</span>
+                </label>
                 <Button size="sm" variant="outline" onClick={handleExportPdf}>
                   <FileDown className="h-4 w-4" /> <span className="hidden sm:inline">{t('recipes.list.pdf.export')}</span>
                 </Button>

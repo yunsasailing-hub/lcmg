@@ -320,6 +320,8 @@ const en = {
         pairing: 'Pairing',
         upselling: 'Upselling',
         taste: 'Taste profile',
+        includeImages: 'Include images',
+        includeImagesHint: 'Uncheck to skip the Media section and reduce file size.',
       },
     },
     lines: {
