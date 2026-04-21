@@ -285,7 +285,11 @@ function collectExportImageUrls(payload: RecipePdfPayload): string[] {
 function countExportImages(payload: RecipePdfPayload): number {
   if (payload.includeImages === false) return 0;
 
-  return collectExportImageUrls(payload).length;
+  const heroMediaCount = payload.media.filter((item) => item.media_type === 'image').slice(0, 2).length;
+  const procedureImageCount = payload.procedures.filter((step) => !!step.image_url).length;
+  const serviceImageCount = payload.serviceInfo?.image_url ? 1 : 0;
+
+  return heroMediaCount + procedureImageCount + serviceImageCount;
 }
 
 async function resolveImageSourceForExport(url: string): Promise<string> {
@@ -372,6 +376,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 // ---------- HTML builder ----------
 function buildPrintHtml(p: RecipePdfPayload): string {
   const { recipe, labels } = p;
+  const includeImages = p.includeImages !== false;
 
   const category = recipe.category_id ? p.categoryMap[recipe.category_id]?.name_en ?? '' : '';
   const type = recipe.recipe_type_id ? p.typeMap[recipe.recipe_type_id]?.name_en ?? '' : '';
@@ -480,7 +485,6 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   }).join('') : `<p class="muted">—</p>`;
 
   // ---- Media (max 2 images) — skip entirely when includeImages is false ----
-  const includeImages = p.includeImages !== false;
   const images = includeImages ? p.media.filter(m => m.media_type === 'image') : [];
   images.sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
   const heroImages = images.slice(0, 2);
