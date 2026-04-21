@@ -273,6 +273,8 @@ const en = {
         shelfLifePh: 'e.g. 3 days refrigerated',
         description: 'Description',
         internalMemo: 'Internal Memo',
+        useAsIngredient: 'Use as Ingredient',
+        useAsIngredientHint: 'Allow this recipe to be selected as an ingredient inside other recipes.',
       },
       audit: {
         createdAt: 'Created at',
@@ -339,6 +341,8 @@ const en = {
       totalCost: 'Total ingredient cost',
       searchIngredient: 'Search ingredient…',
       noIngredients: 'No ingredients found.',
+      sourceIngredient: 'Ingredient',
+      sourceRecipe: 'Recipe',
       ingredientCode: 'Code',
       basePrice: 'Base price',
       noIngredientSelected: 'Select an ingredient to compute cost.',

@@ -275,6 +275,8 @@ const vi: Translations = {
         shelfLifePh: 'vd. 3 ngày trong tủ lạnh',
         description: 'Mô tả',
         internalMemo: 'Ghi chú nội bộ',
+        useAsIngredient: 'Dùng làm nguyên liệu',
+        useAsIngredientHint: 'Cho phép công thức này được chọn làm nguyên liệu trong các công thức khác.',
       },
       audit: {
         createdAt: 'Tạo lúc',
@@ -341,6 +343,8 @@ const vi: Translations = {
       totalCost: 'Tổng chi phí nguyên liệu',
       searchIngredient: 'Tìm nguyên liệu…',
       noIngredients: 'Không có nguyên liệu.',
+      sourceIngredient: 'Nguyên liệu',
+      sourceRecipe: 'Công thức',
       ingredientCode: 'Mã',
       basePrice: 'Giá gốc',
       noIngredientSelected: 'Chọn nguyên liệu để tính chi phí.',
