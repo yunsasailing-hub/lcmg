@@ -169,10 +169,10 @@ export default function RecipeDetail() {
   const branchMap = useMemo(() => Object.fromEntries(branches.map(b => [b.id, b])), [branches]);
   const ingredientMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (!recipe) return;
     try {
-      exportRecipeToPdf({
+      await exportRecipeToPdf({
         recipe,
         ingredients: recipeLines,
         procedures,
