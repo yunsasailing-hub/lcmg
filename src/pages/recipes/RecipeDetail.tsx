@@ -538,7 +538,7 @@ export default function RecipeDetail() {
                       <Badge variant="outline">{t(`departments.${recipe.department}`)}</Badge>
                     )}
                   </div>
-                  <h2 className="font-heading text-2xl font-semibold leading-tight sm:text-3xl">
+                  <h2 className="font-heading text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
                     {recipe.name_en}
                   </h2>
                   {recipe.code && (
