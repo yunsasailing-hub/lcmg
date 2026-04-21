@@ -186,9 +186,9 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
   if (!editing) {
     return (
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4 p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-heading text-lg font-semibold">{t('recipes.procedure.title')}</h3>
+            <h3 className="font-heading text-xl font-semibold">{t('recipes.procedure.title')}</h3>
             {canManage && (
               <Button size="sm" onClick={() => setEditing(true)}>
                 <Pencil className="h-4 w-4" /> {t('recipes.procedure.editSteps')}
@@ -205,7 +205,7 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
               {draft.map((s) => (
                 <li key={s._key} className="rounded-md border p-4">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                       {s.step_number}
                     </span>
                     <Badge variant="secondary">{procedureTypeLabel(s.procedure_type)}</Badge>
@@ -215,15 +215,15 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                     {s.temperature && <Badge variant="outline">{s.temperature}</Badge>}
                     {s.tool && <Badge variant="outline">{s.tool}</Badge>}
                   </div>
-                  <p className="whitespace-pre-wrap text-sm">{s.instruction_en}</p>
+                  <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{s.instruction_en}</p>
                   {s.warning && (
-                    <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+                    <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                       <span className="whitespace-pre-wrap">{s.warning}</span>
                     </div>
                   )}
                   {s.note && (
-                    <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
                       <span className="font-semibold">{t('recipes.procedure.cols.note')}:</span> {s.note}
                     </p>
                   )}
