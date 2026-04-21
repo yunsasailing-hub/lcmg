@@ -228,3 +228,112 @@ export async function isRecipeCodeTaken(code: string, excludeId?: string): Promi
   if (error) throw error;
   return (data?.length ?? 0) > 0;
 }
+
+// ===================== Phase 3: Recipes-as-Ingredients =====================
+
+export interface RecipeAsIngredientOption {
+  id: string;            // recipe id
+  code: string | null;
+  name_en: string;
+  yield_quantity: number | null;
+  yield_unit_id: string | null;
+  costPerYieldUnit: number; // computed production cost / yield qty
+  currency: CurrencyCode;
+}
+
+/**
+ * Returns active recipes that are flagged `use_as_ingredient = true`,
+ * each with a computed cost-per-yield-unit derived from their own ingredient lines.
+ *
+ * Cost source rule (per spec):
+ *   total_ingredient_cost / yield_quantity  -> recipe cost per yield unit
+ * Selling price is NEVER used for this.
+ *
+ * Architecture note: this lives in a separate query so the Ingredient Master
+ * stays untouched. Items are merged in the picker only at display time.
+ */
+export function useRecipesAsIngredient(excludeRecipeId?: string) {
+  return useQuery({
+    queryKey: ['recipes_as_ingredient', { excludeRecipeId: excludeRecipeId ?? null }],
+    queryFn: async (): Promise<RecipeAsIngredientOption[]> => {
+      // 1) Recipes flagged for reuse
+      const { data: recipes, error: rErr } = await supabase
+        .from('recipes')
+        .select('id, code, name_en, yield_quantity, yield_unit_id, currency, use_as_ingredient, is_active')
+        .eq('use_as_ingredient', true)
+        .eq('is_active', true);
+      if (rErr) throw rErr;
+      let list = (recipes ?? []) as any[];
+      if (excludeRecipeId) list = list.filter(r => r.id !== excludeRecipeId); // prevent self-pick
+      if (list.length === 0) return [];
+
+      const recipeIds = list.map(r => r.id);
+
+      // 2) Their ingredient lines
+      const { data: lines, error: lErr } = await supabase
+        .from('recipe_ingredients')
+        .select('recipe_id, ingredient_id, sub_recipe_id, unit_id, quantity, cost_adjust_pct')
+        .in('recipe_id', recipeIds);
+      if (lErr) throw lErr;
+
+      // 3) Lookup ingredients referenced by those lines
+      const ingIds = Array.from(new Set((lines ?? []).map(l => l.ingredient_id).filter(Boolean) as string[]));
+      const ingMap: Record<string, any> = {};
+      if (ingIds.length) {
+        const { data: ings } = await supabase
+          .from('ingredients')
+          .select('id, price, purchase_to_base_factor, base_unit_id')
+          .in('id', ingIds);
+        (ings ?? []).forEach(i => { ingMap[i.id] = i; });
+      }
+
+      // 4) Lookup units used in lines (for unit conversion)
+      const unitIds = Array.from(new Set([
+        ...((lines ?? []).map(l => l.unit_id).filter(Boolean) as string[]),
+        ...Object.values(ingMap).map((i: any) => i.base_unit_id).filter(Boolean),
+      ]));
+      const unitMap: Record<string, any> = {};
+      if (unitIds.length) {
+        const { data: us } = await supabase
+          .from('recipe_units')
+          .select('id, factor_to_base, unit_type')
+          .in('id', unitIds);
+        (us ?? []).forEach(u => { unitMap[u.id] = u; });
+      }
+
+      // 5) Compute total cost per recipe (only counts lines linked to ingredient master).
+      // Sub-sub-recipe nesting is intentionally not recursed in this phase (data safety).
+      const totals: Record<string, number> = {};
+      (lines ?? []).forEach(l => {
+        const ing = l.ingredient_id ? ingMap[l.ingredient_id] : null;
+        if (!ing) return;
+        const lineUnit = l.unit_id ? unitMap[l.unit_id] : null;
+        const baseUnit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
+        const sameType = lineUnit && baseUnit && lineUnit.unit_type === baseUnit.unit_type;
+        const unitFactor = sameType ? Number(lineUnit?.factor_to_base ?? 1) : 1;
+        const baseFactor = Number(ing.purchase_to_base_factor ?? 1) || 1;
+        const price = Number(ing.price ?? 0);
+        const cost = computeLineCost(Number(l.quantity) || 0, unitFactor, baseFactor, price);
+        const adj = applyAdjustment(cost, Number(l.cost_adjust_pct) || 0);
+        totals[l.recipe_id] = (totals[l.recipe_id] ?? 0) + adj;
+      });
+
+      // 6) Map to options with cost-per-yield-unit
+      return list.map(r => {
+        const total = totals[r.id] ?? 0;
+        const yq = Number(r.yield_quantity) || 0;
+        const costPerYieldUnit = yq > 0 ? total / yq : 0;
+        return {
+          id: r.id,
+          code: r.code ?? null,
+          name_en: r.name_en,
+          yield_quantity: r.yield_quantity ?? null,
+          yield_unit_id: r.yield_unit_id ?? null,
+          costPerYieldUnit,
+          currency: (r.currency ?? 'VND') as CurrencyCode,
+        };
+      });
+    },
+    staleTime: 60 * 1000,
+  });
+}
