@@ -58,6 +58,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<DraftLine[]>([]);
   const [errors, setErrors] = useState<Record<string, { ingredient?: string; quantity?: string }>>({});
+  const [viewMode, setViewMode] = useState<'form' | 'table'>('form');
 
   const ingMap = useMemo(() => Object.fromEntries(ingredients.map(i => [i.id, i])), [ingredients]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
