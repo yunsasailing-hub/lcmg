@@ -327,6 +327,11 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
             removeLine={removeLine}
             moveLine={moveLine}
             addLine={addLine}
+            duplicateLine={duplicateLine}
+            lastAddedKey={lastAddedKey}
+            lastEditedKey={lastEditedKey}
+            sellingPrice={sellingPrice ?? null}
+            total={total}
           />
         ) : (
         <div className="space-y-3">
