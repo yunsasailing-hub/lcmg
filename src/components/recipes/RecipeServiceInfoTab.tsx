@@ -75,12 +75,15 @@ function fromRow(row: RecipeServiceInfoRow | null): FormState {
   };
 }
 
-const ReadField = ({ label, value }: { label: string; value: string | null }) => (
-  <div>
-    <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-    <p className="mt-1 whitespace-pre-wrap text-sm">{value && value.trim() ? value : '—'}</p>
-  </div>
-);
+const ReadField = ({ label, value }: { label: string; value: string | null }) => {
+  if (!value || !value.trim()) return null;
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <p className="mt-1 whitespace-pre-wrap text-base leading-relaxed text-foreground/90">{value}</p>
+    </div>
+  );
+};
 
 export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
   const { t } = useTranslation();
