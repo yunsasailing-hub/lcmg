@@ -66,6 +66,9 @@ export interface RecipePdfPayload {
 
   // i18n
   labels: PdfLabels;
+
+  /** When false, skip the Media section entirely (smaller file, faster print). Default true. */
+  includeImages?: boolean;
 }
 
 export interface PdfLabels {
