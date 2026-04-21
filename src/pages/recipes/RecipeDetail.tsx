@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, BookOpen, Carrot, CookingPot, Image as ImageIcon, Sparkles } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import RecipeIngredientsTab from '@/components/recipes/RecipeIngredientsTab';
 import RecipeProcedureTab from '@/components/recipes/RecipeProcedureTab';
