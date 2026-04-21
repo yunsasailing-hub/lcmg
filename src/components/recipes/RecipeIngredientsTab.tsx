@@ -165,7 +165,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     const key = newKey();
     setDraft(d => [
       ...d,
-      { _key: key, ingredient_id: null, unit_id: null, quantity: 0, cost_adjust_pct: 0, prep_note: null, sort_order: d.length },
+      { _key: key, ingredient_id: null, sub_recipe_id: null, unit_id: null, quantity: 0, cost_adjust_pct: 0, prep_note: null, sort_order: d.length },
     ]);
     setLastAddedKey(key);
     setLastEditedKey(key);
@@ -199,11 +199,22 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     setLastEditedKey(key);
   };
 
-  const onPickIngredient = (key: string, ingredientId: string | null) => {
-    const ing = ingredientId ? ingMap[ingredientId] : null;
+  const onPickIngredient = (key: string, pickedId: string | null) => {
+    if (pickedId && pickedId.startsWith(RECIPE_PREFIX)) {
+      // Recipe-derived item: store on sub_recipe_id, clear ingredient_id, default unit to recipe yield unit.
+      const recipeId = pickedId.slice(RECIPE_PREFIX.length);
+      const sub = recipeOptMap[recipeId] ?? null;
+      patch(key, {
+        ingredient_id: null,
+        sub_recipe_id: recipeId,
+        unit_id: sub?.yield_unit_id ?? null,
+      });
+      return;
+    }
+    const ing = pickedId ? ingMap[pickedId] : null;
     patch(key, {
-      ingredient_id: ingredientId,
-      // default unit to ingredient's base unit
+      ingredient_id: pickedId,
+      sub_recipe_id: null,
       unit_id: ing?.base_unit_id ?? null,
     });
   };
@@ -213,7 +224,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     let ok = true;
     draft.forEach(l => {
       const e: { ingredient?: string; quantity?: string } = {};
-      if (!l.ingredient_id) { e.ingredient = t('recipes.lines.errors.ingredientRequired'); ok = false; }
+      if (!l.ingredient_id && !l.sub_recipe_id) { e.ingredient = t('recipes.lines.errors.ingredientRequired'); ok = false; }
       if (!(Number(l.quantity) > 0)) { e.quantity = t('recipes.lines.errors.quantityPositive'); ok = false; }
       if (e.ingredient || e.quantity) errs[l._key] = e;
     });
@@ -232,6 +243,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
         lines: draft.map((l, i) => ({
           id: l.id,
           ingredient_id: l.ingredient_id,
+          sub_recipe_id: l.sub_recipe_id ?? null,
           unit_id: l.unit_id,
           quantity: Number(l.quantity) || 0,
           cost_adjust_pct: Number(l.cost_adjust_pct) || 0,
