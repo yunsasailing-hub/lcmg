@@ -276,6 +276,7 @@ export function useRecipeAsIngredientPublication(recipeId: string | undefined) {
       reasons: RecipeAsIngredientUnpublishedReason[];
       totalCost: number;
       costPerYieldUnit: number;
+      zeroCost: boolean;
     }> => {
       const { data: r, error } = await supabase
         .from('recipes')
@@ -284,7 +285,7 @@ export function useRecipeAsIngredientPublication(recipeId: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       const reasons: RecipeAsIngredientUnpublishedReason[] = [];
-      if (!r) return { eligible: false, reasons: ['inactive'], totalCost: 0, costPerYieldUnit: 0 };
+      if (!r) return { eligible: false, reasons: ['inactive'], totalCost: 0, costPerYieldUnit: 0, zeroCost: true };
       if (!r.is_active) reasons.push('inactive');
       if (!r.name_en?.trim()) reasons.push('missing_name');
       const yq = Number(r.yield_quantity) || 0;
@@ -328,9 +329,9 @@ export function useRecipeAsIngredientPublication(recipeId: string | undefined) {
         const cost = computeLineCost(Number(l.quantity) || 0, unitFactor, baseFactor, price);
         total += applyAdjustment(cost, Number(l.cost_adjust_pct) || 0);
       });
-      if (!(total > 0)) reasons.push('missing_total_cost');
+      // Zero cost is a soft warning, NOT a blocking reason.
       const costPerYieldUnit = yq > 0 ? total / yq : 0;
-      return { eligible: reasons.length === 0, reasons, totalCost: total, costPerYieldUnit };
+      return { eligible: reasons.length === 0, reasons, totalCost: total, costPerYieldUnit, zeroCost: !(total > 0) };
     },
     staleTime: 30 * 1000,
   });
