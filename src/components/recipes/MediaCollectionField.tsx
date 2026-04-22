@@ -196,26 +196,30 @@ export default function MediaCollectionField({ recipeIdForBucket, config, items,
             ))}
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={videoDraft}
-            onChange={e => setVideoDraft(e.target.value)}
-            placeholder={t('recipes.media.videoUrl') as string}
-            disabled={disabled || videosFull}
-            className="max-w-md"
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddVideo(); } }}
-          />
-          <Button
-            type="button" size="sm" variant="outline"
-            onClick={handleAddVideo}
-            disabled={disabled || videosFull || addVideo.isPending || !videoDraft.trim()}
-          >
-            <Plus className="h-4 w-4" /> {t('recipes.media.addVideo')}
-          </Button>
-          {videosFull && (
-            <span className="text-[11px] text-destructive">{t('recipes.media.maxVideosReached')}</span>
-          )}
-        </div>
+        {videosFull ? (
+          <span className="text-[11px] text-destructive">{t('recipes.media.maxVideosReached')}</span>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={videoDraft}
+              onChange={e => setVideoDraft(e.target.value)}
+              placeholder={t('recipes.media.videoUrl') as string}
+              disabled={disabled}
+              className="max-w-md"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddVideo(); } }}
+            />
+            <Button
+              type="button" size="sm" variant="outline"
+              onClick={handleAddVideo}
+              disabled={disabled || addVideo.isPending || !videoDraft.trim()}
+            >
+              <Plus className="h-4 w-4" /> {t('recipes.media.addVideo')}
+            </Button>
+            <span className="text-[11px] text-muted-foreground">
+              {t('recipes.media.videoSlotHint', { current: videos.length + 1, max: MEDIA_MAX_PER_KIND, defaultValue: `Video ${videos.length + 1} of ${MEDIA_MAX_PER_KIND}` })}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

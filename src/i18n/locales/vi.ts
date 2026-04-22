@@ -476,6 +476,7 @@ const vi: Translations = {
       maxVideosReached: 'Đã đạt tối đa 4 video',
       removeVideo: 'Xoá video',
       saveFirst: 'Lưu trước để đính kèm phương tiện.',
+      videoSlotHint: 'Video {{current}} / {{max}}',
     },
     service: {
       title: 'Thông tin Phục vụ / Bán hàng',
