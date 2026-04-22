@@ -279,12 +279,12 @@ const vi: Translations = {
         useAsIngredientHint: 'Cho phép công thức này được chọn làm nguyên liệu trong các công thức khác.',
         useAsIngredientPublished: 'Đã công bố thành Công thức mẻ — có thể chọn trong dòng nguyên liệu của công thức khác.',
         useAsIngredientNotPublished: 'Chưa công bố. Hãy xử lý các vấn đề sau để công thức xuất hiện trong danh sách nguyên liệu:',
+        useAsIngredientZeroCostWarning: 'Công thức này có chi phí bằng 0. Vẫn có thể chọn làm nguyên liệu, nhưng tính toán giá vốn có thể không chính xác.',
         useAsIngredientReasons: {
           inactive: 'Công thức đang không hoạt động — bật Hoạt động.',
           missing_name: 'Thiếu tên công thức.',
           missing_yield_quantity: 'Sản lượng phải lớn hơn 0.',
           missing_yield_unit: 'Cần chọn Đơn vị sản lượng.',
-          missing_total_cost: 'Tổng chi phí nguyên liệu bằng 0 — thêm nguyên liệu có giá vào công thức.',
         },
       },
       audit: {
