@@ -17,7 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useIngredients, useIngredientTypes, useRecipeCategories, useRecipeUnits, useStorehouses,
+  useIngredients, useIngredientTypes, useIngredientCategories, useRecipeUnits, useStorehouses,
 } from '@/hooks/useIngredients';
 import {
   ACTION_LABEL,
@@ -50,7 +50,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
 
   const { data: ingredients = [] } = useIngredients(true);
   const { data: types = [] } = useIngredientTypes(true);
-  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: categories = [] } = useIngredientCategories(true);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: storehouses = [] } = useStorehouses(true);
 
@@ -152,7 +152,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
               name_vi: r.parsed.name_vi,
               ingredient_type: r.parsed.ingredient_type,
               ingredient_type_id: r.parsed.ingredient_type_id,
-              category_id: r.parsed.category_id,
+              ingredient_category_id: r.parsed.ingredient_category_id,
               base_unit_id: r.parsed.base_unit_id,
               storehouse_id: r.parsed.storehouse_id,
               notes: r.parsed.notes,

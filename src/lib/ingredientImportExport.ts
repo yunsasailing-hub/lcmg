@@ -15,7 +15,7 @@ import Papa from 'papaparse';
 import type {
   Ingredient,
   IngredientTypeRow,
-  RecipeCategory,
+  IngredientCategoryRow,
   RecipeUnit,
   Storehouse,
   CurrencyCode,
@@ -27,7 +27,7 @@ import { CURRENCIES, mapNameToLegacyEnum } from '@/hooks/useIngredients';
 export const COLUMNS = {
   id: 'ID',
   name: 'Name',
-  type: 'Type',
+  type: 'Ingredient Type',
   category: 'Ingredient Category',
   unit: 'Unit',
   storehouse: 'Storehouse',
@@ -85,7 +85,7 @@ export interface ParsedIngredientPayload {
   is_active: boolean;
   ingredient_type_id: string;
   ingredient_type: 'batch_recipe' | 'bottled_drink' | 'ingredient' | 'other';
-  category_id: string;
+  ingredient_category_id: string;
   base_unit_id: string;
   storehouse_id: string | null;
   notes: string | null;
@@ -96,7 +96,7 @@ export interface ParsedIngredientPayload {
 export interface MasterLists {
   ingredients: Ingredient[];
   types: IngredientTypeRow[];
-  categories: RecipeCategory[];
+  categories: IngredientCategoryRow[];
   units: RecipeUnit[];
   storehouses: Storehouse[];
 }
@@ -170,7 +170,7 @@ export function buildExportRows(
     [COLUMNS.type]: i.ingredient_type_id
       ? typeById.get(i.ingredient_type_id)?.name_en ?? ''
       : '',
-    [COLUMNS.category]: i.category_id ? catById.get(i.category_id)?.name_en ?? '' : '',
+    [COLUMNS.category]: i.ingredient_category_id ? catById.get(i.ingredient_category_id)?.name_en ?? '' : '',
     [COLUMNS.unit]: i.base_unit_id ? unitById.get(i.base_unit_id)?.name_en ?? '' : '',
     [COLUMNS.storehouse]: i.storehouse_id ? shById.get(i.storehouse_id)?.name ?? '' : '',
     [COLUMNS.note]: i.notes ?? '',
@@ -436,7 +436,7 @@ export function validateRows(
         is_active,
         ingredient_type_id: typeMatch.id,
         ingredient_type: mapNameToLegacyEnum(typeMatch.name_en),
-        category_id: catMatch.id,
+        ingredient_category_id: catMatch.id,
         base_unit_id: unitMatch.id,
         storehouse_id,
         notes: norm(noteVal) || null,

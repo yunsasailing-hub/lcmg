@@ -4,8 +4,10 @@ import RecipesShell from '@/components/recipes/RecipesShell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import OptionListManager, { type FieldDef } from '@/components/recipes/OptionListManager';
 import {
-  useIngredientTypes, useRecipeCategories, useRecipeUnits, useStorehouses,
+  useIngredientTypes, useIngredientCategories,
+  useRecipeCategories, useRecipeUnits, useStorehouses,
 } from '@/hooks/useIngredients';
+import { useRecipeTypes } from '@/hooks/useRecipes';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function RecipesSettings() {
@@ -13,10 +15,12 @@ export default function RecipesSettings() {
   const { hasAnyRole } = useAuth();
   const canManage = hasAnyRole(['owner', 'manager']);
 
-  const [tab, setTab] = useState('types');
+  const [tab, setTab] = useState('ingredient_types');
 
-  const { data: types = [], isLoading: tLoading } = useIngredientTypes(true);
-  const { data: categories = [], isLoading: cLoading } = useRecipeCategories(true);
+  const { data: ingTypes = [], isLoading: itLoading } = useIngredientTypes(true);
+  const { data: ingCategories = [], isLoading: icLoading } = useIngredientCategories(true);
+  const { data: recTypes = [], isLoading: rtLoading } = useRecipeTypes(true);
+  const { data: recCategories = [], isLoading: rcLoading } = useRecipeCategories(true);
   const { data: units = [], isLoading: uLoading } = useRecipeUnits(true);
   const { data: storehouses = [], isLoading: sLoading } = useStorehouses(true);
 
@@ -47,37 +51,67 @@ export default function RecipesSettings() {
       description={t('recipes.settings.subtitle')}
     >
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-6 grid w-full grid-cols-2 sm:grid-cols-4">
-          <TabsTrigger value="types">{t('recipes.settings.tabs.types')}</TabsTrigger>
-          <TabsTrigger value="categories">{t('recipes.settings.tabs.categories')}</TabsTrigger>
+        <TabsList className="mb-6 grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          <TabsTrigger value="ingredient_types">{t('recipes.settings.tabs.ingredientTypes')}</TabsTrigger>
+          <TabsTrigger value="ingredient_categories">{t('recipes.settings.tabs.ingredientCategories')}</TabsTrigger>
+          <TabsTrigger value="recipe_types">{t('recipes.settings.tabs.recipeTypes')}</TabsTrigger>
+          <TabsTrigger value="recipe_categories">{t('recipes.settings.tabs.recipeCategories')}</TabsTrigger>
           <TabsTrigger value="units">{t('recipes.settings.tabs.units')}</TabsTrigger>
           <TabsTrigger value="storehouses">{t('recipes.settings.tabs.storehouses')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="types">
+        <TabsContent value="ingredient_types">
           <OptionListManager
             table="ingredient_types"
-            rows={types}
-            isLoading={tLoading}
+            rows={ingTypes}
+            isLoading={itLoading}
             fields={nameFields}
             primaryLabel={(r) => r.name_en}
             secondaryLabel={(r) => r.name_vi || null}
-            emptyTitle={t('recipes.settings.empty.types')}
-            addLabel={t('recipes.settings.add.type')}
+            emptyTitle={t('recipes.settings.empty.ingredientTypes')}
+            addLabel={t('recipes.settings.add.ingredientType')}
             canManage={canManage}
           />
         </TabsContent>
 
-        <TabsContent value="categories">
+        <TabsContent value="ingredient_categories">
           <OptionListManager
-            table="recipe_categories"
-            rows={categories}
-            isLoading={cLoading}
+            table="ingredient_categories"
+            rows={ingCategories}
+            isLoading={icLoading}
             fields={nameFields}
             primaryLabel={(r) => r.name_en}
             secondaryLabel={(r) => r.name_vi || null}
-            emptyTitle={t('recipes.settings.empty.categories')}
-            addLabel={t('recipes.settings.add.category')}
+            emptyTitle={t('recipes.settings.empty.ingredientCategories')}
+            addLabel={t('recipes.settings.add.ingredientCategory')}
+            canManage={canManage}
+          />
+        </TabsContent>
+
+        <TabsContent value="recipe_types">
+          <OptionListManager
+            table="recipe_types"
+            rows={recTypes}
+            isLoading={rtLoading}
+            fields={nameFields}
+            primaryLabel={(r) => r.name_en}
+            secondaryLabel={(r) => r.name_vi || null}
+            emptyTitle={t('recipes.settings.empty.recipeTypes')}
+            addLabel={t('recipes.settings.add.recipeType')}
+            canManage={canManage}
+          />
+        </TabsContent>
+
+        <TabsContent value="recipe_categories">
+          <OptionListManager
+            table="recipe_categories"
+            rows={recCategories}
+            isLoading={rcLoading}
+            fields={nameFields}
+            primaryLabel={(r) => r.name_en}
+            secondaryLabel={(r) => r.name_vi || null}
+            emptyTitle={t('recipes.settings.empty.recipeCategories')}
+            addLabel={t('recipes.settings.add.recipeCategory')}
             canManage={canManage}
           />
         </TabsContent>

@@ -34,7 +34,13 @@ interface Row {
 }
 
 interface Props {
-  table: 'ingredient_types' | 'recipe_categories' | 'recipe_units' | 'storehouses';
+  table:
+    | 'ingredient_types'
+    | 'ingredient_categories'
+    | 'recipe_types'
+    | 'recipe_categories'
+    | 'recipe_units'
+    | 'storehouses';
   rows: Row[];
   isLoading: boolean;
   fields: FieldDef[];

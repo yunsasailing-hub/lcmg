@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useIngredient, useRecipeCategories, useRecipeUnits, useStorehouses, useArchiveIngredient, useIngredientTypes,
+  useIngredient, useIngredientCategories, useRecipeUnits, useStorehouses, useArchiveIngredient, useIngredientTypes,
 } from '@/hooks/useIngredients';
 import { classifyByPrefix, PREFIX_CLASS_LABEL } from '@/lib/ingredientClassification';
 import { toast } from '@/hooks/use-toast';
@@ -41,7 +41,7 @@ export default function IngredientDetail() {
 
   const { data: ing, isLoading } = useIngredient(id);
   const { data: types = [] } = useIngredientTypes(true);
-  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: categories = [] } = useIngredientCategories(true);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: storehouses = [] } = useStorehouses(true);
   const archive = useArchiveIngredient();
@@ -69,7 +69,8 @@ export default function IngredientDetail() {
   }
 
   const type = ing.ingredient_type_id ? types.find((item) => item.id === ing.ingredient_type_id) : null;
-  const cat = ing.category_id ? categories.find((item) => item.id === ing.category_id) : null;
+  const catId = (ing as any).ingredient_category_id;
+  const cat = catId ? categories.find((item) => item.id === catId) : null;
   const unit = ing.base_unit_id ? units.find((item) => item.id === ing.base_unit_id) : null;
   const sh = ing.storehouse_id ? storehouses.find((item) => item.id === ing.storehouse_id) : null;
   const withArchivedSuffix = (label?: string | null, isActive?: boolean) => {

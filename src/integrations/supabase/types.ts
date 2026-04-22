@@ -465,6 +465,36 @@ export type Database = {
           },
         ]
       }
+      ingredient_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name_en: string
+          name_vi: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_en: string
+          name_vi?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_en?: string
+          name_vi?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ingredient_types: {
         Row: {
           created_at: string
@@ -507,6 +537,7 @@ export type Database = {
           currency: Database["public"]["Enums"]["currency_code"]
           departments: Database["public"]["Enums"]["department"][]
           id: string
+          ingredient_category_id: string | null
           ingredient_type: Database["public"]["Enums"]["ingredient_type"]
           ingredient_type_id: string | null
           is_active: boolean
@@ -537,6 +568,7 @@ export type Database = {
           currency?: Database["public"]["Enums"]["currency_code"]
           departments?: Database["public"]["Enums"]["department"][]
           id?: string
+          ingredient_category_id?: string | null
           ingredient_type?: Database["public"]["Enums"]["ingredient_type"]
           ingredient_type_id?: string | null
           is_active?: boolean
@@ -567,6 +599,7 @@ export type Database = {
           currency?: Database["public"]["Enums"]["currency_code"]
           departments?: Database["public"]["Enums"]["department"][]
           id?: string
+          ingredient_category_id?: string | null
           ingredient_type?: Database["public"]["Enums"]["ingredient_type"]
           ingredient_type_id?: string | null
           is_active?: boolean
@@ -599,6 +632,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "recipe_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredients_ingredient_category_id_fkey"
+            columns: ["ingredient_category_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_categories"
             referencedColumns: ["id"]
           },
           {

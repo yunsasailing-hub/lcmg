@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useRecipeCategories, useRecipeUnits, useStorehouses, useUpsertIngredient,
+  useIngredientCategories, useRecipeUnits, useStorehouses, useUpsertIngredient,
   useIngredientTypes, isIngredientCodeTaken, mapNameToLegacyEnum,
   CURRENCIES,
   type Ingredient, type CurrencyCode,
@@ -36,7 +36,7 @@ const emptyForm = {
   name_en: '',
   is_active: true,
   ingredient_type_id: '',
-  category_id: '',
+  ingredient_category_id: '',
   base_unit_id: '',
   storehouse_id: '',
   price: '',
@@ -60,7 +60,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
   const archivedLabel = t('common.archived');
 
   const { data: types = [] } = useIngredientTypes(true);
-  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: categories = [] } = useIngredientCategories(true);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: storehouses = [] } = useStorehouses(true);
   const upsert = useUpsertIngredient();
@@ -77,7 +77,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         name_en: ingredient.name_en ?? '',
         is_active: ingredient.is_active,
         ingredient_type_id: ingredient.ingredient_type_id ?? '',
-        category_id: ingredient.category_id ?? '',
+        ingredient_category_id: (ingredient as any).ingredient_category_id ?? ingredient.category_id ?? '',
         base_unit_id: ingredient.base_unit_id ?? '',
         storehouse_id: ingredient.storehouse_id ?? '',
         price: ingredient.price != null ? String(ingredient.price) : '',
@@ -134,8 +134,8 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
   );
 
   const categoryOptions = useMemo(
-    () => buildManagedOptions(categories, form.category_id, (item) => item.name_en, (item) => item.name_vi ?? undefined),
-    [categories, form.category_id, archivedLabel],
+    () => buildManagedOptions(categories, form.ingredient_category_id, (item) => item.name_en, (item) => item.name_vi ?? undefined),
+    [categories, form.ingredient_category_id, archivedLabel],
   );
 
   const unitOptions = useMemo(
@@ -171,7 +171,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
       toast({ title: t('common.error'), description: t('recipes.ingredients.errors.typeRequired'), variant: 'destructive' });
       return;
     }
-    if (!form.category_id) {
+    if (!form.ingredient_category_id) {
       toast({ title: t('common.error'), description: t('recipes.ingredients.errors.categoryRequired'), variant: 'destructive' });
       return;
     }
@@ -198,7 +198,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         is_active: form.is_active,
         ingredient_type: legacyEnum,
         ingredient_type_id: form.ingredient_type_id,
-        category_id: form.category_id,
+        ingredient_category_id: form.ingredient_category_id,
         base_unit_id: form.base_unit_id,
         storehouse_id: form.storehouse_id || null,
         price: form.price ? Number(form.price) : null,
@@ -272,8 +272,8 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
               <div>
                 <Label>{t('recipes.ingredients.fields.category')} *</Label>
                 <SearchableCombobox
-                  value={form.category_id}
-                  onChange={(value) => set('category_id', value)}
+                  value={form.ingredient_category_id}
+                  onChange={(value) => set('ingredient_category_id', value)}
                   options={categoryOptions}
                   placeholder={t('common.selectPlaceholder')}
                   searchPlaceholder={t('common.searchPlaceholder')}
