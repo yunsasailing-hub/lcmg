@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
@@ -40,6 +43,8 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
   const [uploading, setUploading] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
+  const [videoSource, setVideoSource] = useState<'youtube' | 'google_drive' | 'external_url'>('youtube');
+  const [videoNote, setVideoNote] = useState('');
   const [webUrl, setWebUrl] = useState('');
   const [webTitle, setWebTitle] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<RecipeMediaRow | null>(null);
@@ -154,7 +159,9 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
         sort_order: type === 'video_link' ? videos.length : webs.length,
       });
       toast({ title: t('recipes.media.added') });
-      if (type === 'video_link') { setVideoUrl(''); setVideoTitle(''); }
+      if (type === 'video_link') {
+        setVideoUrl(''); setVideoTitle(''); setVideoNote(''); setVideoSource('youtube');
+      }
       else { setWebUrl(''); setWebTitle(''); }
     } catch (err: any) {
       toast({ title: t('recipes.media.addFailed'), description: err?.message, variant: 'destructive' });
@@ -293,12 +300,44 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                 {videos.length === 0 && editing && <p className="text-xs text-muted-foreground">{t('recipes.media.empty')}</p>}
               </ul>
               {canManage && editing && (
-                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                  <Input placeholder={t('recipes.media.videoUrl') as string} value={videoUrl} onChange={e => setVideoUrl(e.target.value)} />
-                  <Input placeholder={t('recipes.media.titlePlaceholder') as string} value={videoTitle} onChange={e => setVideoTitle(e.target.value)} />
-                  <Button size="sm" variant="outline" onClick={() => addLink('video_link', videoUrl, videoTitle)} disabled={!videoUrl.trim()}>
-                    <Plus className="h-4 w-4" /> {t('recipes.media.addVideo')}
-                  </Button>
+                <div className="space-y-2 rounded-md border bg-muted/30 p-2">
+                  <div className="grid gap-2 sm:grid-cols-[180px_1fr_1fr]">
+                    <Select value={videoSource} onValueChange={(v) => setVideoSource(v as typeof videoSource)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="youtube">YouTube</SelectItem>
+                        <SelectItem value="google_drive">Google Drive</SelectItem>
+                        <SelectItem value="external_url">External URL</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input placeholder={t('recipes.media.titlePlaceholder') as string} value={videoTitle} onChange={e => setVideoTitle(e.target.value)} />
+                    <Input
+                      placeholder={
+                        videoSource === 'google_drive'
+                          ? 'Google Drive file link'
+                          : (t('recipes.media.videoUrl') as string)
+                      }
+                      value={videoUrl}
+                      onChange={e => setVideoUrl(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <Input
+                      placeholder="Note (optional)"
+                      value={videoNote}
+                      onChange={e => setVideoNote(e.target.value)}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addLink('video_link', videoUrl, [videoTitle, videoNote].filter(Boolean).join(' — '))}
+                      disabled={!videoUrl.trim()}
+                    >
+                      <Plus className="h-4 w-4" /> {t('recipes.media.addVideo')}
+                    </Button>
+                  </div>
                 </div>
               )}
             </section>
