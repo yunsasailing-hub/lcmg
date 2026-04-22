@@ -352,6 +352,7 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                       items={mediaItems}
                       legacyImageUrl={info.image_url}
                       legacyVideoUrl={info.video_url}
+                      legacyExtraVideoUrls={[info.web_link]}
                     />
                     {(() => {
                       // Web link still renders as a plain link when it isn't a video URL.
