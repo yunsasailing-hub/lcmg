@@ -11,6 +11,7 @@ import {
 } from '@/hooks/useRecipeMedia';
 import { toast } from '@/hooks/use-toast';
 import MediaFrame from './MediaFrame';
+import { getImageFromClipboard } from '@/lib/clipboardImage';
 
 interface Props {
   recipeId: string | undefined;
@@ -39,6 +40,11 @@ export default function RecipeMainImageField({ recipeId, canManage }: Props) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !recipeId) return;
+    await uploadAndAttach(file);
+  };
+
+  const uploadAndAttach = async (file: File) => {
+    if (!recipeId) return;
     try {
       const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file);
       await add.mutateAsync({
@@ -54,6 +60,15 @@ export default function RecipeMainImageField({ recipeId, canManage }: Props) {
     } catch (err: any) {
       toast({ title: t('recipes.media.uploadFailed'), description: err?.message, variant: 'destructive' });
     }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!canManage || !recipeId) return;
+    const file = getImageFromClipboard(e);
+    if (!file) return; // Let other paste targets handle non-image content
+    e.preventDefault();
+    toast({ title: t('recipes.media.pasted') });
+    await uploadAndAttach(file);
   };
 
   const handleRemove = async () => {
@@ -75,7 +90,11 @@ export default function RecipeMainImageField({ recipeId, canManage }: Props) {
   return (
     <div className="sm:col-span-2 space-y-2">
       <div className="text-sm font-medium text-foreground">{t('recipes.media.mainImage')}</div>
-      <div className="flex flex-wrap items-start gap-3">
+      <div
+        className="flex flex-wrap items-start gap-3 rounded-md outline-none focus-within:ring-2 focus-within:ring-ring/40"
+        tabIndex={canManage && !disabled ? 0 : -1}
+        onPaste={handlePaste}
+      >
         <MediaFrame compact>
           {primary ? (
             <img src={primary.url} alt={primary.title ?? 'Main'} />
@@ -105,6 +124,9 @@ export default function RecipeMainImageField({ recipeId, canManage }: Props) {
                 <Trash2 className="h-4 w-4 text-destructive" />
                 {t('recipes.media.removeImage')}
               </Button>
+            )}
+            {!disabled && (
+              <p className="text-[11px] text-muted-foreground">{t('recipes.media.pasteHint')}</p>
             )}
             {disabled && (
               <p className="text-xs text-muted-foreground">

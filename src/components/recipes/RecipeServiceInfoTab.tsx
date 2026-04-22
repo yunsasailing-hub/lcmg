@@ -19,6 +19,7 @@ import { toast } from '@/hooks/use-toast';
 import MediaFrame from './MediaFrame';
 import VideoPreview from './VideoPreview';
 import { parseVideo } from '@/lib/videoEmbed';
+import { getImageFromClipboard } from '@/lib/clipboardImage';
 
 interface Props {
   recipeId: string;
@@ -110,6 +111,10 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    await uploadServiceImage(file);
+  };
+
+  const uploadServiceImage = async (file: File) => {
     setUploading(true);
     try {
       // Remove previous image if any
@@ -122,6 +127,15 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleImagePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!canManage) return;
+    const file = getImageFromClipboard(e);
+    if (!file) return;
+    e.preventDefault();
+    toast({ title: t('recipes.media.pasted') });
+    await uploadServiceImage(file);
   };
 
   const handleRemoveImage = async () => {
@@ -270,8 +284,13 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                 <Label className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4" /> {t('recipes.service.fields.image')}
                 </Label>
+                <div
+                  className="mt-2 rounded-md outline-none focus-within:ring-2 focus-within:ring-ring/40"
+                  tabIndex={0}
+                  onPaste={handleImagePaste}
+                >
                 {form.image_url ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <MediaFrame compact>
                       <img src={form.image_url} alt="service" />
                     </MediaFrame>
@@ -283,10 +302,12 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                     </Button>
                   </div>
                 ) : (
-                  <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                  <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
                     <Upload className="h-4 w-4" /> {uploading ? t('recipes.media.uploading') : t('recipes.media.uploadImage')}
                   </Button>
                 )}
+                  <p className="mt-1 text-[11px] text-muted-foreground">{t('recipes.media.pasteHint')}</p>
+                </div>
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImage} />
               </div>
 

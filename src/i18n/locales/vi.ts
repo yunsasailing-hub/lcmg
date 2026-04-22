@@ -467,6 +467,9 @@ const vi: Translations = {
       stepImagePh: 'Tải hình cho bước này',
       replaceImage: 'Thay hình',
       removeImage: 'Xoá hình',
+      pasteHint: 'hoặc dán bằng Ctrl+V / ⌘V',
+      pasted: 'Đã dán hình từ clipboard',
+      pasteNotImage: 'Clipboard không chứa hình ảnh',
     },
     service: {
       title: 'Thông tin Phục vụ / Bán hàng',
