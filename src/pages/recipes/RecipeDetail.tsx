@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, BookOpen, Carrot, CookingPot, Image as ImageIcon, Sparkles, FileDown } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, BookOpen, Carrot, CookingPot, Sparkles, FileDown } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import RecipeIngredientsTab from '@/components/recipes/RecipeIngredientsTab';
 import RecipeProcedureTab from '@/components/recipes/RecipeProcedureTab';
-import RecipeMediaTab from '@/components/recipes/RecipeMediaTab';
 import RecipeServiceInfoTab from '@/components/recipes/RecipeServiceInfoTab';
+import RecipeMainImageField from '@/components/recipes/RecipeMainImageField';
+import MediaFrame from '@/components/recipes/MediaFrame';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -419,6 +420,8 @@ export default function RecipeDetail() {
                   </div>
                 )
               )}
+              {/* Main image lives in Master Info — reuses recipe_media (primary image) */}
+              <RecipeMainImageField recipeId={isNew ? undefined : id} canManage={canManage} />
             </Section>
 
             {/* B. CLASSIFICATION */}
@@ -602,7 +605,6 @@ export default function RecipeDetail() {
                   { id: 'sec-master',      icon: BookOpen,  label: t('recipes.list.sections.master') },
                   { id: 'sec-ingredients', icon: Carrot,    label: t('recipes.list.sections.ingredients') },
                   { id: 'sec-procedure',   icon: CookingPot,label: t('recipes.list.sections.procedure') },
-                  { id: 'sec-media',       icon: ImageIcon, label: t('recipes.list.sections.media') },
                   { id: 'sec-service',     icon: Sparkles,  label: t('recipes.list.sections.service') },
                 ].map(s => (
                   <a
@@ -655,7 +657,19 @@ export default function RecipeDetail() {
           <Card id="sec-master" className="scroll-mt-24">
             <CardContent className="space-y-4 p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 space-y-2">
+                {(() => {
+                  const primaryImage = mediaItems.find(m => m.media_type === 'image' && m.is_primary)
+                    ?? mediaItems.find(m => m.media_type === 'image');
+                  if (!primaryImage) return null;
+                  return (
+                    <div className="shrink-0">
+                      <MediaFrame compact>
+                        <img src={primaryImage.url} alt={primaryImage.title ?? recipe.name_en} />
+                      </MediaFrame>
+                    </div>
+                  );
+                })()}
+                <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={recipe.is_active ? 'default' : 'secondary'}>
                       {recipe.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
@@ -737,11 +751,6 @@ export default function RecipeDetail() {
           {/* Phase 3: Kitchen Procedure */}
           <section id="sec-procedure" className="scroll-mt-24">
             <RecipeProcedureTab recipeId={recipe.id} canManage={canManage} />
-          </section>
-
-          {/* Phase 4: Media & References */}
-          <section id="sec-media" className="scroll-mt-24">
-            <RecipeMediaTab recipeId={recipe.id} canManage={canManage} />
           </section>
 
           {/* Phase 5: Service / Sales Information */}

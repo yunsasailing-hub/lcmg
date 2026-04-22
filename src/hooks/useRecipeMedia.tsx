@@ -36,6 +36,35 @@ export function useRecipeMedia(recipeId: string | undefined) {
   });
 }
 
+/**
+ * Fetch the primary (or first available) image for many recipes at once.
+ * Used to render small thumbnails next to recipe names in the recipe list.
+ * Returns a map: recipe_id -> public image url.
+ */
+export function useRecipePrimaryImages(recipeIds: string[]) {
+  const ids = [...recipeIds].sort();
+  return useQuery({
+    queryKey: ['recipe_media_primary', ids],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('recipe_media')
+        .select('recipe_id,url,is_primary,sort_order,created_at,media_type')
+        .in('recipe_id', ids)
+        .eq('media_type', 'image')
+        .order('is_primary', { ascending: false })
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of (data ?? []) as Array<{ recipe_id: string; url: string }>) {
+        if (!map[row.recipe_id]) map[row.recipe_id] = row.url;
+      }
+      return map;
+    },
+  });
+}
+
 export async function uploadRecipeMediaFile(
   recipeId: string,
   file: File,
