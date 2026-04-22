@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Video as VideoIcon, AlertTriangle } from 'lucide-react';
+import { ExternalLink, Video as VideoIcon, AlertTriangle, PlayCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { parseVideo, videoSourceLabel } from '@/lib/videoEmbed';
@@ -80,7 +80,25 @@ export default function VideoPreview({
             <img src={thumb} alt={display} />
           </a>
         </MediaFrame>
-      ) : null}
+      ) : (
+        <MediaFrame compact={compact}>
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted/40 p-4 text-center">
+            <PlayCircle className="h-10 w-10 text-muted-foreground" />
+            <Badge variant="secondary" className="text-[10px]">
+              {videoSourceLabel(parsed.source)}
+            </Badge>
+            <p className="line-clamp-2 text-xs font-medium text-foreground">{display}</p>
+            <p className="text-[11px] text-muted-foreground">Inline preview unavailable</p>
+            {parsed.url && (
+              <Button asChild size="sm" variant="default" className="mt-1">
+                <a href={parsed.url} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" /> Open video
+                </a>
+              </Button>
+            )}
+          </div>
+        </MediaFrame>
+      )}
     </div>
   );
 }
