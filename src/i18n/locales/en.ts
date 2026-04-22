@@ -468,6 +468,12 @@ const en = {
       pasteHint: 'or paste with Ctrl+V / ⌘V',
       pasted: 'Image pasted from clipboard',
       pasteNotImage: 'Clipboard does not contain an image',
+      imagesLabel: 'Images',
+      videosLabel: 'Videos',
+      maxImagesReached: 'Maximum 4 images reached',
+      maxVideosReached: 'Maximum 4 videos reached',
+      removeVideo: 'Remove video',
+      saveFirst: 'Save first to attach media.',
     },
     service: {
       title: 'Service / Sales Information',

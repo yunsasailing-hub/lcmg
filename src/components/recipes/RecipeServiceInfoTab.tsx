@@ -20,6 +20,9 @@ import MediaFrame from './MediaFrame';
 import VideoPreview from './VideoPreview';
 import { parseVideo } from '@/lib/videoEmbed';
 import { getImageFromClipboard } from '@/lib/clipboardImage';
+import MediaCollectionField from './MediaCollectionField';
+import MediaCollectionView from './MediaCollectionView';
+import { useMediaCollection } from '@/hooks/useMediaCollection';
 
 interface Props {
   recipeId: string;
@@ -93,6 +96,12 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
   const { t } = useTranslation();
   const { data: info, isLoading } = useRecipeServiceInfo(recipeId);
   const save = useSaveRecipeServiceInfo();
+  const mediaConfig = {
+    table: 'recipe_service_media' as const,
+    parentColumn: 'recipe_id' as const,
+    parentId: recipeId,
+  };
+  const { data: mediaItems = [] } = useMediaCollection(mediaConfig);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -280,60 +289,22 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                 {t('recipes.service.mediaSection')}
               </div>
 
-              <div>
-                <Label className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4" /> {t('recipes.service.fields.image')}
-                </Label>
-                <div
-                  className="mt-2 rounded-md outline-none focus-within:ring-2 focus-within:ring-ring/40"
-                  tabIndex={0}
-                  onPaste={handleImagePaste}
-                >
-                {form.image_url ? (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <MediaFrame compact>
-                      <img src={form.image_url} alt="service" />
-                    </MediaFrame>
-                    <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                      <Upload className="h-4 w-4" /> {uploading ? t('recipes.media.uploading') : t('recipes.media.replaceImage')}
-                    </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={handleRemoveImage} disabled={uploading}>
-                      <Trash2 className="h-4 w-4" /> {t('recipes.media.removeImage')}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                    <Upload className="h-4 w-4" /> {uploading ? t('recipes.media.uploading') : t('recipes.media.uploadImage')}
-                  </Button>
-                )}
-                  <p className="mt-1 text-[11px] text-muted-foreground">{t('recipes.media.pasteHint')}</p>
-                </div>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImage} />
-              </div>
+              <MediaCollectionField
+                recipeIdForBucket={recipeId}
+                config={mediaConfig}
+                items={mediaItems}
+              />
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="srv-vid" className="flex items-center gap-2">
-                    <Video className="h-4 w-4" /> {t('recipes.service.fields.videoLink')}
-                  </Label>
-                  <Input
-                    id="srv-vid" value={form.video_url}
-                    onChange={e => update('video_url', e.target.value)}
-                    placeholder="https://"
-                  />
-                  {errors.video_url && <p className="mt-1 text-xs text-destructive">{errors.video_url}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="srv-web" className="flex items-center gap-2">
-                    <LinkIcon className="h-4 w-4" /> {t('recipes.service.fields.webLink')}
-                  </Label>
-                  <Input
-                    id="srv-web" value={form.web_link}
-                    onChange={e => update('web_link', e.target.value)}
-                    placeholder="https://"
-                  />
-                  {errors.web_link && <p className="mt-1 text-xs text-destructive">{errors.web_link}</p>}
-                </div>
+              <div>
+                <Label htmlFor="srv-web" className="flex items-center gap-2">
+                  <LinkIcon className="h-4 w-4" /> {t('recipes.service.fields.webLink')}
+                </Label>
+                <Input
+                  id="srv-web" value={form.web_link}
+                  onChange={e => update('web_link', e.target.value)}
+                  placeholder="https://"
+                />
+                {errors.web_link && <p className="mt-1 text-xs text-destructive">{errors.web_link}</p>}
               </div>
             </div>
 
@@ -372,53 +343,27 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                   <ReadField label={t('recipes.service.fields.upselling')} value={info.upselling_notes} />
                   <ReadField label={t('recipes.service.fields.pairing')} value={info.pairing_suggestion} />
                 </div>
-                {(info.image_url || info.video_url || info.web_link) && (
+                {(mediaItems.length > 0 || info.image_url || info.video_url || info.web_link) && (
                   <div className="space-y-3 border-t pt-4">
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {t('recipes.service.mediaSection')}
                     </div>
-                    {info.image_url && (
-                      <MediaFrame compact>
-                        <img src={info.image_url} alt="service" />
-                      </MediaFrame>
-                    )}
+                    <MediaCollectionView
+                      items={mediaItems}
+                      legacyImageUrl={info.image_url}
+                      legacyVideoUrl={info.video_url}
+                    />
                     {(() => {
-                      // Backward-compat: if video_url is empty but web_link looks like a
-                      // video (YouTube / Drive / Vimeo), render it as a video preview.
-                      const rawVideo = (info.video_url || '').trim();
+                      // Web link still renders as a plain link when it isn't a video URL.
                       const rawLink = (info.web_link || '').trim();
-                      let videoCandidate = rawVideo;
-                      let leftoverLink = rawLink;
-                      if (!videoCandidate && rawLink) {
-                        const parsed = parseVideo(rawLink);
-                        if (parsed.source === 'youtube' || parsed.source === 'google_drive' || parsed.source === 'private_cloud') {
-                          videoCandidate = rawLink;
-                          leftoverLink = '';
-                        }
-                      }
-                      if (import.meta.env.DEV) {
-                        // eslint-disable-next-line no-console
-                        console.debug('[service-info-media]', {
-                          video_url: rawVideo || null,
-                          web_link: rawLink || null,
-                          renderedAsVideo: videoCandidate || null,
-                        });
-                      }
+                      if (!rawLink) return null;
+                      const parsed = parseVideo(rawLink);
+                      const isVideoLink = parsed.source === 'youtube' || parsed.source === 'google_drive' || parsed.source === 'private_cloud';
+                      if (isVideoLink) return null;
                       return (
-                        <>
-                          {videoCandidate && (
-                            <VideoPreview
-                              url={videoCandidate}
-                              title={t('recipes.service.fields.videoLink') as string}
-                              compact
-                            />
-                          )}
-                          {leftoverLink && (
-                            <a href={leftoverLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                              <LinkIcon className="h-3.5 w-3.5" /> {leftoverLink} <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </>
+                        <a href={rawLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                          <LinkIcon className="h-3.5 w-3.5" /> {rawLink} <ExternalLink className="h-3 w-3" />
+                        </a>
                       );
                     })()}
                   </div>
