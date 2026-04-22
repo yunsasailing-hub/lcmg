@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, CookingPot, Eye, Pencil, Archive, ArchiveRestore, Upload } from 'lucide-react';
+import { Plus, Search, CookingPot, Eye, Pencil, Archive, ArchiveRestore, Upload, Image as ImageIcon } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import EmptyState from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import {
   RECIPE_DEPARTMENTS,
   type Recipe,
 } from '@/hooks/useRecipes';
+import { useRecipePrimaryImages } from '@/hooks/useRecipeMedia';
 import { toast } from '@/hooks/use-toast';
 
 const formatDate = (iso?: string | null) => {
@@ -83,6 +84,9 @@ export default function RecipesList() {
       return true;
     });
   }, [recipes, includeArchived, search, categoryFilter, typeFilter, deptFilter, branchFilter, activeFilter]);
+
+  const visibleIds = useMemo(() => filtered.map(r => r.id), [filtered]);
+  const { data: thumbMap = {} } = useRecipePrimaryImages(visibleIds);
 
   const handleArchive = async () => {
     if (!archiveTarget) return;
@@ -217,10 +221,22 @@ export default function RecipesList() {
                   <TableCell className="font-mono text-xs">{r.code ?? '—'}</TableCell>
                   <TableCell>
                     <button
-                      className="text-left font-medium hover:underline"
+                      className="flex items-center gap-3 text-left font-medium hover:underline"
                       onClick={() => navigate(`/recipes/list/${r.id}`)}
                     >
-                      {r.name_en}
+                      {thumbMap[r.id] ? (
+                        <img
+                          src={thumbMap[r.id]}
+                          alt=""
+                          className="h-10 w-10 shrink-0 rounded-md border object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+                          <ImageIcon className="h-4 w-4" />
+                        </div>
+                      )}
+                      <span>{r.name_en}</span>
                     </button>
                   </TableCell>
                   <TableCell className="text-sm">{r.category_id ? categoryMap[r.category_id]?.name_en ?? '—' : '—'}</TableCell>
