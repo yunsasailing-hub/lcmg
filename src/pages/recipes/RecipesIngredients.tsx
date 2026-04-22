@@ -378,7 +378,8 @@ export default function RecipesIngredients() {
             <TableBody>
               {filtered.map(ing => {
                 const derived = isDerived(ing);
-                const cat = ing.category_id ? categoryMap[ing.category_id] : null;
+                const catId = (ing as any).ingredient_category_id;
+                const cat = catId ? categoryMap[catId] : null;
                 const unit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
                 const sh = ing.storehouse_id ? storehouseMap[ing.storehouse_id] : null;
                 const typeName = (ing as any).ingredient_type_id
