@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useIngredient, useRecipeCategories, useRecipeUnits, useStorehouses, useArchiveIngredient, useIngredientTypes,
+  useIngredient, useIngredientCategories, useRecipeUnits, useStorehouses, useArchiveIngredient, useIngredientTypes,
 } from '@/hooks/useIngredients';
 import { classifyByPrefix, PREFIX_CLASS_LABEL } from '@/lib/ingredientClassification';
 import { toast } from '@/hooks/use-toast';
@@ -41,7 +41,7 @@ export default function IngredientDetail() {
 
   const { data: ing, isLoading } = useIngredient(id);
   const { data: types = [] } = useIngredientTypes(true);
-  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: categories = [] } = useIngredientCategories(true);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: storehouses = [] } = useStorehouses(true);
   const archive = useArchiveIngredient();
