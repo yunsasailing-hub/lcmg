@@ -149,6 +149,11 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
             <Input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-36" />
           </div>
 
+          <WarningRecipientsField
+            value={warningRecipientUserIds}
+            onChange={setWarningRecipientUserIds}
+          />
+
           {/* Tasks */}
           <div>
             <div className="flex items-center justify-between mb-2">
