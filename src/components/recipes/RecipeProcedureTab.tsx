@@ -22,6 +22,7 @@ import { getImageFromClipboard } from '@/lib/clipboardImage';
 import MediaCollectionField from './MediaCollectionField';
 import MediaCollectionView from './MediaCollectionView';
 import { useMediaCollection } from '@/hooks/useMediaCollection';
+import StepMediaCollection from './StepMediaCollection';
 
 interface Props {
   recipeId: string;
