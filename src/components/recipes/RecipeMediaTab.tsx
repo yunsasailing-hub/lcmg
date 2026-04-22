@@ -16,6 +16,8 @@ import {
   uploadRecipeMediaFile, type RecipeMediaRow,
 } from '@/hooks/useRecipeMedia';
 import { toast } from '@/hooks/use-toast';
+import VideoPreview from './VideoPreview';
+import { normalizeStoredVideoUrl } from '@/lib/videoEmbed';
 
 interface Props {
   recipeId: string;
@@ -84,15 +86,6 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
       }
     } catch {}
     return null;
-  };
-
-  // Normalize a video URL for storage. For YouTube, we always store the embed URL
-  // so playback works consistently. Other URLs are returned trimmed as-is.
-  const normalizeVideoUrl = (raw: string): string => {
-    const trimmed = raw.trim();
-    const embed = getYouTubeEmbed(trimmed);
-    if (embed) return embed;
-    return trimmed;
   };
 
   // In consultation (read) mode we hide editing chrome; managers click Edit to add/remove.
