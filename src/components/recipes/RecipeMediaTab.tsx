@@ -145,7 +145,7 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
       return;
     }
     try {
-      const finalUrl = type === 'video_link' ? normalizeVideoUrl(url) : url.trim();
+      const finalUrl = type === 'video_link' ? normalizeStoredVideoUrl(url) : url.trim();
       await add.mutateAsync({
         recipe_id: recipeId,
         media_type: type,
