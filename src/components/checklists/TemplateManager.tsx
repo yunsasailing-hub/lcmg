@@ -363,6 +363,12 @@ function AssignDialog({ template }: { template: any }) {
             <Label>Notes</Label>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes…" rows={2} />
           </div>
+
+          <WarningRecipientsField
+            value={warningRecipientUserIds}
+            onChange={setWarningRecipientUserIds}
+            preferredBranchId={template?.branch_id || null}
+          />
         </div>
 
         <DialogFooter>
