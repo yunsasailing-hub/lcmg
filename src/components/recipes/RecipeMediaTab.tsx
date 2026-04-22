@@ -21,6 +21,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import VideoPreview from './VideoPreview';
 import { normalizeStoredVideoUrl } from '@/lib/videoEmbed';
+import MediaFrame from './MediaFrame';
 
 interface Props {
   recipeId: string;
@@ -225,15 +226,15 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                 {t('recipes.media.mainImage')}
               </h4>
               <div className="flex flex-wrap items-start gap-4">
-                <div className={`aspect-square overflow-hidden rounded-md border bg-muted ${primary ? 'w-56 sm:w-64' : 'w-40'}`}>
+                <MediaFrame>
                   {primary ? (
-                    <img src={primary.url} alt={primary.title ?? 'Main'} className="h-full w-full object-cover" />
+                    <img src={primary.url} alt={primary.title ?? 'Main'} />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
                       <ImageIcon className="h-6 w-6" />
                     </div>
                   )}
-                </div>
+                </MediaFrame>
                 {canManage && editing && (
                   <div className="space-y-2">
                     <input
@@ -256,12 +257,14 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
                 <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   {t('recipes.media.additionalImages')}
                 </h4>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {additional.map(m => (
-                    <div key={m.id} className="group relative overflow-hidden rounded-md border bg-muted">
-                      <img src={m.url} alt={m.title ?? ''} className="aspect-square w-full object-cover" />
+                    <div key={m.id} className="group relative">
+                      <MediaFrame compact>
+                        <img src={m.url} alt={m.title ?? ''} />
+                      </MediaFrame>
                       {canManage && editing && (
-                        <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-background/80 p-1 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
+                        <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 rounded-b-md bg-background/80 p-1 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPrimary(m)} title={t('recipes.media.makePrimary') as string}>
                             <Star className="h-3.5 w-3.5" />
                           </Button>

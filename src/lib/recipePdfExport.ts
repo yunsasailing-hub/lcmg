@@ -672,8 +672,9 @@ function buildPrintHtml(p: RecipePdfPayload): string {
     display: block;
     width: 100%;
     max-width: 88mm;
-    max-height: 56mm;
-    object-fit: cover;
+    aspect-ratio: 4 / 3;
+    object-fit: contain;
+    background: #fff;
     border: 1px solid #000;
     border-radius: 4px;
   }
@@ -707,8 +708,9 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   }
   .media-grid img {
     width: 100%;
-    max-height: 70mm;
-    object-fit: cover;
+    aspect-ratio: 4 / 3;
+    object-fit: contain;
+    background: #fff;
     border: 1px solid #000;
     border-radius: 4px;
   }
@@ -743,8 +745,9 @@ function buildPrintHtml(p: RecipePdfPayload): string {
   .service-image {
     display: block;
     width: 100%;
-    max-height: 72mm;
-    object-fit: cover;
+    aspect-ratio: 4 / 3;
+    object-fit: contain;
+    background: #fff;
     border: 1px solid #000;
     border-radius: 4px;
   }

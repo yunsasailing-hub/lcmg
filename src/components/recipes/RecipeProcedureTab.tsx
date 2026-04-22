@@ -17,6 +17,7 @@ import { uploadRecipeMediaFile } from '@/hooks/useRecipeMedia';
 import { toast } from '@/hooks/use-toast';
 import VideoPreview from './VideoPreview';
 import { parseVideo } from '@/lib/videoEmbed';
+import MediaFrame from './MediaFrame';
 
 interface Props {
   recipeId: string;
@@ -255,7 +256,9 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                     return (
                       <div className="mt-3 space-y-2">
                         {s.image_url && (
-                          <img src={s.image_url} alt="" className="max-h-48 rounded-md border object-cover" />
+                          <MediaFrame compact>
+                            <img src={s.image_url} alt="" />
+                          </MediaFrame>
                         )}
                         {videoCandidate && (
                           <VideoPreview
