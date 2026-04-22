@@ -52,8 +52,9 @@ export default function RecipesList() {
   const [importOpen, setImportOpen] = useState(false);
 
   const { data: recipes = [], isLoading } = useRecipes(true); // fetch all, filter client-side
-  const { data: categories = [] } = useRecipeCategories(true);
-  const { data: types = [] } = useRecipeTypes(true);
+  // Only show ACTIVE recipe categories/types in filter dropdowns (matches recipe form)
+  const { data: categories = [] } = useRecipeCategories(false);
+  const { data: types = [] } = useRecipeTypes(false);
   const { data: branches = [] } = useBranches();
   const archive = useArchiveRecipe();
 
