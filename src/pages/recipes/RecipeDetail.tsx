@@ -115,8 +115,9 @@ export default function RecipeDetail() {
   const canManage = hasAnyRole(['owner', 'manager']);
 
   const { data: recipe, isLoading } = useRecipe(isNew ? undefined : id);
-  const { data: categories = [] } = useRecipeCategories(true);
-  const { data: types = [] } = useRecipeTypes(true);
+  // Only show ACTIVE recipe categories/types in dropdowns (deactivated ingredient-style entries are excluded)
+  const { data: categories = [] } = useRecipeCategories(false);
+  const { data: types = [] } = useRecipeTypes(false);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: branches = [] } = useBranches();
   // Data needed for PDF export (only fetched once we have a saved recipe).
