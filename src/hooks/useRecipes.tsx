@@ -241,13 +241,14 @@ export interface RecipeAsIngredientOption {
   currency: CurrencyCode;
 }
 
-/** Reason a flagged recipe cannot be published as an ingredient source. */
+/** Reason a flagged recipe cannot be published as an ingredient source.
+ *  NOTE: zero total cost is intentionally NOT a blocking reason — it only
+ *  triggers a soft warning so real kitchen workflows are never blocked. */
 export type RecipeAsIngredientUnpublishedReason =
   | 'inactive'
   | 'missing_name'
   | 'missing_yield_quantity'
-  | 'missing_yield_unit'
-  | 'missing_total_cost';
+  | 'missing_yield_unit';
 
 export interface RecipeAsIngredientUnpublished {
   id: string;
