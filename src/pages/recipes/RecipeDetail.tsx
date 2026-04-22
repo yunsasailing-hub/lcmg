@@ -518,7 +518,7 @@ export default function RecipeDetail() {
                   <SelectContent>
                     <SelectItem value={NONE}>{t('common.none')}</SelectItem>
                     {units.map(u => (
-                      <SelectItem key={u.id} value={u.id}>{u.code} — {u.name_en}</SelectItem>
+                      <SelectItem key={u.id} value={u.id}>{u.name_en}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -542,7 +542,7 @@ export default function RecipeDetail() {
                   <SelectContent>
                     <SelectItem value={NONE}>{t('common.none')}</SelectItem>
                     {units.map(u => (
-                      <SelectItem key={u.id} value={u.code}>{u.code} — {u.name_en}</SelectItem>
+                      <SelectItem key={u.id} value={u.code}>{u.name_en}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
