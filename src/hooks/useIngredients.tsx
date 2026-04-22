@@ -133,6 +133,23 @@ export function useIngredientTypes(includeArchived = false) {
   });
 }
 
+export function useIngredientCategories(includeArchived = false) {
+  return useQuery({
+    queryKey: ['ingredient_categories', { includeArchived }],
+    queryFn: async () => {
+      let q = (supabase as any)
+        .from('ingredient_categories')
+        .select('*')
+        .order('sort_order', { ascending: true });
+      if (!includeArchived) q = q.eq('is_active', true);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as IngredientCategoryRow[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useUpsertIngredient() {
   const qc = useQueryClient();
   return useMutation({
