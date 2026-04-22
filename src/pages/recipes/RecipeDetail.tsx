@@ -534,11 +534,18 @@ export default function RecipeDetail() {
               </div>
               <div>
                 <Label htmlFor="pu">{t('recipes.list.fields.portionUnit')}</Label>
-                <Input
-                  id="pu" value={form.portion_unit}
-                  onChange={e => update('portion_unit', e.target.value)}
-                  placeholder={t('recipes.list.fields.portionUnitPh')}
-                />
+                <Select
+                  value={form.portion_unit || NONE}
+                  onValueChange={v => update('portion_unit', v === NONE ? '' : v)}
+                >
+                  <SelectTrigger id="pu"><SelectValue placeholder={t('common.selectPlaceholder')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>{t('common.none')}</SelectItem>
+                    {units.map(u => (
+                      <SelectItem key={u.id} value={u.code}>{u.code} — {u.name_en}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="sl">{t('recipes.list.fields.shelfLife')}</Label>
