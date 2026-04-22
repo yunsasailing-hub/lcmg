@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import VideoPreview from './VideoPreview';
 import { parseVideo } from '@/lib/videoEmbed';
 import MediaFrame from './MediaFrame';
+import { getImageFromClipboard } from '@/lib/clipboardImage';
 
 interface Props {
   recipeId: string;
@@ -183,6 +184,14 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
     } finally {
       setUploadingKey(null);
     }
+  };
+
+  const handleStepImagePaste = async (key: string, e: React.ClipboardEvent<HTMLDivElement>) => {
+    const file = getImageFromClipboard(e);
+    if (!file) return;
+    e.preventDefault();
+    toast({ title: t('recipes.media.pasted') });
+    await handleStepImageUpload(key, file);
   };
 
   // -------------------- VIEW MODE --------------------
@@ -414,7 +423,11 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                     <div className="grid gap-3 sm:grid-cols-12">
                       <div className="sm:col-span-12">
                         <label className="text-xs text-muted-foreground">{t('recipes.media.stepImage')}</label>
-                        <div className="mt-1 flex flex-wrap items-center gap-3">
+                        <div
+                          className="mt-1 flex flex-wrap items-center gap-3 rounded-md outline-none focus-within:ring-2 focus-within:ring-ring/40"
+                          tabIndex={0}
+                          onPaste={(e) => handleStepImagePaste(s._key, e)}
+                        >
                           {s.image_url ? (
                             <img src={s.image_url} alt="" className="h-20 w-20 rounded-md border object-cover" />
                           ) : (
@@ -450,6 +463,7 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                               {t('recipes.media.removeImage')}
                             </Button>
                           )}
+                          <span className="basis-full text-[11px] text-muted-foreground">{t('recipes.media.pasteHint')}</span>
                         </div>
                       </div>
                       <div className="sm:col-span-6">
