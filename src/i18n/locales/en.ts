@@ -275,6 +275,15 @@ const en = {
         internalMemo: 'Internal Memo',
         useAsIngredient: 'Use as Ingredient',
         useAsIngredientHint: 'Allow this recipe to be selected as an ingredient inside other recipes.',
+        useAsIngredientPublished: 'Published as Batch Recipe — available in other recipe ingredient lines.',
+        useAsIngredientNotPublished: 'Not published yet. Fix the following before this recipe appears in the ingredient picker:',
+        useAsIngredientReasons: {
+          inactive: 'Recipe is inactive — set Active = Yes.',
+          missing_name: 'Recipe name is missing.',
+          missing_yield_quantity: 'Yield Quantity must be greater than 0.',
+          missing_yield_unit: 'Yield Unit is required.',
+          missing_total_cost: 'Total ingredient cost is 0 — add ingredient lines with priced ingredients.',
+        },
       },
       audit: {
         createdAt: 'Created at',

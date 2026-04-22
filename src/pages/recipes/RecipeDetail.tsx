@@ -30,6 +30,7 @@ import {
   useRecipeIngredients,
   RECIPE_CURRENCIES, RECIPE_DEPARTMENTS,
   type CurrencyCode, type RecipeDepartment,
+  useRecipeAsIngredientPublication,
 } from '@/hooks/useRecipes';
 import { useRecipeProcedures } from '@/hooks/useRecipeProcedures';
 import { useRecipeMedia } from '@/hooks/useRecipeMedia';
@@ -126,6 +127,7 @@ export default function RecipeDetail() {
   const { data: serviceInfo = null } = useRecipeServiceInfo(isNew ? undefined : id);
   const upsert = useUpsertRecipe();
   const archive = useArchiveRecipe();
+  const { data: pubCheck } = useRecipeAsIngredientPublication(isNew ? undefined : id);
 
   const [editing, setEditing] = useState(isNew || searchParams.get('edit') === '1');
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -392,6 +394,22 @@ export default function RecipeDetail() {
                   <p className="text-xs text-muted-foreground">{t('recipes.list.fields.useAsIngredientHint')}</p>
                 </div>
               </div>
+              {form.use_as_ingredient && pubCheck && !isNew && (
+                pubCheck.eligible ? (
+                  <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+                    {t('recipes.list.fields.useAsIngredientPublished')}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    <div className="font-semibold">{t('recipes.list.fields.useAsIngredientNotPublished')}</div>
+                    <ul className="mt-1 ml-4 list-disc">
+                      {pubCheck.reasons.map(r => (
+                        <li key={r}>{t(`recipes.list.fields.useAsIngredientReasons.${r}`)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              )}
             </Section>
 
             {/* B. CLASSIFICATION */}
