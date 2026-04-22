@@ -170,7 +170,7 @@ export function buildExportRows(
     [COLUMNS.type]: i.ingredient_type_id
       ? typeById.get(i.ingredient_type_id)?.name_en ?? ''
       : '',
-    [COLUMNS.category]: i.category_id ? catById.get(i.category_id)?.name_en ?? '' : '',
+    [COLUMNS.category]: i.ingredient_category_id ? catById.get(i.ingredient_category_id)?.name_en ?? '' : '',
     [COLUMNS.unit]: i.base_unit_id ? unitById.get(i.base_unit_id)?.name_en ?? '' : '',
     [COLUMNS.storehouse]: i.storehouse_id ? shById.get(i.storehouse_id)?.name ?? '' : '',
     [COLUMNS.note]: i.notes ?? '',
