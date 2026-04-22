@@ -5,8 +5,9 @@ import { ArrowLeft, Pencil, Archive, ArchiveRestore, Save, X, BookOpen, Carrot, 
 import RecipesShell from '@/components/recipes/RecipesShell';
 import RecipeIngredientsTab from '@/components/recipes/RecipeIngredientsTab';
 import RecipeProcedureTab from '@/components/recipes/RecipeProcedureTab';
-import RecipeMediaTab from '@/components/recipes/RecipeMediaTab';
 import RecipeServiceInfoTab from '@/components/recipes/RecipeServiceInfoTab';
+import RecipeMainImageField from '@/components/recipes/RecipeMainImageField';
+import MediaFrame from '@/components/recipes/MediaFrame';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
