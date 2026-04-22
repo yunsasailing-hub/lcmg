@@ -97,6 +97,26 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithProfile }) {
         )}
       </div>
 
+      <div className="border-t pt-2">
+        <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5">
+          <span>Warning Recipients</span>
+          {assignment.warning_recipients_source === 'template' && (
+            <span className="text-[10px] italic">(from template)</span>
+          )}
+        </div>
+        {assignment.effective_warning_recipients && assignment.effective_warning_recipients.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {assignment.effective_warning_recipients.map(r => (
+              <Badge key={r.user_id} variant="secondary" className="text-[10px] px-1.5 font-normal">
+                {r.full_name || 'Unknown user'}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-foreground">None</p>
+        )}
+      </div>
+
       {assignment.notes && (
         <p className="text-xs text-muted-foreground italic border-t pt-1">{assignment.notes}</p>
       )}
