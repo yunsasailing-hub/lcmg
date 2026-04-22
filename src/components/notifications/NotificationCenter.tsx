@@ -265,7 +265,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   }, [navigate, onClose]);
 
   return (
-    <div className="flex flex-col h-full max-h-[80vh] sm:max-h-[85vh] w-full sm:w-[420px] bg-card rounded-lg border shadow-lg overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card shrink-0">
         <div className="flex items-center gap-2">
