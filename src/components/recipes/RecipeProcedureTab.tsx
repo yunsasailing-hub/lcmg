@@ -243,51 +243,25 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                       <span className="font-semibold">{t('recipes.procedure.cols.note')}:</span> {s.note}
                     </p>
                   )}
-                  {(() => {
-                    // Backward-compat: if video_url is empty but web_link looks like a
-                    // video (YouTube / Vimeo / Google Drive file), render it as a video.
-                    const rawVideo = (s.video_url || '').trim();
-                    const rawLink = (s.web_link || '').trim();
-                    let videoCandidate = rawVideo;
-                    let leftoverLink = rawLink;
-                    if (!videoCandidate && rawLink) {
-                      const parsed = parseVideo(rawLink);
-                      if (parsed.source === 'youtube' || parsed.source === 'google_drive' || parsed.source === 'private_cloud') {
-                        videoCandidate = rawLink;
-                        leftoverLink = '';
-                      }
-                    }
-                    if (import.meta.env.DEV) {
-                      // eslint-disable-next-line no-console
-                      console.debug('[procedure-step]', s.step_number, {
-                        video_url: rawVideo || null,
-                        web_link: rawLink || null,
-                        renderedAsVideo: videoCandidate || null,
-                      });
-                    }
-                    if (!s.image_url && !videoCandidate && !leftoverLink) return null;
-                    return (
-                      <div className="mt-3 space-y-2">
-                        {s.image_url && (
-                          <MediaFrame compact>
-                            <img src={s.image_url} alt="" />
-                          </MediaFrame>
-                        )}
-                        {videoCandidate && (
-                          <VideoPreview
-                            url={videoCandidate}
-                            title={t('recipes.procedure.cols.video') as string}
-                            compact
-                          />
-                        )}
-                        {leftoverLink && (
-                          <a href={leftoverLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                            <LinkIcon className="h-3.5 w-3.5" /> {leftoverLink} <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  <div className="mt-3">
+                    <StepMediaCollection
+                      recipeId={recipeId}
+                      procedureId={s.id}
+                      legacyImageUrl={s.image_url}
+                      legacyVideoUrl={s.video_url}
+                      mode="view"
+                    />
+                    {s.web_link && (() => {
+                      const parsed = parseVideo(s.web_link);
+                      const isVid = parsed.source === 'youtube' || parsed.source === 'google_drive' || parsed.source === 'private_cloud';
+                      if (isVid) return null;
+                      return (
+                        <a href={s.web_link} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <LinkIcon className="h-3.5 w-3.5" /> {s.web_link} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      );
+                    })()}
+                  </div>
                 </li>
               ))}
             </ol>
@@ -424,69 +398,22 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                     <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                       {t('recipes.media.stepMediaTitle')}
                     </p>
-                    <div className="grid gap-3 sm:grid-cols-12">
-                      <div className="sm:col-span-12">
-                        <label className="text-xs text-muted-foreground">{t('recipes.media.stepImage')}</label>
-                        <div
-                          className="mt-1 flex flex-wrap items-center gap-3 rounded-md outline-none focus-within:ring-2 focus-within:ring-ring/40"
-                          tabIndex={0}
-                          onPaste={(e) => handleStepImagePaste(s._key, e)}
-                        >
-                          {s.image_url ? (
-                            <img src={s.image_url} alt="" className="h-20 w-20 rounded-md border object-cover" />
-                          ) : (
-                            <div className="flex h-20 w-20 items-center justify-center rounded-md border bg-muted">
-                              <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          )}
-                          <input
-                            ref={el => (fileInputs.current[s._key] = el)}
-                            type="file" accept="image/*" hidden
-                            onChange={e => {
-                              const f = e.target.files?.[0];
-                              e.target.value = '';
-                              if (f) handleStepImageUpload(s._key, f);
-                            }}
-                          />
-                          <Button
-                            size="sm" variant="outline" type="button"
-                            onClick={() => fileInputs.current[s._key]?.click()}
-                            disabled={uploadingKey === s._key}
-                          >
-                            <Upload className="h-4 w-4" />
-                            {uploadingKey === s._key
-                              ? t('recipes.media.uploading')
-                              : (s.image_url ? t('recipes.media.replaceImage') : t('recipes.media.uploadImage'))}
-                          </Button>
-                          {s.image_url && (
-                            <Button
-                              size="sm" variant="ghost" type="button"
-                              onClick={() => patch(s._key, { image_url: null, image_storage_path: null })}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                              {t('recipes.media.removeImage')}
-                            </Button>
-                          )}
-                          <span className="basis-full text-[11px] text-muted-foreground">{t('recipes.media.pasteHint')}</span>
-                        </div>
-                      </div>
-                      <div className="sm:col-span-6">
-                        <label className="text-xs text-muted-foreground">{t('recipes.media.stepVideo')}</label>
-                        <Input
-                          value={s.video_url ?? ''}
-                          onChange={e => patch(s._key, { video_url: e.target.value })}
-                          placeholder={t('recipes.media.videoUrl') as string}
-                        />
-                      </div>
-                      <div className="sm:col-span-6">
-                        <label className="text-xs text-muted-foreground">{t('recipes.media.stepWeb')}</label>
-                        <Input
-                          value={s.web_link ?? ''}
-                          onChange={e => patch(s._key, { web_link: e.target.value })}
-                          placeholder={t('recipes.media.webUrl') as string}
-                        />
-                      </div>
+                    <StepMediaCollection
+                      recipeId={recipeId}
+                      procedureId={s.id}
+                      legacyImageUrl={s.image_url}
+                      legacyVideoUrl={s.video_url}
+                      mode="edit"
+                    />
+                    <div className="mt-3">
+                      <label className="text-xs text-muted-foreground">{t('recipes.media.stepWeb')}</label>
+                      <Input
+                        value={s.web_link ?? ''}
+                        onChange={e => patch(s._key, { web_link: e.target.value })}
+                        placeholder={t('recipes.media.webUrl') as string}
+                      />
                     </div>
+                  </div>
                   </div>
                 </div>
               </div>
