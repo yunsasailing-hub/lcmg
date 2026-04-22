@@ -415,9 +415,10 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
         totals[l.recipe_id] = (totals[l.recipe_id] ?? 0) + adj;
       });
 
-      // 6) Map to options with cost-per-yield-unit
-      //    Publication rules (per spec): must have name, yield qty > 0,
-      //    yield unit, and a positive total ingredient cost.
+      // 6) Map to options with cost-per-yield-unit.
+      //    Publication rules: name, yield qty > 0, yield unit.
+      //    Zero total cost is ALLOWED — recipe still shows in picker
+      //    with costPerYieldUnit = 0 (soft warning surfaced in UI).
       const out: RecipeAsIngredientOption[] = [];
       for (const r of list) {
         const total = totals[r.id] ?? 0;
@@ -425,14 +426,13 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
         if (!r.name_en?.trim()) continue;
         if (!(yq > 0)) continue;
         if (!r.yield_unit_id) continue;
-        if (!(total > 0)) continue;
         out.push({
           id: r.id,
           code: r.code ?? null,
           name_en: r.name_en,
           yield_quantity: r.yield_quantity ?? null,
           yield_unit_id: r.yield_unit_id ?? null,
-          costPerYieldUnit: total / yq,
+          costPerYieldUnit: yq > 0 ? total / yq : 0,
           currency: (r.currency ?? 'VND') as CurrencyCode,
         });
       }
