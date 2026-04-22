@@ -214,6 +214,9 @@ function AssignDialog({ template }: { template: any }) {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
+  const [warningRecipientUserIds, setWarningRecipientUserIds] = useState<string[]>(
+    Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
+  );
 
   const { data: users, isLoading: usersLoading, isError: usersError } = useActiveUsersForAssignment();
   const createAssignment = useCreateAssignment();
@@ -238,6 +241,7 @@ function AssignDialog({ template }: { template: any }) {
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
       notes: notes.trim() || null,
+      warning_recipient_user_ids: warningRecipientUserIds,
     }, {
       onSuccess: () => {
         toast.success(periodicity === 'once' ? 'Checklist assigned!' : 'Recurring checklist assigned and first checklist created!');
@@ -257,6 +261,9 @@ function AssignDialog({ template }: { template: any }) {
     setStartDate(new Date());
     setEndDate(undefined);
     setNotes('');
+    setWarningRecipientUserIds(
+      Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
+    );
   };
 
   const getUserLabel = (u: any) => {
