@@ -981,6 +981,50 @@ export type Database = {
           },
         ]
       }
+      recipe_procedure_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["recipe_media_kind"]
+          procedure_id: string
+          sort_order: number
+          storage_path: string | null
+          title: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["recipe_media_kind"]
+          procedure_id: string
+          sort_order?: number
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["recipe_media_kind"]
+          procedure_id?: string
+          sort_order?: number
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_procedure_media_procedure_id_fkey"
+            columns: ["procedure_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_procedures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_procedures: {
         Row: {
           created_at: string
@@ -1112,6 +1156,50 @@ export type Database = {
             foreignKeyName: "recipe_service_info_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: true
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_service_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["recipe_media_kind"]
+          recipe_id: string
+          sort_order: number
+          storage_path: string | null
+          title: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["recipe_media_kind"]
+          recipe_id: string
+          sort_order?: number
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["recipe_media_kind"]
+          recipe_id?: string
+          sort_order?: number
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_service_media_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
@@ -1453,6 +1541,7 @@ export type Database = {
         | "service_prep"
         | "other"
       recipe_kind: "dish" | "prep" | "batch" | "sub_recipe"
+      recipe_media_kind: "image" | "video"
       recipe_media_type: "image" | "video_link" | "web_link" | "file"
       recipe_status: "draft" | "active" | "archived"
       storage_type: "dry" | "chilled" | "frozen" | "ambient"
@@ -1629,6 +1718,7 @@ export const Constants = {
         "other",
       ],
       recipe_kind: ["dish", "prep", "batch", "sub_recipe"],
+      recipe_media_kind: ["image", "video"],
       recipe_media_type: ["image", "video_link", "web_link", "file"],
       recipe_status: ["draft", "active", "archived"],
       storage_type: ["dry", "chilled", "frozen", "ambient"],
