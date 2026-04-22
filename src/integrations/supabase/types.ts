@@ -65,6 +65,7 @@ export type Database = {
           status: Database["public"]["Enums"]["assignment_status"]
           template_id: string | null
           updated_at: string
+          warning_recipient_user_ids: string[]
         }
         Insert: {
           assigned_to: string
@@ -80,6 +81,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["assignment_status"]
           template_id?: string | null
           updated_at?: string
+          warning_recipient_user_ids?: string[]
         }
         Update: {
           assigned_to?: string
@@ -95,6 +97,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["assignment_status"]
           template_id?: string | null
           updated_at?: string
+          warning_recipient_user_ids?: string[]
         }
         Relationships: [
           {
@@ -136,6 +139,7 @@ export type Database = {
           updated_at: string
           verified_at: string | null
           verified_by: string | null
+          warning_recipient_user_ids: string[]
           warning_sent_at: string | null
         }
         Insert: {
@@ -160,6 +164,7 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          warning_recipient_user_ids?: string[]
           warning_sent_at?: string | null
         }
         Update: {
@@ -184,6 +189,7 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          warning_recipient_user_ids?: string[]
           warning_sent_at?: string | null
         }
         Relationships: [
@@ -312,6 +318,7 @@ export type Database = {
           specific_date: string | null
           title: string
           updated_at: string
+          warning_recipient_user_ids: string[]
         }
         Insert: {
           branch_id?: string | null
@@ -328,6 +335,7 @@ export type Database = {
           specific_date?: string | null
           title: string
           updated_at?: string
+          warning_recipient_user_ids?: string[]
         }
         Update: {
           branch_id?: string | null
@@ -344,6 +352,7 @@ export type Database = {
           specific_date?: string | null
           title?: string
           updated_at?: string
+          warning_recipient_user_ids?: string[]
         }
         Relationships: [
           {
