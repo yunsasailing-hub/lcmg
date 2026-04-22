@@ -167,10 +167,31 @@ Deno.serve(async (req) => {
 
       if (!staffErr) createdWarnings++;
 
-      // Manager escalation
-      const escalationTargets = instance.assigned_manager_user_id
-        ? [instance.assigned_manager_user_id]
-        : allManagerIds;
+      // Manager escalation — recipient resolution:
+      //  1. instance.warning_recipient_user_ids (explicit per-checklist selection)
+      //  2. assigned_manager_user_id (legacy single override)
+      //  3. all managers in the same branch as the instance
+      //  4. all owners
+      let escalationTargets: string[] = [];
+      const explicit = Array.isArray(instance.warning_recipient_user_ids)
+        ? instance.warning_recipient_user_ids
+        : [];
+      if (explicit.length > 0) {
+        escalationTargets = explicit;
+      } else if (instance.assigned_manager_user_id) {
+        escalationTargets = [instance.assigned_manager_user_id];
+      } else {
+        const branchManagers = managerIds.filter(
+          mid => instance.branch_id && managerBranchMap[mid] === instance.branch_id
+        );
+        if (branchManagers.length > 0) {
+          escalationTargets = branchManagers;
+        } else {
+          escalationTargets = ownerIds;
+        }
+      }
+      // De-dup
+      escalationTargets = [...new Set(escalationTargets)];
 
       for (const managerId of escalationTargets) {
         if (managerId === instance.assigned_to) continue;
