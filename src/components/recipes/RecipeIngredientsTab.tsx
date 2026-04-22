@@ -315,7 +315,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                           </div>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{l.quantity}</TableCell>
-                        <TableCell>{l.unit_id ? unitMap[l.unit_id]?.code ?? '—' : '—'}</TableCell>
+                        <TableCell>{l.unit_id ? unitMap[l.unit_id]?.name_en ?? '—' : '—'}</TableCell>
                         <TableCell className="text-right tabular-nums">
                           {fmt(avgCostPerBaseUnit, currency)}
                           {baseUnit ? <span className="ml-1 text-xs text-muted-foreground">/{baseUnit.code}</span> : null}
@@ -455,7 +455,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                       <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                       <SelectContent>
                         {units.map(u => (
-                          <SelectItem key={u.id} value={u.id}>{u.code}</SelectItem>
+                          <SelectItem key={u.id} value={u.id}>{u.name_en}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -676,7 +676,7 @@ function TableEditor({
                       <SelectTrigger className="h-9"><SelectValue placeholder="—" /></SelectTrigger>
                       <SelectContent>
                         {units.map(u => (
-                          <SelectItem key={u.id} value={u.id}>{u.code}</SelectItem>
+                          <SelectItem key={u.id} value={u.id}>{u.name_en}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
