@@ -69,7 +69,8 @@ export default function IngredientDetail() {
   }
 
   const type = ing.ingredient_type_id ? types.find((item) => item.id === ing.ingredient_type_id) : null;
-  const cat = ing.category_id ? categories.find((item) => item.id === ing.category_id) : null;
+  const catId = (ing as any).ingredient_category_id;
+  const cat = catId ? categories.find((item) => item.id === catId) : null;
   const unit = ing.base_unit_id ? units.find((item) => item.id === ing.base_unit_id) : null;
   const sh = ing.storehouse_id ? storehouses.find((item) => item.id === ing.storehouse_id) : null;
   const withArchivedSuffix = (label?: string | null, isActive?: boolean) => {
