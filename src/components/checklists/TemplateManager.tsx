@@ -54,6 +54,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
     { title: '', photo_requirement: 'none' },
   ]);
+  const [warningRecipientUserIds, setWarningRecipientUserIds] = useState<string[]>([]);
 
   const create = useCreateTemplate();
 
@@ -74,6 +75,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
         department,
         branch_id: null,
         default_due_time: dueTime + ':00',
+        warning_recipient_user_ids: warningRecipientUserIds,
       },
       tasks: validTasks.map((t, i) => ({
         title: t.title.trim(),
@@ -97,6 +99,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
     setDepartment('kitchen');
     setDueTime(DEFAULT_DUE_TIMES['opening']);
     setTasks([{ title: '', photo_requirement: 'none' }]);
+    setWarningRecipientUserIds([]);
   };
 
   return (
