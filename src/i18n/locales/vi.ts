@@ -470,6 +470,12 @@ const vi: Translations = {
       pasteHint: 'hoặc dán bằng Ctrl+V / ⌘V',
       pasted: 'Đã dán hình từ clipboard',
       pasteNotImage: 'Clipboard không chứa hình ảnh',
+      imagesLabel: 'Hình ảnh',
+      videosLabel: 'Video',
+      maxImagesReached: 'Đã đạt tối đa 4 hình',
+      maxVideosReached: 'Đã đạt tối đa 4 video',
+      removeVideo: 'Xoá video',
+      saveFirst: 'Lưu trước để đính kèm phương tiện.',
     },
     service: {
       title: 'Thông tin Phục vụ / Bán hàng',
