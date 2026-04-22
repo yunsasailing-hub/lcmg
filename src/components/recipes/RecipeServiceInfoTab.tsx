@@ -343,53 +343,27 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                   <ReadField label={t('recipes.service.fields.upselling')} value={info.upselling_notes} />
                   <ReadField label={t('recipes.service.fields.pairing')} value={info.pairing_suggestion} />
                 </div>
-                {(info.image_url || info.video_url || info.web_link) && (
+                {(mediaItems.length > 0 || info.image_url || info.video_url || info.web_link) && (
                   <div className="space-y-3 border-t pt-4">
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {t('recipes.service.mediaSection')}
                     </div>
-                    {info.image_url && (
-                      <MediaFrame compact>
-                        <img src={info.image_url} alt="service" />
-                      </MediaFrame>
-                    )}
+                    <MediaCollectionView
+                      items={mediaItems}
+                      legacyImageUrl={info.image_url}
+                      legacyVideoUrl={info.video_url}
+                    />
                     {(() => {
-                      // Backward-compat: if video_url is empty but web_link looks like a
-                      // video (YouTube / Drive / Vimeo), render it as a video preview.
-                      const rawVideo = (info.video_url || '').trim();
+                      // Web link still renders as a plain link when it isn't a video URL.
                       const rawLink = (info.web_link || '').trim();
-                      let videoCandidate = rawVideo;
-                      let leftoverLink = rawLink;
-                      if (!videoCandidate && rawLink) {
-                        const parsed = parseVideo(rawLink);
-                        if (parsed.source === 'youtube' || parsed.source === 'google_drive' || parsed.source === 'private_cloud') {
-                          videoCandidate = rawLink;
-                          leftoverLink = '';
-                        }
-                      }
-                      if (import.meta.env.DEV) {
-                        // eslint-disable-next-line no-console
-                        console.debug('[service-info-media]', {
-                          video_url: rawVideo || null,
-                          web_link: rawLink || null,
-                          renderedAsVideo: videoCandidate || null,
-                        });
-                      }
+                      if (!rawLink) return null;
+                      const parsed = parseVideo(rawLink);
+                      const isVideoLink = parsed.source === 'youtube' || parsed.source === 'google_drive' || parsed.source === 'private_cloud';
+                      if (isVideoLink) return null;
                       return (
-                        <>
-                          {videoCandidate && (
-                            <VideoPreview
-                              url={videoCandidate}
-                              title={t('recipes.service.fields.videoLink') as string}
-                              compact
-                            />
-                          )}
-                          {leftoverLink && (
-                            <a href={leftoverLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                              <LinkIcon className="h-3.5 w-3.5" /> {leftoverLink} <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </>
+                        <a href={rawLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                          <LinkIcon className="h-3.5 w-3.5" /> {rawLink} <ExternalLink className="h-3 w-3" />
+                        </a>
                       );
                     })()}
                   </div>
