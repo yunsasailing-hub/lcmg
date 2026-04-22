@@ -3,6 +3,7 @@ import { ExternalLink, Video as VideoIcon, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { parseVideo, videoSourceLabel } from '@/lib/videoEmbed';
+import MediaFrame from './MediaFrame';
 
 interface Props {
   url: string;
@@ -63,26 +64,22 @@ export default function VideoPreview({
       </div>
 
       {canEmbed ? (
-        <div className={`w-full overflow-hidden rounded-md bg-muted ${compact ? 'aspect-video max-w-md' : 'aspect-video'}`}>
+        <MediaFrame compact={compact}>
           <iframe
             src={parsed.embedUrl!}
             title={display}
-            className="h-full w-full"
             loading="lazy"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             onError={() => setEmbedFailed(true)}
           />
-        </div>
+        </MediaFrame>
       ) : thumb ? (
-        <a
-          href={parsed.url}
-          target="_blank"
-          rel="noreferrer"
-          className={`block overflow-hidden rounded-md border bg-muted ${compact ? 'max-w-xs' : 'max-w-md'}`}
-        >
-          <img src={thumb} alt={display} className="aspect-video w-full object-cover" />
-        </a>
+        <MediaFrame compact={compact}>
+          <a href={parsed.url} target="_blank" rel="noreferrer" className="block h-full w-full">
+            <img src={thumb} alt={display} />
+          </a>
+        </MediaFrame>
       ) : null}
     </div>
   );
