@@ -127,6 +127,7 @@ export default function RecipeDetail() {
   const { data: serviceInfo = null } = useRecipeServiceInfo(isNew ? undefined : id);
   const upsert = useUpsertRecipe();
   const archive = useArchiveRecipe();
+  const { data: pubCheck } = useRecipeAsIngredientPublication(isNew ? undefined : id);
 
   const [editing, setEditing] = useState(isNew || searchParams.get('edit') === '1');
   const [archiveOpen, setArchiveOpen] = useState(false);
