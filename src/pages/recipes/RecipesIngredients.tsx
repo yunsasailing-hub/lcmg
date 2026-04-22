@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useIngredients, useRecipeCategories, useRecipeUnits, useStorehouses,
+  useIngredients, useIngredientCategories, useRecipeUnits, useStorehouses,
   useArchiveIngredient, useIngredientTypes,
   type Ingredient,
 } from '@/hooks/useIngredients';
@@ -72,7 +72,7 @@ export default function RecipesIngredients() {
 
   const { data: ingredients = [], isLoading } = useIngredients(includeArchived);
   const { data: types = [] } = useIngredientTypes(true);
-  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: categories = [] } = useIngredientCategories(true);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: storehouses = [] } = useStorehouses(true);
   const archive = useArchiveIngredient();
