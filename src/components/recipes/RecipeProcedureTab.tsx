@@ -15,6 +15,7 @@ import {
 } from '@/hooks/useRecipeProcedures';
 import { uploadRecipeMediaFile } from '@/hooks/useRecipeMedia';
 import { toast } from '@/hooks/use-toast';
+import VideoPreview from './VideoPreview';
 
 interface Props {
   recipeId: string;
@@ -233,9 +234,11 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                         <img src={s.image_url} alt="" className="max-h-48 rounded-md border object-cover" />
                       )}
                       {s.video_url && (
-                        <a href={s.video_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                          <Video className="h-3.5 w-3.5" /> {s.video_url} <ExternalLink className="h-3 w-3" />
-                        </a>
+                        <VideoPreview
+                          url={s.video_url}
+                          title={t('recipes.procedure.cols.video') as string}
+                          compact
+                        />
                       )}
                       {s.web_link && (
                         <a href={s.web_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
