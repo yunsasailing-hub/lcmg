@@ -20,6 +20,9 @@ import MediaFrame from './MediaFrame';
 import VideoPreview from './VideoPreview';
 import { parseVideo } from '@/lib/videoEmbed';
 import { getImageFromClipboard } from '@/lib/clipboardImage';
+import MediaCollectionField from './MediaCollectionField';
+import MediaCollectionView from './MediaCollectionView';
+import { useMediaCollection } from '@/hooks/useMediaCollection';
 
 interface Props {
   recipeId: string;
@@ -93,6 +96,12 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
   const { t } = useTranslation();
   const { data: info, isLoading } = useRecipeServiceInfo(recipeId);
   const save = useSaveRecipeServiceInfo();
+  const mediaConfig = {
+    table: 'recipe_service_media' as const,
+    parentColumn: 'recipe_id' as const,
+    parentId: recipeId,
+  };
+  const { data: mediaItems = [] } = useMediaCollection(mediaConfig);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
