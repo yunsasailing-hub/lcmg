@@ -605,7 +605,6 @@ export default function RecipeDetail() {
                   { id: 'sec-master',      icon: BookOpen,  label: t('recipes.list.sections.master') },
                   { id: 'sec-ingredients', icon: Carrot,    label: t('recipes.list.sections.ingredients') },
                   { id: 'sec-procedure',   icon: CookingPot,label: t('recipes.list.sections.procedure') },
-                  { id: 'sec-media',       icon: ImageIcon, label: t('recipes.list.sections.media') },
                   { id: 'sec-service',     icon: Sparkles,  label: t('recipes.list.sections.service') },
                 ].map(s => (
                   <a
@@ -740,11 +739,6 @@ export default function RecipeDetail() {
           {/* Phase 3: Kitchen Procedure */}
           <section id="sec-procedure" className="scroll-mt-24">
             <RecipeProcedureTab recipeId={recipe.id} canManage={canManage} />
-          </section>
-
-          {/* Phase 4: Media & References */}
-          <section id="sec-media" className="scroll-mt-24">
-            <RecipeMediaTab recipeId={recipe.id} canManage={canManage} />
           </section>
 
           {/* Phase 5: Service / Sales Information */}
