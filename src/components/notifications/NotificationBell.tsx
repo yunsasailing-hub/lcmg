@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -6,25 +6,13 @@ import { useUnreadCount } from '@/hooks/useNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import NotificationCenter from './NotificationCenter';
+import { useNotificationPanel } from './NotificationPanelContext';
 
 export default function NotificationBell({ collapsed }: { collapsed?: boolean }) {
   const { data: unreadCount = 0 } = useUnreadCount();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Close on outside click (desktop only)
-  useEffect(() => {
-    if (!open || isMobile) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open, isMobile]);
+  const { open, setOpen } = useNotificationPanel();
 
   const bellButton = (
     <button
@@ -59,14 +47,6 @@ export default function NotificationBell({ collapsed }: { collapsed?: boolean })
     );
   }
 
-  return (
-    <div ref={containerRef} className="relative">
-      {bellButton}
-      {open && (
-        <div className="absolute right-0 top-full mt-2 z-50">
-          <NotificationCenter onClose={() => setOpen(false)} />
-        </div>
-      )}
-    </div>
-  );
+  // Desktop/tablet: panel is rendered by AppShell as a side panel that pushes content.
+  return bellButton;
 }
