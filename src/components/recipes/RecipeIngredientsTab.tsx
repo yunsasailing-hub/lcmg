@@ -572,7 +572,7 @@ interface TableEditorProps {
   draft: DraftLine[];
   errors: Record<string, { ingredient?: string; quantity?: string }>;
   ingredientOptions: { id: string; label: string; sublabel?: string }[];
-  units: { id: string; code: string }[];
+  units: { id: string; code: string; name_en: string }[];
   currency?: string | null;
   computeRow: (line: DraftLine) => {
     ing: any;
