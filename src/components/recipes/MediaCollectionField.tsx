@@ -216,7 +216,7 @@ export default function MediaCollectionField({ recipeIdForBucket, config, items,
               <Plus className="h-4 w-4" /> {t('recipes.media.addVideo')}
             </Button>
             <span className="text-[11px] text-muted-foreground">
-              {t('recipes.media.videoSlotHint', `Video ${videos.length + 1} of ${MEDIA_MAX_PER_KIND}`, { current: videos.length + 1, max: MEDIA_MAX_PER_KIND })}
+              {t('recipes.media.videoSlotHint', { current: videos.length + 1, max: MEDIA_MAX_PER_KIND, defaultValue: `Video ${videos.length + 1} of ${MEDIA_MAX_PER_KIND}` })}
             </span>
           </div>
         )}
