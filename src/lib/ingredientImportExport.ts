@@ -436,7 +436,7 @@ export function validateRows(
         is_active,
         ingredient_type_id: typeMatch.id,
         ingredient_type: mapNameToLegacyEnum(typeMatch.name_en),
-        category_id: catMatch.id,
+        ingredient_category_id: catMatch.id,
         base_unit_id: unitMatch.id,
         storehouse_id,
         notes: norm(noteVal) || null,
