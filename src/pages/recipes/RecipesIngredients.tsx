@@ -76,17 +76,63 @@ export default function RecipesIngredients() {
   const { data: units = [] } = useRecipeUnits(true);
   const { data: storehouses = [] } = useStorehouses(true);
   const archive = useArchiveIngredient();
+  const { data: recipeDerived = [] } = useRecipesAsIngredient();
 
   const typeMap = useMemo(() => Object.fromEntries(types.map(x => [x.id, x])), [types]);
   const categoryMap = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories]);
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
   const storehouseMap = useMemo(() => Object.fromEntries(storehouses.map(s => [s.id, s])), [storehouses]);
 
+  // Find the managed "Batch Recipe" type id (if any) so derived rows match the type filter.
+  const batchRecipeTypeId = useMemo(() => {
+    const t = types.find(x => /batch/i.test(x.name_en));
+    return t?.id ?? null;
+  }, [types]);
+
+  // Build virtual rows from recipe-derived ingredients (Use as Ingredient = Yes).
+  const derivedRows = useMemo<DerivedRow[]>(() => {
+    return recipeDerived.map(r => ({
+      id: `recipe:${r.id}`,
+      __derived: true,
+      __recipeId: r.id,
+      __costPerUnit: r.costPerYieldUnit,
+      code: r.code ?? r.id.slice(0, 8).toUpperCase(),
+      name_en: r.name_en,
+      name_vi: null,
+      ingredient_type: 'batch_recipe' as any,
+      ingredient_type_id: batchRecipeTypeId,
+      category_id: null,
+      base_unit_id: r.yield_unit_id,
+      purchase_unit_id: null,
+      storehouse_id: null,
+      price: r.costPerYieldUnit,
+      currency: r.currency,
+      is_active: true,
+      is_global: true,
+      departments: [],
+      allergens: null,
+      storage_type: 'dry',
+      yield_percent: 100,
+      tax_rate: 0,
+      purchase_to_base_factor: 1,
+      last_purchase_price: null,
+      supplier: null,
+      notes: null,
+      created_by: null,
+      updated_by: null,
+      created_at: '',
+      updated_at: '',
+      cost_updated_at: null,
+    }) as unknown as DerivedRow);
+  }, [recipeDerived, batchRecipeTypeId]);
+
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    const out = ingredients.filter(i => {
+    const combined: AnyRow[] = [...ingredients, ...derivedRows];
+    const out = combined.filter(i => {
       if (s) {
-        const hay = `${i.name_en} ${i.code ?? ''}`.toLowerCase();
+        const extra = isDerived(i) ? ` ${i.__recipeId}` : '';
+        const hay = `${i.name_en} ${i.code ?? ''}${extra}`.toLowerCase();
         if (!hay.includes(s)) return false;
       }
       if (typeFilter !== 'all' && (i as any).ingredient_type_id !== typeFilter) return false;
@@ -111,7 +157,7 @@ export default function RecipesIngredients() {
       }
     });
     return out;
-  }, [ingredients, search, typeFilter, categoryFilter, unitFilter, storehouseFilter, statusFilter, prefixFilter, sortBy, categoryMap]);
+  }, [ingredients, derivedRows, search, typeFilter, categoryFilter, unitFilter, storehouseFilter, statusFilter, prefixFilter, sortBy, categoryMap]);
 
   const openAdd = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (ing: Ingredient) => { setEditing(ing); setDialogOpen(true); };
