@@ -35,10 +35,20 @@ import {
   useArchiveIngredient, useIngredientTypes,
   type Ingredient,
 } from '@/hooks/useIngredients';
+import { useRecipesAsIngredient } from '@/hooks/useRecipes';
 import { classifyByPrefix } from '@/lib/ingredientClassification';
 import { toast } from '@/hooks/use-toast';
 
 type SortKey = 'name' | 'code' | 'category' | 'updated';
+
+type DerivedRow = Ingredient & {
+  __derived: true;
+  __recipeId: string;
+  __costPerUnit: number;
+};
+
+type AnyRow = Ingredient | DerivedRow;
+const isDerived = (r: AnyRow): r is DerivedRow => (r as any).__derived === true;
 
 export default function RecipesIngredients() {
   const { t } = useTranslation();
