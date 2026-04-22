@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Image as ImageIcon, Video, Link as LinkIcon, FileText, Upload, Trash2, Star, ExternalLink, Plus, Pencil, Check,
@@ -49,6 +49,31 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
   const videos = media.filter(m => m.media_type === 'video_link');
   const webs = media.filter(m => m.media_type === 'web_link');
   const files = media.filter(m => m.media_type === 'file');
+
+  useEffect(() => {
+    // Debug: confirm videos refetch after save
+    // eslint-disable-next-line no-console
+    console.log('[RecipeMedia] videos count:', videos.length, videos.map(v => v.url));
+  }, [videos.length]);
+
+  const getYouTubeEmbed = (url: string): string | null => {
+    try {
+      const u = new URL(url);
+      if (u.hostname.includes('youtube.com')) {
+        const id = u.searchParams.get('v');
+        if (id) return `https://www.youtube.com/embed/${id}`;
+      }
+      if (u.hostname === 'youtu.be') {
+        const id = u.pathname.slice(1);
+        if (id) return `https://www.youtube.com/embed/${id}`;
+      }
+      if (u.hostname.includes('vimeo.com')) {
+        const id = u.pathname.split('/').filter(Boolean)[0];
+        if (id && /^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
+      }
+    } catch {}
+    return null;
+  };
 
   // In consultation (read) mode we hide editing chrome; managers click Edit to add/remove.
   const isReadMode = !editing;
@@ -236,25 +261,41 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
               <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('recipes.media.videoLinks')}
               </h4>
-              <ul className="space-y-2">
-                {videos.map(m => (
-                  <li key={m.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <a href={m.url} target="_blank" rel="noreferrer" className="truncate text-sm hover:underline">
-                        {m.title || m.url}
-                      </a>
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      <Button size="icon" variant="ghost" asChild><a href={m.url} target="_blank" rel="noreferrer" title={t('recipes.media.open') as string}><ExternalLink className="h-4 w-4" /></a></Button>
-                      {canManage && editing && (
-                        <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(m)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+              <ul className="space-y-3">
+                {videos.map(m => {
+                  const embed = getYouTubeEmbed(m.url);
+                  return (
+                    <li key={m.id} className="space-y-2 rounded-md border p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <a href={m.url} target="_blank" rel="noreferrer" className="truncate text-sm hover:underline">
+                            {m.title || m.url}
+                          </a>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Button size="icon" variant="ghost" asChild><a href={m.url} target="_blank" rel="noreferrer" title={t('recipes.media.open') as string}><ExternalLink className="h-4 w-4" /></a></Button>
+                          {canManage && editing && (
+                            <Button size="icon" variant="ghost" onClick={() => setConfirmDelete(m)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {embed && (
+                        <div className="aspect-video w-full overflow-hidden rounded-md bg-muted">
+                          <iframe
+                            src={embed}
+                            title={m.title || 'Video'}
+                            className="h-full w-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
                       )}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
                 {videos.length === 0 && editing && <p className="text-xs text-muted-foreground">{t('recipes.media.empty')}</p>}
               </ul>
               {canManage && editing && (
