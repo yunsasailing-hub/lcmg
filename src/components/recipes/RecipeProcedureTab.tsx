@@ -249,6 +249,7 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                       procedureId={s.id}
                       legacyImageUrl={s.image_url}
                       legacyVideoUrl={s.video_url}
+                      legacyWebLink={s.web_link}
                       mode="view"
                     />
                     {s.web_link && (() => {

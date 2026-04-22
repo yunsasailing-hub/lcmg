@@ -8,6 +8,8 @@ interface Props {
   procedureId: string | null | undefined;
   legacyImageUrl?: string | null;
   legacyVideoUrl?: string | null;
+  /** Optional legacy web_link — surfaced as a video preview if it parses as one. */
+  legacyWebLink?: string | null;
   mode: 'view' | 'edit';
 }
 
@@ -16,7 +18,7 @@ interface Props {
  * cache is keyed by procedure_id and items refresh independently.
  */
 export default function StepMediaCollection({
-  recipeId, procedureId, legacyImageUrl, legacyVideoUrl, mode,
+  recipeId, procedureId, legacyImageUrl, legacyVideoUrl, legacyWebLink, mode,
 }: Props) {
   const { t } = useTranslation();
   const config = {
@@ -48,6 +50,7 @@ export default function StepMediaCollection({
       items={items}
       legacyImageUrl={legacyImageUrl}
       legacyVideoUrl={legacyVideoUrl}
+      legacyExtraVideoUrls={[legacyWebLink]}
     />
   );
 }
