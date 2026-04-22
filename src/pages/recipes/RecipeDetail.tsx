@@ -401,7 +401,7 @@ export default function RecipeDetail() {
                       {t('recipes.list.fields.useAsIngredientPublished')}
                     </div>
                     {pubCheck.zeroCost && (
-                      <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                      <div className="rounded-md border border-muted-foreground/30 bg-muted px-3 py-2 text-xs text-muted-foreground">
                         {t('recipes.list.fields.useAsIngredientZeroCostWarning')}
                       </div>
                     )}
