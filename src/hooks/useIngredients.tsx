@@ -4,9 +4,11 @@ import type { Database } from '@/integrations/supabase/types';
 
 export type Ingredient = Database['public']['Tables']['ingredients']['Row'] & {
   ingredient_type_id?: string | null;
+  ingredient_category_id?: string | null;
 };
 export type IngredientInsert = Database['public']['Tables']['ingredients']['Insert'] & {
   ingredient_type_id?: string | null;
+  ingredient_category_id?: string | null;
 };
 export type IngredientUpdate = Database['public']['Tables']['ingredients']['Update'];
 export type RecipeCategory = Database['public']['Tables']['recipe_categories']['Row'];
@@ -16,6 +18,16 @@ export type IngredientType = Database['public']['Enums']['ingredient_type'];
 export type CurrencyCode = Database['public']['Enums']['currency_code'];
 
 export interface IngredientTypeRow {
+  id: string;
+  name_en: string;
+  name_vi: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IngredientCategoryRow {
   id: string;
   name_en: string;
   name_vi: string | null;
