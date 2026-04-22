@@ -345,6 +345,7 @@ const vi: Translations = {
       noIngredients: 'Không có nguyên liệu.',
       sourceIngredient: 'Nguyên liệu',
       sourceRecipe: 'Công thức',
+      batchRecipe: 'Công thức mẻ',
       ingredientCode: 'Mã',
       basePrice: 'Giá gốc',
       noIngredientSelected: 'Chọn nguyên liệu để tính chi phí.',
