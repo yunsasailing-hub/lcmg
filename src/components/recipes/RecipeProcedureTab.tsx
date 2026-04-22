@@ -16,6 +16,7 @@ import {
 import { uploadRecipeMediaFile } from '@/hooks/useRecipeMedia';
 import { toast } from '@/hooks/use-toast';
 import VideoPreview from './VideoPreview';
+import { parseVideo } from '@/lib/videoEmbed';
 
 interface Props {
   recipeId: string;
@@ -228,25 +229,49 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                       <span className="font-semibold">{t('recipes.procedure.cols.note')}:</span> {s.note}
                     </p>
                   )}
-                  {(s.image_url || s.video_url || s.web_link) && (
-                    <div className="mt-3 space-y-2">
-                      {s.image_url && (
-                        <img src={s.image_url} alt="" className="max-h-48 rounded-md border object-cover" />
-                      )}
-                      {s.video_url && (
-                        <VideoPreview
-                          url={s.video_url}
-                          title={t('recipes.procedure.cols.video') as string}
-                          compact
-                        />
-                      )}
-                      {s.web_link && (
-                        <a href={s.web_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                          <LinkIcon className="h-3.5 w-3.5" /> {s.web_link} <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-                  )}
+                  {(() => {
+                    // Backward-compat: if video_url is empty but web_link looks like a
+                    // video (YouTube / Vimeo / Google Drive file), render it as a video.
+                    const rawVideo = (s.video_url || '').trim();
+                    const rawLink = (s.web_link || '').trim();
+                    let videoCandidate = rawVideo;
+                    let leftoverLink = rawLink;
+                    if (!videoCandidate && rawLink) {
+                      const parsed = parseVideo(rawLink);
+                      if (parsed.source === 'youtube' || parsed.source === 'google_drive' || parsed.source === 'private_cloud') {
+                        videoCandidate = rawLink;
+                        leftoverLink = '';
+                      }
+                    }
+                    if (import.meta.env.DEV) {
+                      // eslint-disable-next-line no-console
+                      console.debug('[procedure-step]', s.step_number, {
+                        video_url: rawVideo || null,
+                        web_link: rawLink || null,
+                        renderedAsVideo: videoCandidate || null,
+                      });
+                    }
+                    if (!s.image_url && !videoCandidate && !leftoverLink) return null;
+                    return (
+                      <div className="mt-3 space-y-2">
+                        {s.image_url && (
+                          <img src={s.image_url} alt="" className="max-h-48 rounded-md border object-cover" />
+                        )}
+                        {videoCandidate && (
+                          <VideoPreview
+                            url={videoCandidate}
+                            title={t('recipes.procedure.cols.video') as string}
+                            compact
+                          />
+                        )}
+                        {leftoverLink && (
+                          <a href={leftoverLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                            <LinkIcon className="h-3.5 w-3.5" /> {leftoverLink} <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </li>
               ))}
             </ol>
