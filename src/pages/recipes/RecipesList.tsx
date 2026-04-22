@@ -276,6 +276,8 @@ export default function RecipesList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RecipeMasterImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </RecipesShell>
   );
 }
