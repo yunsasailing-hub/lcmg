@@ -656,7 +656,7 @@ export default function RecipeDetail() {
           {/* Compact consultation hero — recipe sheet style */}
           <Card id="sec-master" className="scroll-mt-24">
             <CardContent className="space-y-4 p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 {(() => {
                   const primaryImage = mediaItems.find(m => m.media_type === 'image' && m.is_primary)
                     ?? mediaItems.find(m => m.media_type === 'image');
