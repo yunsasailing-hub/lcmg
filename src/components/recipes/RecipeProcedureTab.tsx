@@ -414,7 +414,6 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                       />
                     </div>
                   </div>
-                  </div>
                 </div>
               </div>
             );
