@@ -19,6 +19,9 @@ import VideoPreview from './VideoPreview';
 import { parseVideo } from '@/lib/videoEmbed';
 import MediaFrame from './MediaFrame';
 import { getImageFromClipboard } from '@/lib/clipboardImage';
+import MediaCollectionField from './MediaCollectionField';
+import MediaCollectionView from './MediaCollectionView';
+import { useMediaCollection } from '@/hooks/useMediaCollection';
 
 interface Props {
   recipeId: string;
