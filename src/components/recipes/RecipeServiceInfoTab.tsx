@@ -17,6 +17,8 @@ import {
 } from '@/hooks/useRecipeServiceInfo';
 import { toast } from '@/hooks/use-toast';
 import MediaFrame from './MediaFrame';
+import VideoPreview from './VideoPreview';
+import { parseVideo } from '@/lib/videoEmbed';
 
 interface Props {
   recipeId: string;
@@ -359,24 +361,45 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                         <img src={info.image_url} alt="service" />
                       </MediaFrame>
                     )}
-                    <div className="flex flex-wrap gap-2">
-                      {info.video_url && (
-                        <a href={info.video_url} target="_blank" rel="noreferrer">
-                          <Badge variant="outline" className="gap-1">
-                            <Video className="h-3 w-3" /> {t('recipes.service.fields.videoLink')}
-                            <ExternalLink className="h-3 w-3" />
-                          </Badge>
-                        </a>
-                      )}
-                      {info.web_link && (
-                        <a href={info.web_link} target="_blank" rel="noreferrer">
-                          <Badge variant="outline" className="gap-1">
-                            <LinkIcon className="h-3 w-3" /> {t('recipes.service.fields.webLink')}
-                            <ExternalLink className="h-3 w-3" />
-                          </Badge>
-                        </a>
-                      )}
-                    </div>
+                    {(() => {
+                      // Backward-compat: if video_url is empty but web_link looks like a
+                      // video (YouTube / Drive / Vimeo), render it as a video preview.
+                      const rawVideo = (info.video_url || '').trim();
+                      const rawLink = (info.web_link || '').trim();
+                      let videoCandidate = rawVideo;
+                      let leftoverLink = rawLink;
+                      if (!videoCandidate && rawLink) {
+                        const parsed = parseVideo(rawLink);
+                        if (parsed.source === 'youtube' || parsed.source === 'google_drive' || parsed.source === 'private_cloud') {
+                          videoCandidate = rawLink;
+                          leftoverLink = '';
+                        }
+                      }
+                      if (import.meta.env.DEV) {
+                        // eslint-disable-next-line no-console
+                        console.debug('[service-info-media]', {
+                          video_url: rawVideo || null,
+                          web_link: rawLink || null,
+                          renderedAsVideo: videoCandidate || null,
+                        });
+                      }
+                      return (
+                        <>
+                          {videoCandidate && (
+                            <VideoPreview
+                              url={videoCandidate}
+                              title={t('recipes.service.fields.videoLink') as string}
+                              compact
+                            />
+                          )}
+                          {leftoverLink && (
+                            <a href={leftoverLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                              <LinkIcon className="h-3.5 w-3.5" /> {leftoverLink} <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </>
