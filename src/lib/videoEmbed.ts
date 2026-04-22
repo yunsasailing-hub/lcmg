@@ -53,6 +53,18 @@ function vimeoId(u: URL): string | null {
   return seg && /^\d+$/.test(seg) ? seg : null;
 }
 
+function googleDriveFileId(u: URL): string | null {
+  if (u.hostname !== 'drive.google.com' && u.hostname !== 'docs.google.com') return null;
+  // /file/d/{ID}/...
+  const parts = u.pathname.split('/').filter(Boolean);
+  const dIdx = parts.indexOf('d');
+  if (dIdx >= 0 && parts[dIdx + 1]) return parts[dIdx + 1];
+  // /open?id={ID} or ?id={ID}
+  const idParam = u.searchParams.get('id');
+  if (idParam) return idParam;
+  return null;
+}
+
 export function parseVideo(raw: string): ParsedVideo {
   const trimmed = (raw || '').trim();
   const u = safeUrl(trimmed);
@@ -81,7 +93,13 @@ export function parseVideo(raw: string): ParsedVideo {
   }
 
   if (u.hostname === 'drive.google.com' || u.hostname === 'docs.google.com') {
-    return { source: 'google_drive', url: trimmed, embedUrl: null, thumbnailUrl: null };
+    const fid = googleDriveFileId(u);
+    return {
+      source: 'google_drive',
+      url: trimmed,
+      embedUrl: fid ? `https://drive.google.com/file/d/${fid}/preview` : null,
+      thumbnailUrl: fid ? `https://drive.google.com/thumbnail?id=${fid}` : null,
+    };
   }
 
   if (PRIVATE_HOSTS.some(h => u.hostname.endsWith(h))) {
