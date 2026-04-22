@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
@@ -40,6 +43,8 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
   const [uploading, setUploading] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
+  const [videoSource, setVideoSource] = useState<'youtube' | 'google_drive' | 'external_url'>('youtube');
+  const [videoNote, setVideoNote] = useState('');
   const [webUrl, setWebUrl] = useState('');
   const [webTitle, setWebTitle] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<RecipeMediaRow | null>(null);
