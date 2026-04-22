@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
   // Fetch all pending/late checklists with due_datetime set
   const { data: pendingInstances, error: fetchErr } = await supabase
     .from("checklist_instances")
-    .select("id, assigned_to, assigned_manager_user_id, checklist_type, department, scheduled_date, branch_id, template_id, due_datetime, status, notice_sent_at, warning_sent_at, completed_at")
+    .select("id, assigned_to, assigned_manager_user_id, checklist_type, department, scheduled_date, branch_id, template_id, due_datetime, status, notice_sent_at, warning_sent_at, completed_at, warning_recipient_user_ids")
     .in("status", ["pending", "late"])
     .not("assigned_to", "is", null)
     .not("due_datetime", "is", null)
@@ -89,12 +89,25 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Fetch managers/owners for warning escalation (fallback when assigned_manager_user_id is not set)
+  // Fetch all owners + managers, with their branch via profiles, for fallback escalation logic.
   const { data: managerRoles } = await supabase
     .from("user_roles")
     .select("user_id, role")
     .in("role", ["owner", "manager"]);
-  const allManagerIds = managerRoles?.map(r => r.user_id) || [];
+  const ownerIds = (managerRoles || []).filter(r => r.role === "owner").map(r => r.user_id);
+  const managerIds = (managerRoles || []).filter(r => r.role === "manager").map(r => r.user_id);
+
+  // Map managers → branch_id via profiles, so branch fallback works
+  let managerBranchMap: Record<string, string | null> = {};
+  if (managerIds.length > 0) {
+    const { data: managerProfiles } = await supabase
+      .from("profiles")
+      .select("user_id, branch_id")
+      .in("user_id", managerIds);
+    if (managerProfiles) {
+      managerBranchMap = Object.fromEntries(managerProfiles.map(p => [p.user_id, p.branch_id]));
+    }
+  }
 
   // Process each pending instance
   for (const instance of pendingInstances) {
