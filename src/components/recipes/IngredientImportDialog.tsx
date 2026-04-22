@@ -51,7 +51,8 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
   const { data: ingredients = [] } = useIngredients(true);
   const { data: types = [] } = useIngredientTypes(true);
   const { data: categories = [] } = useIngredientCategories(true);
-  const { data: units = [] } = useRecipeUnits(true);
+  // Only approved (active) units accepted in imports
+  const { data: units = [] } = useRecipeUnits(false);
   const { data: storehouses = [] } = useStorehouses(true);
 
   const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload');

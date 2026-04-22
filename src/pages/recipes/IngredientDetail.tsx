@@ -42,7 +42,8 @@ export default function IngredientDetail() {
   const { data: ing, isLoading } = useIngredient(id);
   const { data: types = [] } = useIngredientTypes(true);
   const { data: categories = [] } = useIngredientCategories(true);
-  const { data: units = [] } = useRecipeUnits(true);
+  // Only show approved (active) units
+  const { data: units = [] } = useRecipeUnits(false);
   const { data: storehouses = [] } = useStorehouses(true);
   const archive = useArchiveIngredient();
 
