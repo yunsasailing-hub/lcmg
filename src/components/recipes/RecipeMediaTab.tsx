@@ -60,6 +60,17 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
     try {
       const u = new URL(url);
       if (u.hostname.includes('youtube.com')) {
+        // Already an embed URL
+        if (u.pathname.startsWith('/embed/')) {
+          const id = u.pathname.split('/')[2];
+          if (id) return `https://www.youtube.com/embed/${id}`;
+        }
+        // Shorts: /shorts/{id}
+        if (u.pathname.startsWith('/shorts/')) {
+          const id = u.pathname.split('/')[2];
+          if (id) return `https://www.youtube.com/embed/${id}`;
+        }
+        // Standard watch URL
         const id = u.searchParams.get('v');
         if (id) return `https://www.youtube.com/embed/${id}`;
       }
@@ -73,6 +84,15 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
       }
     } catch {}
     return null;
+  };
+
+  // Normalize a video URL for storage. For YouTube, we always store the embed URL
+  // so playback works consistently. Other URLs are returned trimmed as-is.
+  const normalizeVideoUrl = (raw: string): string => {
+    const trimmed = raw.trim();
+    const embed = getYouTubeEmbed(trimmed);
+    if (embed) return embed;
+    return trimmed;
   };
 
   // In consultation (read) mode we hide editing chrome; managers click Edit to add/remove.
@@ -132,10 +152,11 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
       return;
     }
     try {
+      const finalUrl = type === 'video_link' ? normalizeVideoUrl(url) : url.trim();
       await add.mutateAsync({
         recipe_id: recipeId,
         media_type: type,
-        url: url.trim(),
+        url: finalUrl,
         title: title.trim() || null,
         sort_order: type === 'video_link' ? videos.length : webs.length,
       });
