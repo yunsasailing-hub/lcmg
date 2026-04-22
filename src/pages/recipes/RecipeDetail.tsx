@@ -394,6 +394,22 @@ export default function RecipeDetail() {
                   <p className="text-xs text-muted-foreground">{t('recipes.list.fields.useAsIngredientHint')}</p>
                 </div>
               </div>
+              {form.use_as_ingredient && pubCheck && !isNew && (
+                pubCheck.eligible ? (
+                  <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+                    {t('recipes.list.fields.useAsIngredientPublished')}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                    <div className="font-semibold">{t('recipes.list.fields.useAsIngredientNotPublished')}</div>
+                    <ul className="mt-1 ml-4 list-disc">
+                      {pubCheck.reasons.map(r => (
+                        <li key={r}>{t(`recipes.list.fields.useAsIngredientReasons.${r}`)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              )}
             </Section>
 
             {/* B. CLASSIFICATION */}
