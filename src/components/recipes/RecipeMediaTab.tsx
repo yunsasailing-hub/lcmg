@@ -159,7 +159,9 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
         sort_order: type === 'video_link' ? videos.length : webs.length,
       });
       toast({ title: t('recipes.media.added') });
-      if (type === 'video_link') { setVideoUrl(''); setVideoTitle(''); }
+      if (type === 'video_link') {
+        setVideoUrl(''); setVideoTitle(''); setVideoNote(''); setVideoSource('youtube');
+      }
       else { setWebUrl(''); setWebTitle(''); }
     } catch (err: any) {
       toast({ title: t('recipes.media.addFailed'), description: err?.message, variant: 'destructive' });
