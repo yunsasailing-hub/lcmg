@@ -239,8 +239,8 @@ const en = {
       cols: {
         code: 'Recipe ID',
         name: 'Recipe Name',
-        category: 'Category',
-        type: 'Type',
+        category: 'Recipe Category',
+        type: 'Recipe Type',
         department: 'Department',
         branch: 'Branch',
         active: 'Active',
