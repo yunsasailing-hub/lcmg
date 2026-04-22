@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   // Fetch all active assignments that need generation
   const { data: assignments, error: fetchErr } = await supabase
     .from("checklist_assignments")
-    .select("*, template:checklist_templates(checklist_type, department, default_due_time)")
+    .select("*, template:checklist_templates(checklist_type, department, default_due_time, warning_recipient_user_ids)")
     .eq("status", "active")
     .lte("start_date", today);
 
@@ -51,6 +51,12 @@ Deno.serve(async (req) => {
       const dueTime = a.template.default_due_time || "10:00:00";
       const dueDatetime = new Date(`${date}T${dueTime}+07:00`).toISOString();
 
+      // Recipient resolution: assignment override → template default → empty (notification fn fallback)
+      const recipientIds =
+        (Array.isArray(a.warning_recipient_user_ids) && a.warning_recipient_user_ids.length > 0)
+          ? a.warning_recipient_user_ids
+          : (Array.isArray(a.template.warning_recipient_user_ids) ? a.template.warning_recipient_user_ids : []);
+
       const { error: insErr } = await supabase
         .from("checklist_instances")
         .insert({
@@ -62,6 +68,7 @@ Deno.serve(async (req) => {
           branch_id: a.branch_id,
           scheduled_date: date,
           due_datetime: dueDatetime,
+          warning_recipient_user_ids: recipientIds,
         });
 
       if (insErr) {
