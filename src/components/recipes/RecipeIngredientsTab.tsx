@@ -56,7 +56,8 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
   const { t } = useTranslation();
   const { data: lines = [], isLoading } = useRecipeIngredients(recipeId);
   const { data: ingredients = [] } = useIngredients(false);
-  const { data: units = [] } = useRecipeUnits(true);
+  // Only approved (active) units shown in ingredient lines
+  const { data: units = [] } = useRecipeUnits(false);
   const { data: recipeIngredientOptions = [] } = useRecipesAsIngredient(recipeId);
   const save = useSaveRecipeIngredients();
 

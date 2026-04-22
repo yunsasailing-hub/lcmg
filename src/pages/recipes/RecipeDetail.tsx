@@ -118,7 +118,8 @@ export default function RecipeDetail() {
   // Only show ACTIVE recipe categories/types in dropdowns (deactivated ingredient-style entries are excluded)
   const { data: categories = [] } = useRecipeCategories(false);
   const { data: types = [] } = useRecipeTypes(false);
-  const { data: units = [] } = useRecipeUnits(true);
+  // Only approved (active) units in Yield/Portion dropdowns
+  const { data: units = [] } = useRecipeUnits(false);
   const { data: branches = [] } = useBranches();
   // Data needed for PDF export (only fetched once we have a saved recipe).
   const { data: ingredients = [] } = useIngredients(true);
@@ -533,11 +534,18 @@ export default function RecipeDetail() {
               </div>
               <div>
                 <Label htmlFor="pu">{t('recipes.list.fields.portionUnit')}</Label>
-                <Input
-                  id="pu" value={form.portion_unit}
-                  onChange={e => update('portion_unit', e.target.value)}
-                  placeholder={t('recipes.list.fields.portionUnitPh')}
-                />
+                <Select
+                  value={form.portion_unit || NONE}
+                  onValueChange={v => update('portion_unit', v === NONE ? '' : v)}
+                >
+                  <SelectTrigger id="pu"><SelectValue placeholder={t('common.selectPlaceholder')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>{t('common.none')}</SelectItem>
+                    {units.map(u => (
+                      <SelectItem key={u.id} value={u.code}>{u.code} — {u.name_en}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="sl">{t('recipes.list.fields.shelfLife')}</Label>

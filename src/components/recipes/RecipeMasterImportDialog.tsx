@@ -123,7 +123,8 @@ export default function RecipeMasterImportDialog({ open, onOpenChange }: Props) 
   const { data: existingRecipes = [] } = useRecipes(true);
   const { data: types = [] } = useRecipeTypes(true);
   const { data: branches = [] } = useBranches();
-  const { data: units = [] } = useRecipeUnits(true);
+  // Only approved (active) units accepted in imports
+  const { data: units = [] } = useRecipeUnits(false);
 
   const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload');
   const [fileName, setFileName] = useState('');
