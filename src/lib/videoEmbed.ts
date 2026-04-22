@@ -4,12 +4,13 @@
  *
  * Source types:
  *  - youtube       (youtube.com / youtu.be / youtube shorts)
- *  - private_cloud (vimeo, drive, dropbox, s3-style links we can't iframe-embed
+ *  - google_drive  (drive.google.com / docs.google.com file links)
+ *  - private_cloud (vimeo, dropbox, onedrive, s3-style links we can't iframe-embed
  *                   reliably — Vimeo is the only one we attempt to embed)
  *  - external_url  (anything else)
  */
 
-export type VideoSource = 'youtube' | 'private_cloud' | 'external_url';
+export type VideoSource = 'youtube' | 'google_drive' | 'private_cloud' | 'external_url';
 
 export interface ParsedVideo {
   source: VideoSource;
@@ -24,7 +25,6 @@ export interface ParsedVideo {
 const PRIVATE_HOSTS = [
   'vimeo.com',
   'player.vimeo.com',
-  'drive.google.com',
   'dropbox.com',
   'www.dropbox.com',
   'onedrive.live.com',
@@ -80,6 +80,10 @@ export function parseVideo(raw: string): ParsedVideo {
     };
   }
 
+  if (u.hostname === 'drive.google.com' || u.hostname === 'docs.google.com') {
+    return { source: 'google_drive', url: trimmed, embedUrl: null, thumbnailUrl: null };
+  }
+
   if (PRIVATE_HOSTS.some(h => u.hostname.endsWith(h))) {
     return { source: 'private_cloud', url: trimmed, embedUrl: null, thumbnailUrl: null };
   }
@@ -95,6 +99,7 @@ export function normalizeStoredVideoUrl(raw: string): string {
 export function videoSourceLabel(source: VideoSource): string {
   switch (source) {
     case 'youtube': return 'YouTube';
+    case 'google_drive': return 'Google Drive';
     case 'private_cloud': return 'Private cloud';
     default: return 'External link';
   }
