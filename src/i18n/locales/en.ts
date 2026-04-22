@@ -343,6 +343,7 @@ const en = {
       noIngredients: 'No ingredients found.',
       sourceIngredient: 'Ingredient',
       sourceRecipe: 'Recipe',
+      batchRecipe: 'Batch Recipe',
       ingredientCode: 'Code',
       basePrice: 'Base price',
       noIngredientSelected: 'Select an ingredient to compute cost.',

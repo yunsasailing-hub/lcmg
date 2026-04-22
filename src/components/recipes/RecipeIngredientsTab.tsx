@@ -103,7 +103,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     const recipes = recipeIngredientOptions.map(r => ({
       id: `${RECIPE_PREFIX}${r.id}`,
       label: r.name_en,
-      sublabel: `${r.code ?? '—'} · ${t('recipes.lines.sourceRecipe')}`,
+      sublabel: `${r.code ?? '—'} · ${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}`,
     }));
     return [...base, ...recipes];
   }, [ingredients, recipeIngredientOptions, t]);
@@ -309,7 +309,7 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                           </div>
                           <div className="font-mono text-xs text-muted-foreground">
                             {subRecipe
-                              ? `${subRecipe.code ?? ''} · ${t('recipes.lines.sourceRecipe')}`
+                              ? `${subRecipe.code ?? ''} · ${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}`
                               : (ing?.code ?? '')}
                           </div>
                         </TableCell>
