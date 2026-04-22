@@ -15,7 +15,7 @@ import Papa from 'papaparse';
 import type {
   Ingredient,
   IngredientTypeRow,
-  RecipeCategory,
+  IngredientCategoryRow,
   RecipeUnit,
   Storehouse,
   CurrencyCode,
@@ -27,7 +27,7 @@ import { CURRENCIES, mapNameToLegacyEnum } from '@/hooks/useIngredients';
 export const COLUMNS = {
   id: 'ID',
   name: 'Name',
-  type: 'Type',
+  type: 'Ingredient Type',
   category: 'Ingredient Category',
   unit: 'Unit',
   storehouse: 'Storehouse',
@@ -85,7 +85,7 @@ export interface ParsedIngredientPayload {
   is_active: boolean;
   ingredient_type_id: string;
   ingredient_type: 'batch_recipe' | 'bottled_drink' | 'ingredient' | 'other';
-  category_id: string;
+  ingredient_category_id: string;
   base_unit_id: string;
   storehouse_id: string | null;
   notes: string | null;
@@ -96,7 +96,7 @@ export interface ParsedIngredientPayload {
 export interface MasterLists {
   ingredients: Ingredient[];
   types: IngredientTypeRow[];
-  categories: RecipeCategory[];
+  categories: IngredientCategoryRow[];
   units: RecipeUnit[];
   storehouses: Storehouse[];
 }
