@@ -30,6 +30,7 @@ import {
   useRecipeIngredients,
   RECIPE_CURRENCIES, RECIPE_DEPARTMENTS,
   type CurrencyCode, type RecipeDepartment,
+  useRecipeAsIngredientPublication,
 } from '@/hooks/useRecipes';
 import { useRecipeProcedures } from '@/hooks/useRecipeProcedures';
 import { useRecipeMedia } from '@/hooks/useRecipeMedia';
