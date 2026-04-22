@@ -102,6 +102,7 @@ export default function RecipesIngredients() {
       ingredient_type: 'batch_recipe' as any,
       ingredient_type_id: batchRecipeTypeId,
       category_id: null,
+      ingredient_category_id: null,
       base_unit_id: r.yield_unit_id,
       purchase_unit_id: null,
       storehouse_id: null,
@@ -136,7 +137,7 @@ export default function RecipesIngredients() {
         if (!hay.includes(s)) return false;
       }
       if (typeFilter !== 'all' && (i as any).ingredient_type_id !== typeFilter) return false;
-      if (categoryFilter !== 'all' && i.category_id !== categoryFilter) return false;
+      if (categoryFilter !== 'all' && (i as any).ingredient_category_id !== categoryFilter) return false;
       if (unitFilter !== 'all' && i.base_unit_id !== unitFilter) return false;
       if (storehouseFilter !== 'all' && i.storehouse_id !== storehouseFilter) return false;
       if (statusFilter === 'active' && !i.is_active) return false;
@@ -148,8 +149,10 @@ export default function RecipesIngredients() {
       switch (sortBy) {
         case 'code': return (a.code ?? '').localeCompare(b.code ?? '');
         case 'category': {
-          const ac = a.category_id ? categoryMap[a.category_id]?.name_en ?? '' : '';
-          const bc = b.category_id ? categoryMap[b.category_id]?.name_en ?? '' : '';
+          const aId = (a as any).ingredient_category_id;
+          const bId = (b as any).ingredient_category_id;
+          const ac = aId ? categoryMap[aId]?.name_en ?? '' : '';
+          const bc = bId ? categoryMap[bId]?.name_en ?? '' : '';
           return ac.localeCompare(bc);
         }
         case 'updated': return (b.updated_at ?? '').localeCompare(a.updated_at ?? '');
