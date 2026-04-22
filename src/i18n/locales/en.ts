@@ -474,6 +474,7 @@ const en = {
       maxVideosReached: 'Maximum 4 videos reached',
       removeVideo: 'Remove video',
       saveFirst: 'Save first to attach media.',
+      videoSlotHint: 'Video {{current}} of {{max}}',
     },
     service: {
       title: 'Service / Sales Information',
