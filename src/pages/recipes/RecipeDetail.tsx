@@ -420,6 +420,8 @@ export default function RecipeDetail() {
                   </div>
                 )
               )}
+              {/* Main image lives in Master Info — reuses recipe_media (primary image) */}
+              <RecipeMainImageField recipeId={isNew ? undefined : id} canManage={canManage} />
             </Section>
 
             {/* B. CLASSIFICATION */}
