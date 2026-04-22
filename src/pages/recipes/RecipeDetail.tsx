@@ -663,7 +663,7 @@ export default function RecipeDetail() {
                   return (
                     <div
                       className="shrink-0 overflow-hidden rounded-md border bg-muted"
-                      style={{ width: '128px', aspectRatio: '4 / 3' }}
+                      style={{ width: '168px', aspectRatio: '4 / 3' }}
                     >
                       <img
                         src={primaryImage.url}
