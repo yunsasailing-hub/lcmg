@@ -294,18 +294,6 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                 config={mediaConfig}
                 items={mediaItems}
               />
-
-              <div>
-                <Label htmlFor="srv-web" className="flex items-center gap-2">
-                  <LinkIcon className="h-4 w-4" /> {t('recipes.service.fields.webLink')}
-                </Label>
-                <Input
-                  id="srv-web" value={form.web_link}
-                  onChange={e => update('web_link', e.target.value)}
-                  placeholder="https://"
-                />
-                {errors.web_link && <p className="mt-1 text-xs text-destructive">{errors.web_link}</p>}
-              </div>
             </div>
 
             <div className="flex flex-wrap justify-end gap-2 pt-2">
