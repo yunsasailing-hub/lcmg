@@ -10,6 +10,11 @@ import {
 import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
+import {
+  NotificationPanelProvider,
+  useNotificationPanel,
+} from '@/components/notifications/NotificationPanelContext';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 
 const useNavItems = () => {
   const { t } = useTranslation();
@@ -255,9 +260,40 @@ function MobileNav() {
   );
 }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+const NOTIFICATION_PANEL_WIDTH = 380;
+
+function DesktopNotificationPanel() {
+  const { open, setOpen } = useNotificationPanel();
+  return (
+    <aside
+      aria-hidden={!open}
+      className={cn(
+        'fixed inset-y-0 right-0 z-40 border-l bg-background shadow-xl',
+        'transition-transform duration-200 ease-out',
+        open ? 'translate-x-0' : 'translate-x-full pointer-events-none',
+      )}
+      style={{ width: NOTIFICATION_PANEL_WIDTH }}
+    >
+      {open && (
+        <div className="h-full overflow-hidden">
+          <NotificationCenter onClose={() => setOpen(false)} />
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function ShellInner({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
+  const { open: notifOpen, setOpen: setNotifOpen } = useNotificationPanel();
+  const location = useLocation();
+
+  // Auto-close on navigation (mobile only)
+  useEffect(() => {
+    if (isMobile && notifOpen) setNotifOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, isMobile]);
 
   if (isMobile) {
     return (
@@ -268,15 +304,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const sidebarWidth = collapsed ? 68 : 220;
+  const rightOffset = notifOpen ? NOTIFICATION_PANEL_WIDTH : 0;
+
   return (
     <div className="min-h-screen bg-background">
       <SidebarNav collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       <main
-        className="transition-all duration-300 p-6"
-        style={{ marginLeft: collapsed ? 68 : 220 }}
+        className="transition-all duration-200 ease-out p-6"
+        style={{ marginLeft: sidebarWidth, marginRight: rightOffset }}
       >
         {children}
       </main>
+      <DesktopNotificationPanel />
     </div>
+  );
+}
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <NotificationPanelProvider>
+      <ShellInner>{children}</ShellInner>
+    </NotificationPanelProvider>
   );
 }
