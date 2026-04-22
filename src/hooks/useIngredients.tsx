@@ -200,11 +200,19 @@ export async function isIngredientCodeTaken(code: string, excludeId?: string): P
 
 // ---------------- Master option-list mutations (Settings page) ----------------
 
-type OptionTable = 'ingredient_types' | 'recipe_categories' | 'recipe_units' | 'storehouses';
+type OptionTable =
+  | 'ingredient_types'
+  | 'ingredient_categories'
+  | 'recipe_categories'
+  | 'recipe_types'
+  | 'recipe_units'
+  | 'storehouses';
 
 const QUERY_KEY: Record<OptionTable, string> = {
   ingredient_types: 'ingredient_types',
+  ingredient_categories: 'ingredient_categories',
   recipe_categories: 'recipe_categories',
+  recipe_types: 'recipe_types',
   recipe_units: 'recipe_units',
   storehouses: 'storehouses',
 };
