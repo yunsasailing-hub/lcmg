@@ -16,6 +16,7 @@ import {
   type RecipeServiceInfoRow,
 } from '@/hooks/useRecipeServiceInfo';
 import { toast } from '@/hooks/use-toast';
+import MediaFrame from './MediaFrame';
 
 interface Props {
   recipeId: string;
@@ -269,10 +270,9 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                 </Label>
                 {form.image_url ? (
                   <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <img
-                      src={form.image_url} alt="service"
-                      className="h-24 w-24 rounded-md border object-cover"
-                    />
+                    <MediaFrame compact>
+                      <img src={form.image_url} alt="service" />
+                    </MediaFrame>
                     <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
                       <Upload className="h-4 w-4" /> {uploading ? t('recipes.media.uploading') : t('recipes.media.replaceImage')}
                     </Button>
@@ -355,10 +355,9 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                       {t('recipes.service.mediaSection')}
                     </div>
                     {info.image_url && (
-                      <img
-                        src={info.image_url} alt="service"
-                        className="max-h-64 rounded-md border object-cover"
-                      />
+                      <MediaFrame compact>
+                        <img src={info.image_url} alt="service" />
+                      </MediaFrame>
                     )}
                     <div className="flex flex-wrap gap-2">
                       {info.video_url && (
