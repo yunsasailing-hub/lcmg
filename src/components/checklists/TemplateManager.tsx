@@ -35,6 +35,7 @@ import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 import { useAssignmentCountByTemplate } from '@/hooks/useAssignments';
 import AssignmentManager from '@/components/checklists/AssignmentManager';
+import WarningRecipientsField from '@/components/checklists/WarningRecipientsField';
 
 const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
   opening: '10:00',
