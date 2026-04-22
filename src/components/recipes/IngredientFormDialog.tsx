@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  useRecipeCategories, useRecipeUnits, useStorehouses, useUpsertIngredient,
+  useIngredientCategories, useRecipeUnits, useStorehouses, useUpsertIngredient,
   useIngredientTypes, isIngredientCodeTaken, mapNameToLegacyEnum,
   CURRENCIES,
   type Ingredient, type CurrencyCode,
@@ -36,7 +36,7 @@ const emptyForm = {
   name_en: '',
   is_active: true,
   ingredient_type_id: '',
-  category_id: '',
+  ingredient_category_id: '',
   base_unit_id: '',
   storehouse_id: '',
   price: '',
@@ -60,7 +60,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
   const archivedLabel = t('common.archived');
 
   const { data: types = [] } = useIngredientTypes(true);
-  const { data: categories = [] } = useRecipeCategories(true);
+  const { data: categories = [] } = useIngredientCategories(true);
   const { data: units = [] } = useRecipeUnits(true);
   const { data: storehouses = [] } = useStorehouses(true);
   const upsert = useUpsertIngredient();
