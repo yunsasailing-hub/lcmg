@@ -374,20 +374,32 @@ export default function RecipesIngredients() {
             </TableHeader>
             <TableBody>
               {filtered.map(ing => {
+                const derived = isDerived(ing);
                 const cat = ing.category_id ? categoryMap[ing.category_id] : null;
                 const unit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
                 const sh = ing.storehouse_id ? storehouseMap[ing.storehouse_id] : null;
                 const typeName = (ing as any).ingredient_type_id
                   ? typeMap[(ing as any).ingredient_type_id]?.name_en
                   : null;
+                const onRowClick = () => {
+                  if (derived) navigate(`/recipes/list/${(ing as DerivedRow).__recipeId}`);
+                  else openView(ing as Ingredient);
+                };
                 return (
-                  <TableRow key={ing.id} className="cursor-pointer" onClick={() => openView(ing)}>
+                  <TableRow key={ing.id} className="cursor-pointer" onClick={onRowClick}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{ing.code ?? '—'}</TableCell>
                     <TableCell>
-                      <div className="font-medium">{ing.name_en}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {ing.name_en}
+                        {derived && (
+                          <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                            Recipe
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">
-                      {typeName ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`)}
+                      {derived ? 'Batch Recipe' : (typeName ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`))}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">{cat?.name_en ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">{unit?.name_en ?? '—'}</TableCell>
@@ -404,15 +416,15 @@ export default function RecipesIngredients() {
                     </TableCell>
                     <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => openView(ing)} aria-label={t('common.view') || 'View'}>
+                        <Button size="icon" variant="ghost" onClick={onRowClick} aria-label={t('common.view') || 'View'}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {canManage && (
+                        {canManage && !derived && (
                           <>
-                            <Button size="icon" variant="ghost" onClick={() => openEdit(ing)} aria-label={t('common.edit')}>
+                            <Button size="icon" variant="ghost" onClick={() => openEdit(ing as Ingredient)} aria-label={t('common.edit')}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" onClick={() => setArchiveTarget(ing)}
+                            <Button size="icon" variant="ghost" onClick={() => setArchiveTarget(ing as Ingredient)}
                               aria-label={ing.is_active ? t('recipes.ingredients.archive') : t('recipes.ingredients.restore')}>
                               {ing.is_active ? <Archive className="h-4 w-4" /> : <ArchiveRestore className="h-4 w-4" />}
                             </Button>
