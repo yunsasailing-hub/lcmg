@@ -228,11 +228,11 @@ export default function RecipesList() {
                         <img
                           src={thumbMap[r.id]}
                           alt=""
-                          className="h-10 w-10 shrink-0 rounded-md border object-cover"
+                          className="h-[50px] w-[50px] shrink-0 rounded-md border object-cover"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+                        <div className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
                           <ImageIcon className="h-4 w-4" />
                         </div>
                       )}
