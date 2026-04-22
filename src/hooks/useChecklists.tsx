@@ -456,6 +456,7 @@ export function useCreateAssignment() {
       end_date?: string | null;
       notes?: string | null;
       branch_id?: string | null;
+      warning_recipient_user_ids?: string[];
     }) => {
       const normalizedAssignment = {
         template_id: assignment.template_id,
@@ -465,12 +466,13 @@ export function useCreateAssignment() {
         end_date: assignment.end_date || null,
         notes: assignment.notes || null,
         branch_id: assignment.branch_id || null,
+        warning_recipient_user_ids: assignment.warning_recipient_user_ids || [],
         created_by: user!.id,
       };
 
       const { data: template, error: templateError } = await supabase
         .from('checklist_templates')
-        .select('checklist_type, department, default_due_time')
+        .select('checklist_type, department, default_due_time, warning_recipient_user_ids')
         .eq('id', assignment.template_id)
         .single();
 
@@ -495,6 +497,12 @@ export function useCreateAssignment() {
       const dueTime = (template as any).default_due_time || '10:00:00';
       const dueDatetime = new Date(`${assignment.start_date}T${dueTime}+07:00`).toISOString();
 
+      // Recipient resolution: assignment override → template default → empty (function will fallback)
+      const recipientIds =
+        (assignment.warning_recipient_user_ids && assignment.warning_recipient_user_ids.length > 0)
+          ? assignment.warning_recipient_user_ids
+          : ((template as any).warning_recipient_user_ids || []);
+
       const firstInstancePayload = {
         template_id: assignment.template_id,
         assignment_id: createdAssignment.id,
@@ -504,6 +512,7 @@ export function useCreateAssignment() {
         branch_id: assignment.branch_id || null,
         scheduled_date: assignment.start_date,
         due_datetime: dueDatetime,
+        warning_recipient_user_ids: recipientIds,
       };
 
       const { error: firstInstanceError } = await supabase

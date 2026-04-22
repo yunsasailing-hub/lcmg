@@ -35,6 +35,7 @@ import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
 import { useAssignmentCountByTemplate } from '@/hooks/useAssignments';
 import AssignmentManager from '@/components/checklists/AssignmentManager';
+import WarningRecipientsField from '@/components/checklists/WarningRecipientsField';
 
 const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
   opening: '10:00',
@@ -53,6 +54,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
     { title: '', photo_requirement: 'none' },
   ]);
+  const [warningRecipientUserIds, setWarningRecipientUserIds] = useState<string[]>([]);
 
   const create = useCreateTemplate();
 
@@ -73,6 +75,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
         department,
         branch_id: null,
         default_due_time: dueTime + ':00',
+        warning_recipient_user_ids: warningRecipientUserIds,
       },
       tasks: validTasks.map((t, i) => ({
         title: t.title.trim(),
@@ -96,6 +99,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
     setDepartment('kitchen');
     setDueTime(DEFAULT_DUE_TIMES['opening']);
     setTasks([{ title: '', photo_requirement: 'none' }]);
+    setWarningRecipientUserIds([]);
   };
 
   return (
@@ -144,6 +148,11 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
             <Label>Default Due Time</Label>
             <Input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-36" />
           </div>
+
+          <WarningRecipientsField
+            value={warningRecipientUserIds}
+            onChange={setWarningRecipientUserIds}
+          />
 
           {/* Tasks */}
           <div>
@@ -205,6 +214,9 @@ function AssignDialog({ template }: { template: any }) {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
+  const [warningRecipientUserIds, setWarningRecipientUserIds] = useState<string[]>(
+    Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
+  );
 
   const { data: users, isLoading: usersLoading, isError: usersError } = useActiveUsersForAssignment();
   const createAssignment = useCreateAssignment();
@@ -229,6 +241,7 @@ function AssignDialog({ template }: { template: any }) {
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
       notes: notes.trim() || null,
+      warning_recipient_user_ids: warningRecipientUserIds,
     }, {
       onSuccess: () => {
         toast.success(periodicity === 'once' ? 'Checklist assigned!' : 'Recurring checklist assigned and first checklist created!');
@@ -248,6 +261,9 @@ function AssignDialog({ template }: { template: any }) {
     setStartDate(new Date());
     setEndDate(undefined);
     setNotes('');
+    setWarningRecipientUserIds(
+      Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
+    );
   };
 
   const getUserLabel = (u: any) => {
@@ -347,6 +363,12 @@ function AssignDialog({ template }: { template: any }) {
             <Label>Notes</Label>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes…" rows={2} />
           </div>
+
+          <WarningRecipientsField
+            value={warningRecipientUserIds}
+            onChange={setWarningRecipientUserIds}
+            preferredBranchId={template?.branch_id || null}
+          />
         </div>
 
         <DialogFooter>
