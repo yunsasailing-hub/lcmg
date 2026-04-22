@@ -19,6 +19,9 @@ export interface AssignmentWithProfile {
   last_generated_date: string | null;
   branch_id: string | null;
   assignee?: { full_name: string | null; avatar_url: string | null; department: string | null; position: string | null } | null;
+  warning_recipient_user_ids: string[];
+  effective_warning_recipients?: { user_id: string; full_name: string | null }[];
+  warning_recipients_source?: 'assignment' | 'template' | 'fallback' | 'none';
 }
 
 export function useAssignmentsByTemplate(templateId: string | undefined) {
@@ -32,7 +35,26 @@ export function useAssignmentsByTemplate(templateId: string | undefined) {
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      const userIds = [...new Set((data || []).map(a => a.assigned_to))];
+      // Fetch template-level warning recipients as fallback
+      let templateWarningIds: string[] = [];
+      if (templateId) {
+        const { data: tpl } = await supabase
+          .from('checklist_templates')
+          .select('warning_recipient_user_ids')
+          .eq('id', templateId)
+          .maybeSingle();
+        templateWarningIds = (tpl?.warning_recipient_user_ids as string[] | null) || [];
+      }
+
+      // Collect all user IDs we need to resolve: assignees + all warning recipient IDs
+      const allUserIds = new Set<string>();
+      for (const a of data || []) {
+        if (a.assigned_to) allUserIds.add(a.assigned_to);
+        for (const id of (a.warning_recipient_user_ids as string[] | null) || []) allUserIds.add(id);
+      }
+      for (const id of templateWarningIds) allUserIds.add(id);
+
+      const userIds = [...allUserIds];
       let profilesMap: Record<string, { full_name: string | null; avatar_url: string | null; department: string | null; position: string | null }> = {};
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
@@ -44,10 +66,29 @@ export function useAssignmentsByTemplate(templateId: string | undefined) {
         }
       }
 
-      return (data || []).map(a => ({
-        ...a,
-        assignee: profilesMap[a.assigned_to] || null,
-      }));
+      return (data || []).map(a => {
+        const assignmentIds = (a.warning_recipient_user_ids as string[] | null) || [];
+        let effectiveIds: string[] = [];
+        let source: 'assignment' | 'template' | 'fallback' | 'none' = 'none';
+        if (assignmentIds.length > 0) {
+          effectiveIds = assignmentIds;
+          source = 'assignment';
+        } else if (templateWarningIds.length > 0) {
+          effectiveIds = templateWarningIds;
+          source = 'template';
+        }
+        const effective_warning_recipients = effectiveIds.map(uid => ({
+          user_id: uid,
+          full_name: profilesMap[uid]?.full_name ?? null,
+        }));
+        return {
+          ...a,
+          assignee: profilesMap[a.assigned_to] || null,
+          warning_recipient_user_ids: assignmentIds,
+          effective_warning_recipients,
+          warning_recipients_source: source,
+        };
+      });
     },
     enabled: !!templateId,
   });
