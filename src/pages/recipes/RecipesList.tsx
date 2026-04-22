@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, CookingPot, Eye, Pencil, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Search, CookingPot, Eye, Pencil, Archive, ArchiveRestore, Upload } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import EmptyState from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
+import RecipeMasterImportDialog from '@/components/recipes/RecipeMasterImportDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -48,6 +49,7 @@ export default function RecipesList() {
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all'); // all|yes|not
   const [archiveTarget, setArchiveTarget] = useState<Recipe | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: recipes = [], isLoading } = useRecipes(true); // fetch all, filter client-side
   const { data: categories = [] } = useRecipeCategories(true);
@@ -102,9 +104,14 @@ export default function RecipesList() {
       description={t('recipes.list.subtitle')}
       actions={
         canManage ? (
-          <Button onClick={() => navigate('/recipes/list/new')}>
-            <Plus className="h-4 w-4" /> {t('recipes.list.add')}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" /> Import
+            </Button>
+            <Button onClick={() => navigate('/recipes/list/new')}>
+              <Plus className="h-4 w-4" /> {t('recipes.list.add')}
+            </Button>
+          </div>
         ) : null
       }
     >
