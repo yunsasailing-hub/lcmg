@@ -7,7 +7,6 @@ import RecipeIngredientsTab from '@/components/recipes/RecipeIngredientsTab';
 import RecipeProcedureTab from '@/components/recipes/RecipeProcedureTab';
 import RecipeServiceInfoTab from '@/components/recipes/RecipeServiceInfoTab';
 import RecipeMainImageField from '@/components/recipes/RecipeMainImageField';
-import MediaFrame from '@/components/recipes/MediaFrame';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -656,16 +655,22 @@ export default function RecipeDetail() {
           {/* Compact consultation hero — recipe sheet style */}
           <Card id="sec-master" className="scroll-mt-24">
             <CardContent className="space-y-4 p-5 sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="flex flex-row items-start gap-4">
                 {(() => {
                   const primaryImage = mediaItems.find(m => m.media_type === 'image' && m.is_primary)
                     ?? mediaItems.find(m => m.media_type === 'image');
                   if (!primaryImage) return null;
                   return (
-                    <div className="shrink-0">
-                      <MediaFrame compact>
-                        <img src={primaryImage.url} alt={primaryImage.title ?? recipe.name_en} />
-                      </MediaFrame>
+                    <div
+                      className="shrink-0 overflow-hidden rounded-md border bg-muted"
+                      style={{ width: '128px', aspectRatio: '4 / 3' }}
+                    >
+                      <img
+                        src={primaryImage.url}
+                        alt={primaryImage.title ?? recipe.name_en}
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
                     </div>
                   );
                 })()}
