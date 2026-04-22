@@ -657,7 +657,19 @@ export default function RecipeDetail() {
           <Card id="sec-master" className="scroll-mt-24">
             <CardContent className="space-y-4 p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 space-y-2">
+                {(() => {
+                  const primaryImage = mediaItems.find(m => m.media_type === 'image' && m.is_primary)
+                    ?? mediaItems.find(m => m.media_type === 'image');
+                  if (!primaryImage) return null;
+                  return (
+                    <div className="shrink-0">
+                      <MediaFrame compact>
+                        <img src={primaryImage.url} alt={primaryImage.title ?? recipe.name_en} />
+                      </MediaFrame>
+                    </div>
+                  );
+                })()}
+                <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={recipe.is_active ? 'default' : 'secondary'}>
                       {recipe.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
