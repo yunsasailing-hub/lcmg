@@ -289,60 +289,22 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                 {t('recipes.service.mediaSection')}
               </div>
 
-              <div>
-                <Label className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4" /> {t('recipes.service.fields.image')}
-                </Label>
-                <div
-                  className="mt-2 rounded-md outline-none focus-within:ring-2 focus-within:ring-ring/40"
-                  tabIndex={0}
-                  onPaste={handleImagePaste}
-                >
-                {form.image_url ? (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <MediaFrame compact>
-                      <img src={form.image_url} alt="service" />
-                    </MediaFrame>
-                    <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                      <Upload className="h-4 w-4" /> {uploading ? t('recipes.media.uploading') : t('recipes.media.replaceImage')}
-                    </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={handleRemoveImage} disabled={uploading}>
-                      <Trash2 className="h-4 w-4" /> {t('recipes.media.removeImage')}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                    <Upload className="h-4 w-4" /> {uploading ? t('recipes.media.uploading') : t('recipes.media.uploadImage')}
-                  </Button>
-                )}
-                  <p className="mt-1 text-[11px] text-muted-foreground">{t('recipes.media.pasteHint')}</p>
-                </div>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImage} />
-              </div>
+              <MediaCollectionField
+                recipeIdForBucket={recipeId}
+                config={mediaConfig}
+                items={mediaItems}
+              />
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="srv-vid" className="flex items-center gap-2">
-                    <Video className="h-4 w-4" /> {t('recipes.service.fields.videoLink')}
-                  </Label>
-                  <Input
-                    id="srv-vid" value={form.video_url}
-                    onChange={e => update('video_url', e.target.value)}
-                    placeholder="https://"
-                  />
-                  {errors.video_url && <p className="mt-1 text-xs text-destructive">{errors.video_url}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="srv-web" className="flex items-center gap-2">
-                    <LinkIcon className="h-4 w-4" /> {t('recipes.service.fields.webLink')}
-                  </Label>
-                  <Input
-                    id="srv-web" value={form.web_link}
-                    onChange={e => update('web_link', e.target.value)}
-                    placeholder="https://"
-                  />
-                  {errors.web_link && <p className="mt-1 text-xs text-destructive">{errors.web_link}</p>}
-                </div>
+              <div>
+                <Label htmlFor="srv-web" className="flex items-center gap-2">
+                  <LinkIcon className="h-4 w-4" /> {t('recipes.service.fields.webLink')}
+                </Label>
+                <Input
+                  id="srv-web" value={form.web_link}
+                  onChange={e => update('web_link', e.target.value)}
+                  placeholder="https://"
+                />
+                {errors.web_link && <p className="mt-1 text-xs text-destructive">{errors.web_link}</p>}
               </div>
             </div>
 
