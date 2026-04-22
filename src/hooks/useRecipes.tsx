@@ -241,6 +241,100 @@ export interface RecipeAsIngredientOption {
   currency: CurrencyCode;
 }
 
+/** Reason a flagged recipe cannot be published as an ingredient source. */
+export type RecipeAsIngredientUnpublishedReason =
+  | 'inactive'
+  | 'missing_name'
+  | 'missing_yield_quantity'
+  | 'missing_yield_unit'
+  | 'missing_total_cost';
+
+export interface RecipeAsIngredientUnpublished {
+  id: string;
+  code: string | null;
+  name_en: string;
+  reasons: RecipeAsIngredientUnpublishedReason[];
+}
+
+export interface RecipeAsIngredientResult {
+  published: RecipeAsIngredientOption[];
+  unpublished: RecipeAsIngredientUnpublished[];
+}
+
+/**
+ * Lightweight publication check for a single recipe context.
+ * Used in Recipe Detail to surface a clear reason when "Use as Ingredient = Yes"
+ * but the recipe cannot actually be exposed in other recipe ingredient pickers.
+ */
+export function useRecipeAsIngredientPublication(recipeId: string | undefined) {
+  return useQuery({
+    queryKey: ['recipe_as_ingredient_publication', recipeId],
+    enabled: !!recipeId,
+    queryFn: async (): Promise<{
+      eligible: boolean;
+      reasons: RecipeAsIngredientUnpublishedReason[];
+      totalCost: number;
+      costPerYieldUnit: number;
+    }> => {
+      const { data: r, error } = await supabase
+        .from('recipes')
+        .select('id, name_en, is_active, use_as_ingredient, yield_quantity, yield_unit_id')
+        .eq('id', recipeId!)
+        .maybeSingle();
+      if (error) throw error;
+      const reasons: RecipeAsIngredientUnpublishedReason[] = [];
+      if (!r) return { eligible: false, reasons: ['inactive'], totalCost: 0, costPerYieldUnit: 0 };
+      if (!r.is_active) reasons.push('inactive');
+      if (!r.name_en?.trim()) reasons.push('missing_name');
+      const yq = Number(r.yield_quantity) || 0;
+      if (!(yq > 0)) reasons.push('missing_yield_quantity');
+      if (!r.yield_unit_id) reasons.push('missing_yield_unit');
+
+      // Compute total ingredient cost for this recipe (linked-to-master lines only).
+      const { data: lines } = await supabase
+        .from('recipe_ingredients')
+        .select('ingredient_id, unit_id, quantity, cost_adjust_pct')
+        .eq('recipe_id', recipeId!);
+      const ingIds = Array.from(new Set((lines ?? []).map(l => l.ingredient_id).filter(Boolean) as string[]));
+      const ingMap: Record<string, any> = {};
+      if (ingIds.length) {
+        const { data: ings } = await supabase
+          .from('ingredients')
+          .select('id, price, purchase_to_base_factor, base_unit_id')
+          .in('id', ingIds);
+        (ings ?? []).forEach(i => { ingMap[i.id] = i; });
+      }
+      const unitIds = Array.from(new Set([
+        ...((lines ?? []).map(l => l.unit_id).filter(Boolean) as string[]),
+        ...Object.values(ingMap).map((i: any) => i.base_unit_id).filter(Boolean),
+      ]));
+      const unitMap: Record<string, any> = {};
+      if (unitIds.length) {
+        const { data: us } = await supabase
+          .from('recipe_units').select('id, factor_to_base, unit_type').in('id', unitIds);
+        (us ?? []).forEach(u => { unitMap[u.id] = u; });
+      }
+      let total = 0;
+      (lines ?? []).forEach(l => {
+        const ing = l.ingredient_id ? ingMap[l.ingredient_id] : null;
+        if (!ing) return;
+        const lineUnit = l.unit_id ? unitMap[l.unit_id] : null;
+        const baseUnit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
+        const sameType = lineUnit && baseUnit && lineUnit.unit_type === baseUnit.unit_type;
+        const unitFactor = sameType ? Number(lineUnit?.factor_to_base ?? 1) : 1;
+        const baseFactor = Number(ing.purchase_to_base_factor ?? 1) || 1;
+        const price = Number(ing.price ?? 0);
+        const cost = computeLineCost(Number(l.quantity) || 0, unitFactor, baseFactor, price);
+        total += applyAdjustment(cost, Number(l.cost_adjust_pct) || 0);
+      });
+      if (!(total > 0)) reasons.push('missing_total_cost');
+      const costPerYieldUnit = yq > 0 ? total / yq : 0;
+      return { eligible: reasons.length === 0, reasons, totalCost: total, costPerYieldUnit };
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
 /**
  * Returns active recipes that are flagged `use_as_ingredient = true`,
  * each with a computed cost-per-yield-unit derived from their own ingredient lines.
@@ -256,7 +350,8 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
   return useQuery({
     queryKey: ['recipes_as_ingredient', { excludeRecipeId: excludeRecipeId ?? null }],
     queryFn: async (): Promise<RecipeAsIngredientOption[]> => {
-      // 1) Recipes flagged for reuse
+      // 1) Recipes flagged for reuse (active only). Eligibility is enforced
+      //    in step 6 below so the picker never receives unpublishable rows.
       const { data: recipes, error: rErr } = await supabase
         .from('recipes')
         .select('id, code, name_en, yield_quantity, yield_unit_id, currency, use_as_ingredient, is_active')
@@ -319,20 +414,27 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
       });
 
       // 6) Map to options with cost-per-yield-unit
-      return list.map(r => {
+      //    Publication rules (per spec): must have name, yield qty > 0,
+      //    yield unit, and a positive total ingredient cost.
+      const out: RecipeAsIngredientOption[] = [];
+      for (const r of list) {
         const total = totals[r.id] ?? 0;
         const yq = Number(r.yield_quantity) || 0;
-        const costPerYieldUnit = yq > 0 ? total / yq : 0;
-        return {
+        if (!r.name_en?.trim()) continue;
+        if (!(yq > 0)) continue;
+        if (!r.yield_unit_id) continue;
+        if (!(total > 0)) continue;
+        out.push({
           id: r.id,
           code: r.code ?? null,
           name_en: r.name_en,
           yield_quantity: r.yield_quantity ?? null,
           yield_unit_id: r.yield_unit_id ?? null,
-          costPerYieldUnit,
+          costPerYieldUnit: total / yq,
           currency: (r.currency ?? 'VND') as CurrencyCode,
-        };
-      });
+        });
+      }
+      return out;
     },
     staleTime: 60 * 1000,
   });
