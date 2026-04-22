@@ -465,6 +465,9 @@ const en = {
       stepImagePh: 'Upload an image for this step',
       replaceImage: 'Replace image',
       removeImage: 'Remove image',
+      pasteHint: 'or paste with Ctrl+V / ⌘V',
+      pasted: 'Image pasted from clipboard',
+      pasteNotImage: 'Clipboard does not contain an image',
     },
     service: {
       title: 'Service / Sales Information',
