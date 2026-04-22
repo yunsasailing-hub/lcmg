@@ -396,8 +396,15 @@ export default function RecipeDetail() {
               </div>
               {form.use_as_ingredient && pubCheck && !isNew && (
                 pubCheck.eligible ? (
-                  <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
-                    {t('recipes.list.fields.useAsIngredientPublished')}
+                  <div className="space-y-2">
+                    <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+                      {t('recipes.list.fields.useAsIngredientPublished')}
+                    </div>
+                    {pubCheck.zeroCost && (
+                      <div className="rounded-md border border-muted-foreground/30 bg-muted px-3 py-2 text-xs text-muted-foreground">
+                        {t('recipes.list.fields.useAsIngredientZeroCostWarning')}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">

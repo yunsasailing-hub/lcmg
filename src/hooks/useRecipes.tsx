@@ -241,13 +241,14 @@ export interface RecipeAsIngredientOption {
   currency: CurrencyCode;
 }
 
-/** Reason a flagged recipe cannot be published as an ingredient source. */
+/** Reason a flagged recipe cannot be published as an ingredient source.
+ *  NOTE: zero total cost is intentionally NOT a blocking reason — it only
+ *  triggers a soft warning so real kitchen workflows are never blocked. */
 export type RecipeAsIngredientUnpublishedReason =
   | 'inactive'
   | 'missing_name'
   | 'missing_yield_quantity'
-  | 'missing_yield_unit'
-  | 'missing_total_cost';
+  | 'missing_yield_unit';
 
 export interface RecipeAsIngredientUnpublished {
   id: string;
@@ -275,6 +276,7 @@ export function useRecipeAsIngredientPublication(recipeId: string | undefined) {
       reasons: RecipeAsIngredientUnpublishedReason[];
       totalCost: number;
       costPerYieldUnit: number;
+      zeroCost: boolean;
     }> => {
       const { data: r, error } = await supabase
         .from('recipes')
@@ -283,7 +285,7 @@ export function useRecipeAsIngredientPublication(recipeId: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       const reasons: RecipeAsIngredientUnpublishedReason[] = [];
-      if (!r) return { eligible: false, reasons: ['inactive'], totalCost: 0, costPerYieldUnit: 0 };
+      if (!r) return { eligible: false, reasons: ['inactive'], totalCost: 0, costPerYieldUnit: 0, zeroCost: true };
       if (!r.is_active) reasons.push('inactive');
       if (!r.name_en?.trim()) reasons.push('missing_name');
       const yq = Number(r.yield_quantity) || 0;
@@ -327,9 +329,9 @@ export function useRecipeAsIngredientPublication(recipeId: string | undefined) {
         const cost = computeLineCost(Number(l.quantity) || 0, unitFactor, baseFactor, price);
         total += applyAdjustment(cost, Number(l.cost_adjust_pct) || 0);
       });
-      if (!(total > 0)) reasons.push('missing_total_cost');
+      // Zero cost is a soft warning, NOT a blocking reason.
       const costPerYieldUnit = yq > 0 ? total / yq : 0;
-      return { eligible: reasons.length === 0, reasons, totalCost: total, costPerYieldUnit };
+      return { eligible: reasons.length === 0, reasons, totalCost: total, costPerYieldUnit, zeroCost: !(total > 0) };
     },
     staleTime: 30 * 1000,
   });
@@ -413,9 +415,10 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
         totals[l.recipe_id] = (totals[l.recipe_id] ?? 0) + adj;
       });
 
-      // 6) Map to options with cost-per-yield-unit
-      //    Publication rules (per spec): must have name, yield qty > 0,
-      //    yield unit, and a positive total ingredient cost.
+      // 6) Map to options with cost-per-yield-unit.
+      //    Publication rules: name, yield qty > 0, yield unit.
+      //    Zero total cost is ALLOWED — recipe still shows in picker
+      //    with costPerYieldUnit = 0 (soft warning surfaced in UI).
       const out: RecipeAsIngredientOption[] = [];
       for (const r of list) {
         const total = totals[r.id] ?? 0;
@@ -423,14 +426,13 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
         if (!r.name_en?.trim()) continue;
         if (!(yq > 0)) continue;
         if (!r.yield_unit_id) continue;
-        if (!(total > 0)) continue;
         out.push({
           id: r.id,
           code: r.code ?? null,
           name_en: r.name_en,
           yield_quantity: r.yield_quantity ?? null,
           yield_unit_id: r.yield_unit_id ?? null,
-          costPerYieldUnit: total / yq,
+          costPerYieldUnit: yq > 0 ? total / yq : 0,
           currency: (r.currency ?? 'VND') as CurrencyCode,
         });
       }
