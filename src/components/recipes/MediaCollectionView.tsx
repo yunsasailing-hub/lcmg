@@ -82,7 +82,7 @@ export default function MediaCollectionView({
             <VideoIcon className="h-3.5 w-3.5" />
             {t('recipes.media.videosLabel', 'Videos')}
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2 sm:max-w-[520px]">
             {showLegacyVideo ? (
               <VideoPreview url={legacyVideoUrl!} compact />
             ) : showExtraLegacyVideos ? (

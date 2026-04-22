@@ -406,14 +406,6 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                       legacyVideoUrl={s.video_url}
                       mode="edit"
                     />
-                    <div className="mt-3">
-                      <label className="text-xs text-muted-foreground">{t('recipes.media.stepWeb')}</label>
-                      <Input
-                        value={s.web_link ?? ''}
-                        onChange={e => patch(s._key, { web_link: e.target.value })}
-                        placeholder={t('recipes.media.webUrl') as string}
-                      />
-                    </div>
                   </div>
                 </div>
               </div>

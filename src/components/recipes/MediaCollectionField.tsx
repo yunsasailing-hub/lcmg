@@ -180,7 +180,7 @@ export default function MediaCollectionField({ recipeIdForBucket, config, items,
           </label>
         </div>
         {videos.length > 0 && (
-          <div className="mb-2 space-y-2">
+          <div className="mb-2 grid grid-cols-2 gap-2 sm:max-w-[520px]">
             {videos.map(v => (
               <div key={v.id} className="relative">
                 <VideoPreview url={v.url} title={v.title} compact />
