@@ -190,7 +190,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                                 Matched:{' '}
                                 {Object.entries(c.aliasMatches)
                                   .map(([canon, actual]) =>
-                                    norm(canon) === norm(actual)
+                                    canon.toLowerCase() === actual.toLowerCase()
                                       ? canon
                                       : `${canon} ← ${actual}`,
                                   )
