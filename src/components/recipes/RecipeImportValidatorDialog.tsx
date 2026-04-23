@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -18,6 +18,7 @@ import {
   type ValidationStatus,
   type ImportAction,
 } from '@/lib/recipeImportValidation';
+import { executeRecipeImport, type ImportRunResult } from '@/lib/recipeImportExecution';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
@@ -43,10 +44,13 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [runResult, setRunResult] = useState<ImportRunResult | null>(null);
 
   const reset = () => {
     setFile(null);
     setResult(null);
+    setRunResult(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -54,6 +58,37 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
     const f = e.target.files?.[0] ?? null;
     setFile(f);
     setResult(null);
+    setRunResult(null);
+  };
+
+  const onImport = async () => {
+    if (!file || !result) return;
+    if (result.errors.length > 0) {
+      toast({
+        title: 'Import blocked',
+        description: 'Resolve all errors before importing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setImporting(true);
+    setRunResult(null);
+    try {
+      const run = await executeRecipeImport(file, result, supabase);
+      setRunResult(run);
+      toast({
+        title: 'Import finished',
+        description: `${run.recipesCreated} created, ${run.recipesUpdated} updated, ${run.recipesFailed} failed.`,
+      });
+    } catch (e) {
+      toast({
+        title: 'Import failed',
+        description: e instanceof Error ? e.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const onValidate = async () => {
@@ -191,19 +226,24 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <Button
-                          disabled={!allowed}
-                          onClick={() =>
-                            toast({
-                              title: 'Preview only',
-                              description: 'Import execution will be added in next phase.',
-                            })
-                          }
+                          disabled={!allowed || importing}
+                          onClick={onImport}
                         >
-                          <Upload className="h-4 w-4" /> Import Recipes
+                          {importing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          {importing ? 'Importing…' : 'Import Recipes'}
                         </Button>
                         {!allowed && (
                           <span className="text-xs text-muted-foreground">
                             Fix blocking errors to enable import.
+                          </span>
+                        )}
+                        {importing && (
+                          <span className="text-xs text-muted-foreground">
+                            Writing to database — please wait.
                           </span>
                         )}
                       </div>
@@ -540,6 +580,61 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                           {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
                         </ul>
                       </div>
+                    )}
+                  </section>
+                )}
+
+                {/* Phase 3: Import Result */}
+                {runResult && (
+                  <section className="rounded-md border border-emerald-600/40 bg-emerald-500/5 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <h3 className="font-semibold">Import Result</h3>
+                    </div>
+                    <div className="mb-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3 lg:grid-cols-5">
+                      <div><span className="text-muted-foreground">Processed: </span><strong>{runResult.totalRecipesProcessed}</strong></div>
+                      <div><span className="text-muted-foreground">Created: </span><strong className="text-sky-600">{runResult.recipesCreated}</strong></div>
+                      <div><span className="text-muted-foreground">Updated: </span><strong className="text-indigo-600">{runResult.recipesUpdated}</strong></div>
+                      <div><span className="text-muted-foreground">Failed: </span><strong className={runResult.recipesFailed ? 'text-destructive' : ''}>{runResult.recipesFailed}</strong></div>
+                      <div><span className="text-muted-foreground">With warnings: </span><strong className={runResult.recipesWithWarnings ? 'text-amber-600' : ''}>{runResult.recipesWithWarnings}</strong></div>
+                      <div><span className="text-muted-foreground">Ingredient rows inserted: </span><strong>{runResult.ingredientRowsInserted}</strong></div>
+                      <div><span className="text-muted-foreground">Procedure rows inserted: </span><strong>{runResult.procedureRowsInserted}</strong></div>
+                      <div><span className="text-muted-foreground">Blank ingredient section: </span><strong className={runResult.recipesWithBlankIngredients ? 'text-amber-600' : ''}>{runResult.recipesWithBlankIngredients}</strong></div>
+                      <div><span className="text-muted-foreground">Blank procedure section: </span><strong className={runResult.recipesWithBlankProcedures ? 'text-amber-600' : ''}>{runResult.recipesWithBlankProcedures}</strong></div>
+                    </div>
+                    {runResult.rows.length > 0 && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>recipe_code</TableHead>
+                            <TableHead>recipe_name</TableHead>
+                            <TableHead className="w-24">Action</TableHead>
+                            <TableHead className="w-24">Result</TableHead>
+                            <TableHead>Issue summary</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {runResult.rows.map((r) => (
+                            <TableRow key={r.recipeCode}>
+                              <TableCell className="font-mono text-xs">{r.recipeCode}</TableCell>
+                              <TableCell className="text-sm">{r.recipeName || <em className="text-muted-foreground">—</em>}</TableCell>
+                              <TableCell>
+                                <ActionBadge action={r.importAction} />
+                              </TableCell>
+                              <TableCell>
+                                {r.result === 'SUCCESS' ? (
+                                  <Badge className="bg-emerald-600 hover:bg-emerald-600">SUCCESS</Badge>
+                                ) : (
+                                  <Badge variant="destructive">FAILED</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className={`text-xs ${r.result === 'FAILED' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                {r.issueSummary}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     )}
                   </section>
                 )}
