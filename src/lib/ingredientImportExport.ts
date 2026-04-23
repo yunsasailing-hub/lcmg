@@ -37,6 +37,24 @@ export const COLUMNS = {
   currency: 'Currency',
 } as const;
 
+/**
+ * Header aliases — accepted alternate column headers from older exports
+ * or hand-edited files. All values normalized to lower-case for matching.
+ * The first item is the canonical header (must match COLUMNS).
+ */
+const HEADER_ALIASES: Record<keyof typeof COLUMNS, string[]> = {
+  id: ['id', 'code', 'ingredient id', 'ingredient code', 'sku'],
+  name: ['name', 'ingredient name', 'name (en)', 'name_en'],
+  type: ['ingredient type', 'type', 'ingredient_type', 'item type'],
+  category: ['ingredient category', 'category', 'ingredient_category'],
+  unit: ['unit', 'base unit', 'uom'],
+  storehouse: ['storehouse', 'store house', 'storage', 'warehouse'],
+  note: ['note', 'notes', 'remark', 'remarks'],
+  active: ['active', 'is active', 'enabled', 'status'],
+  price: ['price', 'unit price', 'cost'],
+  currency: ['currency', 'ccy'],
+};
+
 export const EXPORT_HEADER_ORDER = [
   COLUMNS.id,
   COLUMNS.name,
