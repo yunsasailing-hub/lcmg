@@ -132,6 +132,30 @@ export interface ImportSummary {
 const norm = (v: unknown) => String(v ?? '').trim();
 const normKey = (v: unknown) => norm(v).toLowerCase();
 
+/** Aggressive label normalizer for unit/type matching: lowercase, trim,
+ * collapse internal whitespace, and remove spaces around '/'. */
+const normLabel = (v: unknown) => {
+  return String(v ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s*\/\s*/g, '/')
+    .replace(/\s+/g, ' ');
+};
+
+/** Build canonical-header lookup from any aliased header. */
+function buildHeaderAliasMap(): Map<string, keyof typeof COLUMNS> {
+  const m = new Map<string, keyof typeof COLUMNS>();
+  for (const key of Object.keys(COLUMNS) as Array<keyof typeof COLUMNS>) {
+    // Canonical header itself
+    m.set(COLUMNS[key].toLowerCase(), key);
+    for (const alias of HEADER_ALIASES[key]) {
+      m.set(alias.toLowerCase(), key);
+    }
+  }
+  return m;
+}
+const HEADER_ALIAS_MAP = buildHeaderAliasMap();
+
 /** Build a case-insensitive lookup of ACTIVE options keyed by trimmed-lower label. */
 function buildActiveLookup<T extends { is_active: boolean }>(
   items: T[],
