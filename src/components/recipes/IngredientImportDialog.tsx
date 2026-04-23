@@ -254,8 +254,8 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[92vh] max-w-5xl overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-hidden flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
             Import Ingredients
@@ -267,8 +267,9 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
         {step === 'upload' && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 py-8">
+          <div className="flex flex-col items-center justify-center gap-4 py-8">
             <div className="rounded-full bg-muted p-6">
               <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
             </div>
