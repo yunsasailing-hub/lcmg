@@ -5,7 +5,7 @@ import { Plus, Search, CookingPot, Eye, Pencil, Archive, ArchiveRestore, Upload,
 import RecipesShell from '@/components/recipes/RecipesShell';
 import EmptyState from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
-import RecipeMasterImportDialog from '@/components/recipes/RecipeMasterImportDialog';
+import RecipeImportValidatorDialog from '@/components/recipes/RecipeImportValidatorDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -313,7 +313,7 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <RecipeMasterImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <RecipeImportValidatorDialog open={importOpen} onOpenChange={setImportOpen} />
     </RecipesShell>
   );
 }
