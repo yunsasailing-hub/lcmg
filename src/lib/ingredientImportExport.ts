@@ -37,6 +37,24 @@ export const COLUMNS = {
   currency: 'Currency',
 } as const;
 
+/**
+ * Header aliases — accepted alternate column headers from older exports
+ * or hand-edited files. All values normalized to lower-case for matching.
+ * The first item is the canonical header (must match COLUMNS).
+ */
+const HEADER_ALIASES: Record<keyof typeof COLUMNS, string[]> = {
+  id: ['id', 'code', 'ingredient id', 'ingredient code', 'sku'],
+  name: ['name', 'ingredient name', 'name (en)', 'name_en'],
+  type: ['ingredient type', 'type', 'ingredient_type', 'item type'],
+  category: ['ingredient category', 'category', 'ingredient_category'],
+  unit: ['unit', 'base unit', 'uom'],
+  storehouse: ['storehouse', 'store house', 'storage', 'warehouse'],
+  note: ['note', 'notes', 'remark', 'remarks'],
+  active: ['active', 'is active', 'enabled', 'status'],
+  price: ['price', 'unit price', 'cost'],
+  currency: ['currency', 'ccy'],
+};
+
 export const EXPORT_HEADER_ORDER = [
   COLUMNS.id,
   COLUMNS.name,
@@ -114,16 +132,43 @@ export interface ImportSummary {
 const norm = (v: unknown) => String(v ?? '').trim();
 const normKey = (v: unknown) => norm(v).toLowerCase();
 
-/** Build a case-insensitive lookup of ACTIVE options keyed by trimmed-lower label. */
+/** Aggressive label normalizer for unit/type matching: lowercase, trim,
+ * collapse internal whitespace, and remove spaces around '/'. */
+const normLabel = (v: unknown) => {
+  return String(v ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s*\/\s*/g, '/')
+    .replace(/\s+/g, ' ');
+};
+
+/** Build canonical-header lookup from any aliased header. */
+function buildHeaderAliasMap(): Map<string, keyof typeof COLUMNS> {
+  const m = new Map<string, keyof typeof COLUMNS>();
+  for (const key of Object.keys(COLUMNS) as Array<keyof typeof COLUMNS>) {
+    // Canonical header itself
+    m.set(COLUMNS[key].toLowerCase(), key);
+    for (const alias of HEADER_ALIASES[key]) {
+      m.set(alias.toLowerCase(), key);
+    }
+  }
+  return m;
+}
+const HEADER_ALIAS_MAP = buildHeaderAliasMap();
+
+/** Build a case-insensitive lookup of ACTIVE options keyed by normalized labels.
+ * Each item can be indexed under multiple keys (e.g. name_en and name_vi). */
 function buildActiveLookup<T extends { is_active: boolean }>(
   items: T[],
-  getLabel: (item: T) => string,
+  getLabels: (item: T) => Array<string | null | undefined>,
 ) {
   const m = new Map<string, T>();
   for (const it of items) {
     if (!it.is_active) continue;
-    const key = normKey(getLabel(it));
-    if (key) m.set(key, it);
+    for (const raw of getLabels(it)) {
+      const key = normLabel(raw);
+      if (key && !m.has(key)) m.set(key, it);
+    }
   }
   return m;
 }
@@ -259,7 +304,16 @@ export async function readFileAsRows(file: File): Promise<Record<string, string>
 function normalizeRowKeys(row: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(row)) {
-    out[norm(k)] = norm(v);
+    const trimmed = norm(k);
+    out[trimmed] = norm(v);
+    // If this header matches a known alias, also expose the value under the canonical header
+    const canonicalKey = HEADER_ALIAS_MAP.get(trimmed.toLowerCase());
+    if (canonicalKey) {
+      const canonicalHeader = COLUMNS[canonicalKey];
+      if (!(canonicalHeader in out) || !out[canonicalHeader]) {
+        out[canonicalHeader] = norm(v);
+      }
+    }
   }
   return out;
 }
@@ -270,10 +324,26 @@ export function validateRows(
   fileRows: Record<string, string>[],
   master: MasterLists,
 ): ImportRow[] {
-  const typeLk = buildActiveLookup(master.types, (t) => t.name_en);
-  const catLk = buildActiveLookup(master.categories, (c) => c.name_en);
-  const unitLk = buildActiveLookup(master.units, (u) => u.name_en);
-  const shLk = buildActiveLookup(master.storehouses, (s) => s.name);
+  // Index master records under multiple labels for case/whitespace/locale-tolerant matches.
+  // For units, also index combined "EN/VI" form (e.g. "Liter/Lít") so exported headers
+  // that interpolate both names still match the active record.
+  const typeLk = buildActiveLookup(master.types, (t) => [
+    t.name_en,
+    t.name_vi,
+    `${t.name_en}/${t.name_vi ?? ''}`,
+  ]);
+  const catLk = buildActiveLookup(master.categories, (c) => [
+    c.name_en,
+    c.name_vi,
+    `${c.name_en}/${c.name_vi ?? ''}`,
+  ]);
+  const unitLk = buildActiveLookup(master.units, (u) => [
+    u.name_en,
+    u.name_vi,
+    `${u.name_en}/${u.name_vi ?? ''}`,
+    u.code,
+  ]);
+  const shLk = buildActiveLookup(master.storehouses, (s) => [s.name]);
   const currencyLk = new Map<string, CurrencyCode>(
     CURRENCIES.map((c) => [c.toLowerCase(), c]),
   );
@@ -323,7 +393,7 @@ export function validateRows(
     if (!name_en) errors.push(`'${COLUMNS.name}' is required.`);
 
     // Required: Type
-    const typeMatch = typeLk.get(normKey(typeVal));
+    const typeMatch = typeLk.get(normLabel(typeVal));
     if (!norm(typeVal)) {
       errors.push(`'${COLUMNS.type}' is required.`);
     } else if (!typeMatch) {
@@ -336,7 +406,7 @@ export function validateRows(
     }
 
     // Required: Category
-    const catMatch = catLk.get(normKey(catVal));
+    const catMatch = catLk.get(normLabel(catVal));
     if (!norm(catVal)) {
       errors.push(`'${COLUMNS.category}' is required.`);
     } else if (!catMatch) {
@@ -349,7 +419,7 @@ export function validateRows(
     }
 
     // Required: Unit
-    const unitMatch = unitLk.get(normKey(unitVal));
+    const unitMatch = unitLk.get(normLabel(unitVal));
     if (!norm(unitVal)) {
       errors.push(`'${COLUMNS.unit}' is required.`);
     } else if (!unitMatch) {
@@ -377,7 +447,7 @@ export function validateRows(
     // Optional: Storehouse
     let storehouse_id: string | null = null;
     if (norm(shVal)) {
-      const m = shLk.get(normKey(shVal));
+      const m = shLk.get(normLabel(shVal));
       if (!m) {
         errors.push(
           `'${COLUMNS.storehouse}' '${shVal}' is invalid. Expected one of: ${listLabels(
