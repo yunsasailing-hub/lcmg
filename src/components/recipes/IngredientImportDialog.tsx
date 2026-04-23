@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, Upload } from 'lucide-react';
 
@@ -349,9 +349,8 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                     </TableHeader>
                     <TableBody>
                       {visibleRows.map((r) => (
-                        <>
+                        <Fragment key={r.rowNumber}>
                         <TableRow
-                          key={r.rowNumber}
                           className="group cursor-pointer"
                           onClick={() => toggleRow(r.rowNumber)}
                         >
@@ -390,7 +389,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                           </TableCell>
                         </TableRow>
                         {expandedRows.has(r.rowNumber) && (
-                          <TableRow key={`${r.rowNumber}-detail`} className="bg-muted/30 hover:bg-muted/30">
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
                             <TableCell colSpan={9} className="p-4">
                               <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="space-y-1 text-sm">
@@ -444,7 +443,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                             </TableCell>
                           </TableRow>
                         )}
-                        </>
+                        </Fragment>
                       ))}
                       {visibleRows.length === 0 && (
                         <TableRow>
