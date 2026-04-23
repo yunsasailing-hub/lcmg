@@ -335,6 +335,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
           status: 'VALID',
           issues,
           issueSummary: '',
+          ingredientCount: 0,
         });
 
         if (codeRaw) {
