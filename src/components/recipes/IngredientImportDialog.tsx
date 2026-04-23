@@ -323,32 +323,32 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
               </TabsList>
               <TabsContent value={tab} className="mt-3">
                 <div className="rounded-lg border overflow-x-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-card z-10">
+                  <Table className="min-w-[1400px]">
+                    <TableHeader className="sticky top-0 bg-card z-20">
                       <TableRow>
-                        <TableHead className="w-16">Row</TableHead>
-                        <TableHead className="w-28">Status</TableHead>
-                        <TableHead className="w-20">Action</TableHead>
-                        <TableHead>{COLUMNS.id}</TableHead>
-                        <TableHead>{COLUMNS.name}</TableHead>
-                        <TableHead>{COLUMNS.type}</TableHead>
-                        <TableHead>{COLUMNS.category}</TableHead>
-                        <TableHead>{COLUMNS.unit}</TableHead>
-                        <TableHead className="min-w-[260px]">Issues</TableHead>
+                        <TableHead className="sticky left-0 z-30 bg-card w-16">Row</TableHead>
+                        <TableHead className="sticky left-16 z-30 bg-card w-28">Status</TableHead>
+                        <TableHead className="sticky left-[176px] z-30 bg-card w-24">Action</TableHead>
+                        <TableHead className="sticky left-[272px] z-30 bg-card min-w-[140px]">{COLUMNS.id}</TableHead>
+                        <TableHead className="sticky left-[412px] z-30 bg-card min-w-[200px] border-r">{COLUMNS.name}</TableHead>
+                        <TableHead className="min-w-[120px]">{COLUMNS.type}</TableHead>
+                        <TableHead className="min-w-[140px]">{COLUMNS.category}</TableHead>
+                        <TableHead className="min-w-[100px]">{COLUMNS.unit}</TableHead>
+                        <TableHead className="min-w-[420px]">Issues</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {visibleRows.map((r) => (
-                        <TableRow key={r.rowNumber}>
-                          <TableCell className="text-xs text-muted-foreground">{r.rowNumber}</TableCell>
-                          <TableCell>{sevBadge(r.severity)}</TableCell>
-                          <TableCell>{actBadge(r.action)}</TableCell>
-                          <TableCell className="font-mono text-xs">{r.raw[COLUMNS.id]}</TableCell>
-                          <TableCell className="text-sm">{r.raw[COLUMNS.name]}</TableCell>
+                        <TableRow key={r.rowNumber} className="group">
+                          <TableCell className="sticky left-0 z-10 bg-background group-hover:bg-muted/50 text-xs text-muted-foreground">{r.rowNumber}</TableCell>
+                          <TableCell className="sticky left-16 z-10 bg-background group-hover:bg-muted/50">{sevBadge(r.severity)}</TableCell>
+                          <TableCell className="sticky left-[176px] z-10 bg-background group-hover:bg-muted/50">{actBadge(r.action)}</TableCell>
+                          <TableCell className="sticky left-[272px] z-10 bg-background group-hover:bg-muted/50 font-mono text-xs">{r.raw[COLUMNS.id]}</TableCell>
+                          <TableCell className="sticky left-[412px] z-10 bg-background group-hover:bg-muted/50 text-sm border-r">{r.raw[COLUMNS.name]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.type]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.category]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.unit]}</TableCell>
-                          <TableCell className="text-xs max-w-[360px] whitespace-normal break-words">
+                          <TableCell className="text-xs whitespace-normal break-words align-top">
                             {r.errors.length > 0 && (
                               <ul className="list-disc list-inside text-destructive space-y-0.5">
                                 {r.errors.map((e, i) => (
