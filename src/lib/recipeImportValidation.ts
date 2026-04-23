@@ -256,6 +256,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         total: units.length,
         sample: units.slice(0, 12),
         readable: true,
+        values: units.map((u) => u.trim().toLowerCase()),
       };
       if (units.length === 0) {
         warnings.push('APPROVED_UNITS is readable but contains no unit values.');
