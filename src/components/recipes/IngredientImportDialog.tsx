@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, AlertTriangle, CheckCircle2, FileSpreadsheet, Upload } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, Upload } from 'lucide-react';
 
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -62,6 +62,16 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
   const [tab, setTab] = useState<'all' | RowSeverity>('all');
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [failures, setFailures] = useState<{ rowNumber: number; code: string; error: string }[]>([]);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  const toggleRow = (n: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+  };
 
   const counts = useMemo(() => {
     const c = { valid: 0, warning: 0, invalid: 0, create: 0, update: 0 };
@@ -326,7 +336,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                   <Table className="min-w-[1400px]">
                     <TableHeader className="sticky top-0 bg-card z-20">
                       <TableRow>
-                        <TableHead className="sticky left-0 z-30 bg-card w-16">Row</TableHead>
+                        <TableHead className="sticky left-0 z-30 bg-card w-20">Row</TableHead>
                         <TableHead className="sticky left-16 z-30 bg-card w-28">Status</TableHead>
                         <TableHead className="sticky left-[176px] z-30 bg-card w-24">Action</TableHead>
                         <TableHead className="sticky left-[272px] z-30 bg-card min-w-[140px]">{COLUMNS.id}</TableHead>
@@ -339,8 +349,21 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                     </TableHeader>
                     <TableBody>
                       {visibleRows.map((r) => (
-                        <TableRow key={r.rowNumber} className="group">
-                          <TableCell className="sticky left-0 z-10 bg-background group-hover:bg-muted/50 text-xs text-muted-foreground">{r.rowNumber}</TableCell>
+                        <Fragment key={r.rowNumber}>
+                        <TableRow
+                          className="group cursor-pointer"
+                          onClick={() => toggleRow(r.rowNumber)}
+                        >
+                          <TableCell className="sticky left-0 z-10 bg-background group-hover:bg-muted/50 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              {expandedRows.has(r.rowNumber) ? (
+                                <ChevronDown className="h-3 w-3" />
+                              ) : (
+                                <ChevronRight className="h-3 w-3" />
+                              )}
+                              {r.rowNumber}
+                            </span>
+                          </TableCell>
                           <TableCell className="sticky left-16 z-10 bg-background group-hover:bg-muted/50">{sevBadge(r.severity)}</TableCell>
                           <TableCell className="sticky left-[176px] z-10 bg-background group-hover:bg-muted/50">{actBadge(r.action)}</TableCell>
                           <TableCell className="sticky left-[272px] z-10 bg-background group-hover:bg-muted/50 font-mono text-xs">{r.raw[COLUMNS.id]}</TableCell>
@@ -365,6 +388,62 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                             )}
                           </TableCell>
                         </TableRow>
+                        {expandedRows.has(r.rowNumber) && (
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableCell colSpan={9} className="p-4">
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="space-y-1 text-sm">
+                                  <div className="flex gap-2">
+                                    <span className="text-muted-foreground w-20 shrink-0">Row:</span>
+                                    <span>{r.rowNumber}</span>
+                                  </div>
+                                  <div className="flex gap-2 items-center">
+                                    <span className="text-muted-foreground w-20 shrink-0">Status:</span>
+                                    {sevBadge(r.severity)}
+                                  </div>
+                                  <div className="flex gap-2 items-center">
+                                    <span className="text-muted-foreground w-20 shrink-0">Action:</span>
+                                    {actBadge(r.action)}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <span className="text-muted-foreground w-20 shrink-0">ID:</span>
+                                    <span className="font-mono text-xs break-all">{r.raw[COLUMNS.id]}</span>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <span className="text-muted-foreground w-20 shrink-0">Name:</span>
+                                    <span className="break-words">{r.raw[COLUMNS.name]}</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                  {r.errors.length === 0 && r.warnings.length === 0 && (
+                                    <p className="text-emerald-700 dark:text-emerald-400">No issues found.</p>
+                                  )}
+                                  {r.errors.length > 0 && (
+                                    <div>
+                                      <p className="font-medium text-destructive mb-1">Errors</p>
+                                      <ul className="list-disc list-inside text-destructive space-y-1">
+                                        {r.errors.map((e, i) => (
+                                          <li key={`de${i}`} className="break-words whitespace-normal">{e}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {r.warnings.length > 0 && (
+                                    <div>
+                                      <p className="font-medium text-amber-600 dark:text-amber-400 mb-1">Warnings</p>
+                                      <ul className="list-disc list-inside text-amber-600 dark:text-amber-400 space-y-1">
+                                        {r.warnings.map((w, i) => (
+                                          <li key={`dw${i}`} className="break-words whitespace-normal">{w}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </Fragment>
                       ))}
                       {visibleRows.length === 0 && (
                         <TableRow>
