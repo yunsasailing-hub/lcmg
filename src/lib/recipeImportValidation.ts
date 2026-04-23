@@ -14,6 +14,7 @@ export interface ColumnCheck {
   found: string[];
   missing: string[];
   status: ValidationStatus;
+  aliasMatches?: Record<string, string>; // canonical -> actual header used
 }
 
 export interface ApprovedUnitsSummary {
@@ -65,14 +66,47 @@ export const REQUIRED_SHEETS = [
 
 export const REQUIRED_COLUMNS: Record<string, string[]> = {
   RECIPES_MASTER_IMPORT: ['recipe_code', 'recipe_name'],
-  RECIPE_INGREDIENTS_IMPORT: [
-    'recipe_code', 'line_order', 'ingredient_code', 'ingredient_name', 'quantity', 'unit',
-  ],
+  RECIPE_INGREDIENTS_IMPORT: ['recipe_code', 'ingredient_code', 'quantity', 'unit'],
   RECIPE_PROCEDURE_IMPORT: ['recipe_code', 'step_number', 'instruction'],
   APPROVED_UNITS: ['unit'],
 };
 
+// Canonical field -> accepted header aliases (all lower-case for matching).
+// Canonical name itself is always accepted.
+export const COLUMN_ALIASES: Record<string, Record<string, string[]>> = {
+  RECIPES_MASTER_IMPORT: {
+    recipe_code: ['recipe_code', 'recipe_id'],
+    recipe_name: ['recipe_name'],
+  },
+  RECIPE_INGREDIENTS_IMPORT: {
+    recipe_code: ['recipe_code', 'recipe_id'],
+    ingredient_code: ['ingredient_code'],
+    quantity: ['quantity', 'qty'],
+    unit: ['unit'],
+  },
+  RECIPE_PROCEDURE_IMPORT: {
+    recipe_code: ['recipe_code', 'recipe_id'],
+    step_number: ['step_number', 'step_no'],
+    instruction: ['instruction'],
+  },
+  APPROVED_UNITS: {
+    unit: ['unit', 'approved_unit'],
+  },
+};
+
 const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();
+
+/** Resolve the actual header (in original casing) that satisfies a canonical field, if any. */
+function findAliasMatch(
+  headerLowerToOriginal: Map<string, string>,
+  aliases: string[],
+): string | undefined {
+  for (const a of aliases) {
+    const hit = headerLowerToOriginal.get(norm(a));
+    if (hit) return hit;
+  }
+  return undefined;
+}
 
 function readHeaderRow(ws: XLSX.WorkSheet): string[] {
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false });
@@ -136,6 +170,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
   // Column checks (only for sheets that exist)
   for (const sheet of REQUIRED_SHEETS) {
     const required = REQUIRED_COLUMNS[sheet];
+    const aliasMap = COLUMN_ALIASES[sheet] ?? {};
     const realName = sheetByLower.get(norm(sheet));
     if (!realName) continue;
     let header: string[] = [];
@@ -146,10 +181,18 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       result.columnChecks.push({ sheet, required, found: [], missing: required, status: 'ERROR' });
       continue;
     }
-    const headerLower = new Set(header.map(norm));
-    const missing = required.filter((c) => !headerLower.has(norm(c)));
+    const headerLowerToOriginal = new Map<string, string>();
+    for (const h of header) headerLowerToOriginal.set(norm(h), h);
+    const aliasMatches: Record<string, string> = {};
+    const missing: string[] = [];
+    for (const canonical of required) {
+      const aliases = aliasMap[canonical] ?? [canonical];
+      const hit = findAliasMatch(headerLowerToOriginal, aliases);
+      if (hit) aliasMatches[canonical] = hit;
+      else missing.push(canonical);
+    }
     const status: ValidationStatus = missing.length ? 'ERROR' : 'VALID';
-    result.columnChecks.push({ sheet, required, found: header, missing, status });
+    result.columnChecks.push({ sheet, required, found: header, missing, status, aliasMatches });
     if (missing.length) {
       errors.push(`Sheet ${sheet} is missing column(s): ${missing.join(', ')}`);
     }
@@ -161,10 +204,11 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
     try {
       const ws = wb.Sheets[auName];
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
-      // case-insensitive 'unit' column
+      // Accept 'unit' or 'approved_unit' (case-insensitive)
+      const unitAliases = COLUMN_ALIASES.APPROVED_UNITS.unit;
       const units: string[] = [];
       for (const row of rows) {
-        const key = Object.keys(row).find((k) => norm(k) === 'unit');
+        const key = Object.keys(row).find((k) => unitAliases.includes(norm(k)));
         if (!key) continue;
         const v = String(row[key] ?? '').trim();
         if (v) units.push(v);
@@ -213,8 +257,11 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       if (keyMap.size === 0) {
         for (const r of rawRows) for (const k of Object.keys(r)) keyMap.set(norm(k), k);
       }
-      const codeKey = keyMap.get('recipe_code');
-      const nameKey = keyMap.get('recipe_name');
+      const masterAliases = COLUMN_ALIASES.RECIPES_MASTER_IMPORT;
+      const codeKey =
+        masterAliases.recipe_code.map((a) => keyMap.get(a)).find(Boolean) as string | undefined;
+      const nameKey =
+        masterAliases.recipe_name.map((a) => keyMap.get(a)).find(Boolean) as string | undefined;
 
       const rows: MasterRowCheck[] = [];
       const codeOccurrences = new Map<string, number[]>();
