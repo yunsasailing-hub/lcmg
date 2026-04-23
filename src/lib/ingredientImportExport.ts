@@ -393,7 +393,7 @@ export function validateRows(
     if (!name_en) errors.push(`'${COLUMNS.name}' is required.`);
 
     // Required: Type
-    const typeMatch = typeLk.get(normKey(typeVal));
+    const typeMatch = typeLk.get(normLabel(typeVal));
     if (!norm(typeVal)) {
       errors.push(`'${COLUMNS.type}' is required.`);
     } else if (!typeMatch) {
@@ -406,7 +406,7 @@ export function validateRows(
     }
 
     // Required: Category
-    const catMatch = catLk.get(normKey(catVal));
+    const catMatch = catLk.get(normLabel(catVal));
     if (!norm(catVal)) {
       errors.push(`'${COLUMNS.category}' is required.`);
     } else if (!catMatch) {
@@ -419,7 +419,7 @@ export function validateRows(
     }
 
     // Required: Unit
-    const unitMatch = unitLk.get(normKey(unitVal));
+    const unitMatch = unitLk.get(normLabel(unitVal));
     if (!norm(unitVal)) {
       errors.push(`'${COLUMNS.unit}' is required.`);
     } else if (!unitMatch) {
@@ -447,7 +447,7 @@ export function validateRows(
     // Optional: Storehouse
     let storehouse_id: string | null = null;
     if (norm(shVal)) {
-      const m = shLk.get(normKey(shVal));
+      const m = shLk.get(normLabel(shVal));
       if (!m) {
         errors.push(
           `'${COLUMNS.storehouse}' '${shVal}' is invalid. Expected one of: ${listLabels(
