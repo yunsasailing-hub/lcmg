@@ -324,10 +324,26 @@ export function validateRows(
   fileRows: Record<string, string>[],
   master: MasterLists,
 ): ImportRow[] {
-  const typeLk = buildActiveLookup(master.types, (t) => t.name_en);
-  const catLk = buildActiveLookup(master.categories, (c) => c.name_en);
-  const unitLk = buildActiveLookup(master.units, (u) => u.name_en);
-  const shLk = buildActiveLookup(master.storehouses, (s) => s.name);
+  // Index master records under multiple labels for case/whitespace/locale-tolerant matches.
+  // For units, also index combined "EN/VI" form (e.g. "Liter/Lít") so exported headers
+  // that interpolate both names still match the active record.
+  const typeLk = buildActiveLookup(master.types, (t) => [
+    t.name_en,
+    t.name_vi,
+    `${t.name_en}/${t.name_vi ?? ''}`,
+  ]);
+  const catLk = buildActiveLookup(master.categories, (c) => [
+    c.name_en,
+    c.name_vi,
+    `${c.name_en}/${c.name_vi ?? ''}`,
+  ]);
+  const unitLk = buildActiveLookup(master.units, (u) => [
+    u.name_en,
+    u.name_vi,
+    `${u.name_en}/${u.name_vi ?? ''}`,
+    u.code,
+  ]);
+  const shLk = buildActiveLookup(master.storehouses, (s) => [s.name]);
   const currencyLk = new Map<string, CurrencyCode>(
     CURRENCIES.map((c) => [c.toLowerCase(), c]),
   );
