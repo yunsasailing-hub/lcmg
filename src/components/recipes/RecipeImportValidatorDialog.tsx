@@ -289,6 +289,71 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                   </section>
                 )}
 
+                {/* Ingredient rows validation (Phase 1C) */}
+                {result.ingredientRows.evaluated && (
+                  <section className="rounded-md border p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h3 className="font-semibold">RECIPE_INGREDIENTS_IMPORT — Row Validation</h3>
+                      <Badge variant={result.ingredientRows.errors === 0 ? 'secondary' : 'destructive'}>
+                        {result.ingredientRows.errors === 0
+                          ? 'All rows valid'
+                          : `${result.ingredientRows.errors} error(s)`}
+                      </Badge>
+                    </div>
+                    <div className="mb-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3 lg:grid-cols-6">
+                      <div><span className="text-muted-foreground">Visible rows: </span><strong>{result.ingredientRows.totalVisible}</strong></div>
+                      <div><span className="text-muted-foreground">Valid: </span><strong className="text-emerald-600">{result.ingredientRows.valid}</strong></div>
+                      <div><span className="text-muted-foreground">Errors: </span><strong className={result.ingredientRows.errors ? 'text-destructive' : ''}>{result.ingredientRows.errors}</strong></div>
+                      <div><span className="text-muted-foreground">Qty defaulted to 0: </span><strong>{result.ingredientRows.blankQuantityNormalizedCount}</strong></div>
+                      <div><span className="text-muted-foreground">Invalid unit: </span><strong>{result.ingredientRows.invalidUnitCount}</strong></div>
+                      <div><span className="text-muted-foreground">Blank ingredient_code: </span><strong>{result.ingredientRows.blankIngredientCodeCount}</strong></div>
+                    </div>
+                    {result.ingredientRows.rows.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No data rows to preview.</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-16">Row</TableHead>
+                            <TableHead>recipe_code</TableHead>
+                            <TableHead>ingredient_code</TableHead>
+                            <TableHead className="w-20">qty</TableHead>
+                            <TableHead className="w-24">unit</TableHead>
+                            <TableHead className="w-24">Status</TableHead>
+                            <TableHead>Issues</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {result.ingredientRows.rows.map((r) => (
+                            <TableRow key={r.rowNumber}>
+                              <TableCell className="font-mono text-xs">{r.rowNumber}</TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {r.recipeCode || <em className="text-muted-foreground">—</em>}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {r.ingredientCode || <em className="text-muted-foreground">—</em>}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {String(r.quantity)}
+                                {r.quantityNormalized && (
+                                  <span className="ml-1 text-[10px] text-muted-foreground">(defaulted)</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {r.unit || <em className="text-muted-foreground">—</em>}
+                              </TableCell>
+                              <TableCell><StatusBadge status={r.status} /></TableCell>
+                              <TableCell className="text-xs text-destructive">
+                                {r.issueSummary || <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </section>
+                )}
+
                 {/* Errors / Warnings */}
                 {(result.errors.length > 0 || result.warnings.length > 0) && (
                   <section className="rounded-md border p-3">

@@ -21,6 +21,7 @@ export interface ApprovedUnitsSummary {
   total: number;
   sample: string[];
   readable: boolean;
+  values?: string[]; // full normalized list (lowercased, trimmed) — internal use
 }
 
 export interface MasterRowCheck {
@@ -43,6 +44,31 @@ export interface MasterRowsSummary {
   rows: MasterRowCheck[];
 }
 
+export interface IngredientRowCheck {
+  rowNumber: number;
+  recipeCode: string;
+  ingredientCode: string;
+  quantity: number | string; // normalized (number) or original string when invalid
+  unit: string;
+  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  issues: string[];
+  issueSummary: string;
+  quantityNormalized: boolean; // true when blank quantity defaulted to 0
+}
+
+export interface IngredientRowsSummary {
+  evaluated: boolean;
+  totalVisible: number;
+  valid: number;
+  errors: number;
+  blankQuantityNormalizedCount: number;
+  invalidUnitCount: number;
+  blankIngredientCodeCount: number;
+  blankRecipeCodeCount: number;
+  nonNumericQuantityCount: number;
+  rows: IngredientRowCheck[];
+}
+
 export interface ValidationResult {
   fileName: string;
   fileReadable: boolean;
@@ -52,6 +78,7 @@ export interface ValidationResult {
   columnChecks: ColumnCheck[];
   approvedUnits: ApprovedUnitsSummary;
   masterRows: MasterRowsSummary;
+  ingredientRows: IngredientRowsSummary;
   errors: string[];
   warnings: string[];
   workbookValid: boolean;
@@ -132,6 +159,18 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       duplicateCodeCount: 0,
       blankCodeCount: 0,
       blankNameCount: 0,
+      rows: [],
+    },
+    ingredientRows: {
+      evaluated: false,
+      totalVisible: 0,
+      valid: 0,
+      errors: 0,
+      blankQuantityNormalizedCount: 0,
+      invalidUnitCount: 0,
+      blankIngredientCodeCount: 0,
+      blankRecipeCodeCount: 0,
+      nonNumericQuantityCount: 0,
       rows: [],
     },
     errors,
@@ -217,6 +256,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         total: units.length,
         sample: units.slice(0, 12),
         readable: true,
+        values: units.map((u) => u.trim().toLowerCase()),
       };
       if (units.length === 0) {
         warnings.push('APPROVED_UNITS is readable but contains no unit values.');
@@ -344,6 +384,119 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       }
     } catch {
       errors.push('RECIPES_MASTER_IMPORT rows could not be read.');
+    }
+  }
+
+  // Phase 1C: Row validation for RECIPE_INGREDIENTS_IMPORT.
+  const ingReal = sheetByLower.get(norm('RECIPE_INGREDIENTS_IMPORT'));
+  const ingCol = result.columnChecks.find((c) => c.sheet === 'RECIPE_INGREDIENTS_IMPORT');
+  if (ingReal && ingCol && ingCol.status === 'VALID') {
+    try {
+      const ws = wb.Sheets[ingReal];
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+        defval: '',
+        blankrows: false,
+      });
+      const sample = rawRows[0] ?? {};
+      const keyMap = new Map<string, string>();
+      for (const k of Object.keys(sample)) keyMap.set(norm(k), k);
+      if (keyMap.size === 0) {
+        for (const r of rawRows) for (const k of Object.keys(r)) keyMap.set(norm(k), k);
+      }
+      const a = COLUMN_ALIASES.RECIPE_INGREDIENTS_IMPORT;
+      const codeKey = a.recipe_code.map((al) => keyMap.get(al)).find(Boolean) as string | undefined;
+      const ingKey = a.ingredient_code.map((al) => keyMap.get(al)).find(Boolean) as string | undefined;
+      const qtyKey = a.quantity.map((al) => keyMap.get(al)).find(Boolean) as string | undefined;
+      const unitKey = a.unit.map((al) => keyMap.get(al)).find(Boolean) as string | undefined;
+
+      const approvedSet = new Set(result.approvedUnits.values ?? []);
+      const checkUnits = approvedSet.size > 0;
+
+      const rows: IngredientRowCheck[] = [];
+      let blankQtyNorm = 0;
+      let invalidUnit = 0;
+      let blankIngCode = 0;
+      let blankRecipeCode = 0;
+      let nonNumericQty = 0;
+
+      rawRows.forEach((row, idx) => {
+        const recipeCode = codeKey ? String(row[codeKey] ?? '').trim() : '';
+        const ingredientCode = ingKey ? String(row[ingKey] ?? '').trim() : '';
+        const qtyRaw = qtyKey ? String(row[qtyKey] ?? '').trim() : '';
+        const unitRaw = unitKey ? String(row[unitKey] ?? '').trim() : '';
+
+        const anyMeaningful = Object.values(row).some(
+          (v) => String(v ?? '').trim() !== '',
+        );
+        if (!recipeCode && !ingredientCode && !qtyRaw && !unitRaw && !anyMeaningful) return;
+
+        const rowNumber = idx + 2;
+        const issues: string[] = [];
+
+        if (!recipeCode) { issues.push('Missing recipe_code'); blankRecipeCode += 1; }
+        if (!ingredientCode) { issues.push('Missing ingredient_code'); blankIngCode += 1; }
+
+        // Quantity normalization
+        let quantity: number | string = 0;
+        let quantityNormalized = false;
+        if (qtyRaw === '') {
+          quantity = 0;
+          quantityNormalized = true;
+          blankQtyNorm += 1;
+        } else {
+          const num = Number(qtyRaw.replace(/,/g, '.'));
+          if (Number.isFinite(num)) {
+            quantity = num;
+          } else {
+            quantity = qtyRaw;
+            issues.push('Non-numeric quantity');
+            nonNumericQty += 1;
+          }
+        }
+
+        // Unit check against approved units
+        if (!unitRaw) {
+          issues.push('Missing unit');
+          invalidUnit += 1;
+        } else if (checkUnits && !approvedSet.has(unitRaw.toLowerCase())) {
+          issues.push(`Unit "${unitRaw}" not in APPROVED_UNITS`);
+          invalidUnit += 1;
+        }
+
+        rows.push({
+          rowNumber,
+          recipeCode,
+          ingredientCode,
+          quantity,
+          unit: unitRaw,
+          status: issues.length ? 'ERROR' : 'VALID',
+          issues,
+          issueSummary: issues.join('; '),
+          quantityNormalized,
+        });
+      });
+
+      const validCount = rows.filter((r) => r.status === 'VALID').length;
+      const errorCount = rows.length - validCount;
+
+      result.ingredientRows = {
+        evaluated: true,
+        totalVisible: rows.length,
+        valid: validCount,
+        errors: errorCount,
+        blankQuantityNormalizedCount: blankQtyNorm,
+        invalidUnitCount: invalidUnit,
+        blankIngredientCodeCount: blankIngCode,
+        blankRecipeCodeCount: blankRecipeCode,
+        nonNumericQuantityCount: nonNumericQty,
+        rows,
+      };
+
+      if (errorCount > 0) {
+        errors.push(`RECIPE_INGREDIENTS_IMPORT has ${errorCount} row(s) with issues.`);
+      }
+    } catch {
+      errors.push('RECIPE_INGREDIENTS_IMPORT rows could not be read.');
     }
   }
 
