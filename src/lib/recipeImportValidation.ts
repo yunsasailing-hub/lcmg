@@ -32,6 +32,7 @@ export interface MasterRowCheck {
   issues: string[];
   issueSummary: string;
   ingredientCount: number;
+  procedureCount: number;
 }
 
 export interface MasterRowsSummary {
@@ -44,6 +45,7 @@ export interface MasterRowsSummary {
   blankCodeCount: number;
   blankNameCount: number;
   noIngredientsCount: number;
+  noProceduresCount: number;
   rows: MasterRowCheck[];
 }
 
@@ -74,6 +76,27 @@ export interface IngredientRowsSummary {
   rows: IngredientRowCheck[];
 }
 
+export interface ProcedureRowCheck {
+  rowNumber: number;
+  recipeCode: string;
+  stepNumber: string;
+  instruction: string;
+  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  issues: string[];
+  issueSummary: string;
+  isOrphan: boolean;
+}
+
+export interface ProcedureRowsSummary {
+  evaluated: boolean;
+  totalVisible: number;
+  valid: number;
+  errors: number;
+  blankRecipeCodeCount: number;
+  orphanCount: number;
+  rows: ProcedureRowCheck[];
+}
+
 export interface ValidationResult {
   fileName: string;
   fileReadable: boolean;
@@ -84,6 +107,7 @@ export interface ValidationResult {
   approvedUnits: ApprovedUnitsSummary;
   masterRows: MasterRowsSummary;
   ingredientRows: IngredientRowsSummary;
+  procedureRows: ProcedureRowsSummary;
   errors: string[];
   warnings: string[];
   workbookValid: boolean;
@@ -166,6 +190,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       blankCodeCount: 0,
       blankNameCount: 0,
       noIngredientsCount: 0,
+      noProceduresCount: 0,
       rows: [],
     },
     ingredientRows: {
@@ -178,6 +203,15 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       blankIngredientCodeCount: 0,
       blankRecipeCodeCount: 0,
       nonNumericQuantityCount: 0,
+      orphanCount: 0,
+      rows: [],
+    },
+    procedureRows: {
+      evaluated: false,
+      totalVisible: 0,
+      valid: 0,
+      errors: 0,
+      blankRecipeCodeCount: 0,
       orphanCount: 0,
       rows: [],
     },
@@ -336,6 +370,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
           issues,
           issueSummary: '',
           ingredientCount: 0,
+          procedureCount: 0,
         });
 
         if (codeRaw) {
@@ -385,6 +420,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         blankCodeCount,
         blankNameCount,
         noIngredientsCount: 0,
+        noProceduresCount: 0,
         rows,
       };
 
@@ -567,6 +603,125 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
     }
     if (warningCount > 0) {
       warnings.push(`${warningCount} master recipe(s) have no ingredient rows.`);
+    }
+  }
+
+  // Phase 1E: Procedure rows + cross-check master ↔ procedure via recipe_code.
+  const procReal = sheetByLower.get(norm('RECIPE_PROCEDURE_IMPORT'));
+  const procCol = result.columnChecks.find((c) => c.sheet === 'RECIPE_PROCEDURE_IMPORT');
+  if (procReal && procCol && procCol.status === 'VALID') {
+    try {
+      const ws = wb.Sheets[procReal];
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+        defval: '',
+        blankrows: false,
+      });
+      const sample = rawRows[0] ?? {};
+      const keyMap = new Map<string, string>();
+      for (const k of Object.keys(sample)) keyMap.set(norm(k), k);
+      if (keyMap.size === 0) {
+        for (const r of rawRows) for (const k of Object.keys(r)) keyMap.set(norm(k), k);
+      }
+      const a = COLUMN_ALIASES.RECIPE_PROCEDURE_IMPORT;
+      const codeKey = a.recipe_code.map((al) => keyMap.get(al)).find(Boolean) as string | undefined;
+      const stepKey = a.step_number.map((al) => keyMap.get(al)).find(Boolean) as string | undefined;
+      const instrKey = a.instruction.map((al) => keyMap.get(al)).find(Boolean) as string | undefined;
+
+      const rows: ProcedureRowCheck[] = [];
+      let blankRecipeCode = 0;
+
+      rawRows.forEach((row, idx) => {
+        const recipeCode = codeKey ? String(row[codeKey] ?? '').trim() : '';
+        const stepNumber = stepKey ? String(row[stepKey] ?? '').trim() : '';
+        const instruction = instrKey ? String(row[instrKey] ?? '').trim() : '';
+
+        const anyMeaningful = Object.values(row).some(
+          (v) => String(v ?? '').trim() !== '',
+        );
+        if (!recipeCode && !stepNumber && !instruction && !anyMeaningful) return;
+
+        const issues: string[] = [];
+        if (!recipeCode) { issues.push('Missing recipe_code'); blankRecipeCode += 1; }
+
+        rows.push({
+          rowNumber: idx + 2,
+          recipeCode,
+          stepNumber,
+          instruction,
+          status: issues.length ? 'ERROR' : 'VALID',
+          issues,
+          issueSummary: issues.join('; '),
+          isOrphan: false,
+        });
+      });
+
+      result.procedureRows = {
+        evaluated: true,
+        totalVisible: rows.length,
+        valid: rows.filter((r) => r.status === 'VALID').length,
+        errors: rows.filter((r) => r.status === 'ERROR').length,
+        blankRecipeCodeCount: blankRecipeCode,
+        orphanCount: 0,
+        rows,
+      };
+    } catch {
+      errors.push('RECIPE_PROCEDURE_IMPORT rows could not be read.');
+    }
+  }
+
+  // Phase 1E cross-check: master ↔ procedure rows
+  if (result.masterRows.evaluated && result.procedureRows.evaluated) {
+    const masterCodes = new Map<string, number>();
+    result.masterRows.rows.forEach((m, i) => {
+      if (m.recipeCode) masterCodes.set(m.recipeCode.trim().toLowerCase(), i);
+    });
+
+    let orphanCount = 0;
+    for (const proc of result.procedureRows.rows) {
+      if (!proc.recipeCode) continue;
+      const key = proc.recipeCode.trim().toLowerCase();
+      const masterIdx = masterCodes.get(key);
+      if (masterIdx === undefined) {
+        proc.isOrphan = true;
+        proc.issues.push('recipe_code not found in RECIPES_MASTER_IMPORT');
+        proc.issueSummary = proc.issues.join('; ');
+        if (proc.status !== 'ERROR') proc.status = 'ERROR';
+        orphanCount += 1;
+      } else {
+        result.masterRows.rows[masterIdx].procedureCount += 1;
+      }
+    }
+
+    const procValid = result.procedureRows.rows.filter((r) => r.status === 'VALID').length;
+    result.procedureRows.valid = procValid;
+    result.procedureRows.errors = result.procedureRows.rows.length - procValid;
+    result.procedureRows.orphanCount = orphanCount;
+
+    // Master rows with zero procedures → WARNING (do not override existing ERROR)
+    let noProceduresCount = 0;
+    let addedWarnings = 0;
+    for (const m of result.masterRows.rows) {
+      if (m.procedureCount === 0 && m.recipeCode) {
+        noProceduresCount += 1;
+        if (m.status !== 'ERROR') {
+          m.issues.push('No procedure rows found');
+          m.issueSummary = m.issues.join('; ');
+          if (m.status !== 'WARNING') {
+            m.status = 'WARNING';
+            addedWarnings += 1;
+          }
+        }
+      }
+    }
+    result.masterRows.noProceduresCount = noProceduresCount;
+    result.masterRows.warnings += addedWarnings;
+    result.masterRows.valid = result.masterRows.rows.filter((r) => r.status === 'VALID').length;
+
+    if (orphanCount > 0) {
+      errors.push(`RECIPE_PROCEDURE_IMPORT has ${orphanCount} orphan row(s) (unknown recipe_code).`);
+    }
+    if (noProceduresCount > 0) {
+      warnings.push(`${noProceduresCount} master recipe(s) have no procedure rows.`);
     }
   }
 
