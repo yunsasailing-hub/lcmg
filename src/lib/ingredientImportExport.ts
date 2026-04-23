@@ -337,12 +337,45 @@ export function validateRows(
     c.name_vi,
     `${c.name_en}/${c.name_vi ?? ''}`,
   ]);
-  const unitLk = buildActiveLookup(master.units, (u) => [
+  // Units: build an ACTIVE-first lookup, then fold in INACTIVE units as
+  // fallback aliases so exports that still reference an archived unit label
+  // (e.g. "Liter/Lít") remain importable. Fake/unknown values still fail.
+  const activeUnits = master.units.filter((u) => u.is_active);
+  const inactiveUnits = master.units.filter((u) => !u.is_active);
+  const unitLabels = (u: RecipeUnit) => [
     u.name_en,
     u.name_vi,
     `${u.name_en}/${u.name_vi ?? ''}`,
     u.code,
-  ]);
+  ];
+  const unitLk = new Map<string, RecipeUnit>();
+  // First pass: active units (take precedence on key collisions).
+  for (const u of activeUnits) {
+    for (const raw of unitLabels(u)) {
+      const key = normLabel(raw);
+      if (key && !unitLk.has(key)) unitLk.set(key, u);
+    }
+  }
+  // Second pass: inactive units — only fill keys that active didn't claim,
+  // and resolve to an equivalent ACTIVE unit by name_en when possible so the
+  // imported ingredient ends up pointing at an active base_unit_id.
+  const activeByName = new Map<string, RecipeUnit>();
+  for (const u of activeUnits) {
+    const k = normLabel(u.name_en);
+    if (k && !activeByName.has(k)) activeByName.set(k, u);
+    const kv = normLabel(u.name_vi);
+    if (kv && !activeByName.has(kv)) activeByName.set(kv, u);
+  }
+  for (const u of inactiveUnits) {
+    const resolved =
+      activeByName.get(normLabel(u.name_en)) ??
+      activeByName.get(normLabel(u.name_vi)) ??
+      u; // falls back to the inactive record itself
+    for (const raw of unitLabels(u)) {
+      const key = normLabel(raw);
+      if (key && !unitLk.has(key)) unitLk.set(key, resolved);
+    }
+  }
   const shLk = buildActiveLookup(master.storehouses, (s) => [s.name]);
   const currencyLk = new Map<string, CurrencyCode>(
     CURRENCIES.map((c) => [c.toLowerCase(), c]),
