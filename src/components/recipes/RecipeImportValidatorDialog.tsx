@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -18,6 +18,7 @@ import {
   type ValidationStatus,
   type ImportAction,
 } from '@/lib/recipeImportValidation';
+import { executeRecipeImport, type ImportRunResult } from '@/lib/recipeImportExecution';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
