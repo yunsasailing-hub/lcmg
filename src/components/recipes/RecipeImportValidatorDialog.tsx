@@ -273,6 +273,18 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                       <div><span className="text-muted-foreground">Blank code: </span><strong>{result.masterRows.blankCodeCount}</strong></div>
                       <div><span className="text-muted-foreground">Blank name: </span><strong>{result.masterRows.blankNameCount}</strong></div>
                     </div>
+                    {result.masterRows.dbChecked && (
+                      <div className="mb-3 rounded-md border border-dashed bg-muted/30 p-2">
+                        <div className="mb-1 text-xs font-medium text-muted-foreground">
+                          Import Action Preview — DB check is read-only. No changes have been made.
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                          <div><span className="text-muted-foreground">NEW: </span><strong className="text-sky-600">{result.masterRows.newCount}</strong></div>
+                          <div><span className="text-muted-foreground">UPDATE: </span><strong className="text-indigo-600">{result.masterRows.updateCount}</strong></div>
+                          <div><span className="text-muted-foreground">DB duplicate (blocked): </span><strong className={result.masterRows.dbDuplicateCount ? 'text-destructive' : ''}>{result.masterRows.dbDuplicateCount}</strong></div>
+                        </div>
+                      </div>
+                    )}
                     {result.masterRows.rows.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No data rows to preview.</p>
                     ) : (
@@ -284,6 +296,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                             <TableHead>recipe_name</TableHead>
                             <TableHead className="w-24">Ingredients</TableHead>
                             <TableHead className="w-24">Procedures</TableHead>
+                            <TableHead className="w-24">Action</TableHead>
                             <TableHead className="w-24">Status</TableHead>
                             <TableHead>Issues</TableHead>
                           </TableRow>
@@ -307,6 +320,9 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                                 <span className={r.procedureCount === 0 ? 'text-amber-600' : ''}>
                                   {r.procedureCount}
                                 </span>
+                              </TableCell>
+                              <TableCell>
+                                <ActionBadge action={r.importAction} />
                               </TableCell>
                               <TableCell><StatusBadge status={r.status} /></TableCell>
                               <TableCell className={`text-xs ${r.status === 'WARNING' ? 'text-amber-600' : 'text-destructive'}`}>
