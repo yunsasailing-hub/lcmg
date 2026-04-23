@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, FileSpreadsheet, Upload, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileSpreadsheet, Upload, AlertTriangle, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
