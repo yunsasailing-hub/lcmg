@@ -129,10 +129,10 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
-            Recipe Import — Step 1 Validation
+            Recipe Import
           </DialogTitle>
           <DialogDescription>
-            Upload an .xlsx workbook to validate its structure. No database changes are made in this step.
+            Upload an .xlsx workbook to validate, preview, and import recipe data.
           </DialogDescription>
           <div className="flex flex-wrap items-center gap-2 pt-3">
             <input
