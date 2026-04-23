@@ -22,6 +22,26 @@ export interface ApprovedUnitsSummary {
   readable: boolean;
 }
 
+export interface MasterRowCheck {
+  rowNumber: number; // 1-based excel row number (header=1)
+  recipeCode: string;
+  recipeName: string;
+  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  issues: string[];
+  issueSummary: string;
+}
+
+export interface MasterRowsSummary {
+  evaluated: boolean;
+  totalVisible: number;
+  valid: number;
+  errors: number;
+  duplicateCodeCount: number;
+  blankCodeCount: number;
+  blankNameCount: number;
+  rows: MasterRowCheck[];
+}
+
 export interface ValidationResult {
   fileName: string;
   fileReadable: boolean;
@@ -30,6 +50,7 @@ export interface ValidationResult {
   sheetChecks: SheetCheck[];
   columnChecks: ColumnCheck[];
   approvedUnits: ApprovedUnitsSummary;
+  masterRows: MasterRowsSummary;
   errors: string[];
   warnings: string[];
   workbookValid: boolean;
@@ -69,6 +90,16 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
     sheetChecks: [],
     columnChecks: [],
     approvedUnits: { total: 0, sample: [], readable: false },
+    masterRows: {
+      evaluated: false,
+      totalVisible: 0,
+      valid: 0,
+      errors: 0,
+      duplicateCodeCount: 0,
+      blankCodeCount: 0,
+      blankNameCount: 0,
+      rows: [],
+    },
     errors,
     warnings,
     workbookValid: false,
@@ -162,6 +193,111 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       });
       if (rows.length <= 1) warnings.push(`Sheet ${sheet} has no data rows.`);
     } catch { /* already reported */ }
+  }
+
+  // Phase 1B: Row validation for RECIPES_MASTER_IMPORT only.
+  const masterReal = sheetByLower.get(norm('RECIPES_MASTER_IMPORT'));
+  const masterCol = result.columnChecks.find((c) => c.sheet === 'RECIPES_MASTER_IMPORT');
+  if (masterReal && masterCol && masterCol.status === 'VALID') {
+    try {
+      const ws = wb.Sheets[masterReal];
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+        defval: '',
+        blankrows: false,
+      });
+      // Resolve actual header keys case-insensitively
+      const sample = rawRows[0] ?? {};
+      const keyMap = new Map<string, string>();
+      for (const k of Object.keys(sample)) keyMap.set(norm(k), k);
+      // Fallback: scan all rows for keys (in case first row is blank-ish)
+      if (keyMap.size === 0) {
+        for (const r of rawRows) for (const k of Object.keys(r)) keyMap.set(norm(k), k);
+      }
+      const codeKey = keyMap.get('recipe_code');
+      const nameKey = keyMap.get('recipe_name');
+
+      const rows: MasterRowCheck[] = [];
+      const codeOccurrences = new Map<string, number[]>();
+
+      rawRows.forEach((row, idx) => {
+        const codeRaw = codeKey ? String(row[codeKey] ?? '').trim() : '';
+        const nameRaw = nameKey ? String(row[nameKey] ?? '').trim() : '';
+        // Detect "completely blank" by checking all values across the row
+        const anyOtherMeaningful = Object.values(row).some(
+          (v) => String(v ?? '').trim() !== '',
+        );
+        if (!codeRaw && !nameRaw && !anyOtherMeaningful) return; // ignore fully-blank
+
+        const rowNumber = idx + 2; // header is row 1, data starts at row 2
+        const issues: string[] = [];
+        if (!codeRaw) issues.push('Missing recipe_code');
+        if (!nameRaw) issues.push('Missing recipe_name');
+
+        rows.push({
+          rowNumber,
+          recipeCode: codeRaw,
+          recipeName: nameRaw,
+          status: 'VALID',
+          issues,
+          issueSummary: '',
+        });
+
+        if (codeRaw) {
+          const key = codeRaw.toLowerCase();
+          const list = codeOccurrences.get(key) ?? [];
+          list.push(rows.length - 1);
+          codeOccurrences.set(key, list);
+        }
+      });
+
+      // Mark duplicates
+      let duplicateCodeCount = 0;
+      for (const [, indices] of codeOccurrences) {
+        if (indices.length > 1) {
+          for (const i of indices) {
+            rows[i].issues.push('Duplicate recipe_code');
+            duplicateCodeCount += 1;
+          }
+        }
+      }
+
+      let blankCodeCount = 0;
+      let blankNameCount = 0;
+      let validCount = 0;
+      let errorCount = 0;
+      for (const r of rows) {
+        if (r.issues.includes('Missing recipe_code')) blankCodeCount += 1;
+        if (r.issues.includes('Missing recipe_name')) blankNameCount += 1;
+        if (r.issues.length > 0) {
+          r.status = 'ERROR';
+          r.issueSummary = r.issues.join('; ');
+          errorCount += 1;
+        } else {
+          r.status = 'VALID';
+          r.issueSummary = '';
+          validCount += 1;
+        }
+      }
+
+      result.masterRows = {
+        evaluated: true,
+        totalVisible: rows.length,
+        valid: validCount,
+        errors: errorCount,
+        duplicateCodeCount,
+        blankCodeCount,
+        blankNameCount,
+        rows,
+      };
+
+      if (errorCount > 0) {
+        errors.push(
+          `RECIPES_MASTER_IMPORT has ${errorCount} row(s) with issues.`,
+        );
+      }
+    } catch {
+      errors.push('RECIPES_MASTER_IMPORT rows could not be read.');
+    }
   }
 
   result.workbookValid = errors.length === 0;
