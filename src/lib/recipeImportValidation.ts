@@ -76,6 +76,27 @@ export interface IngredientRowsSummary {
   rows: IngredientRowCheck[];
 }
 
+export interface ProcedureRowCheck {
+  rowNumber: number;
+  recipeCode: string;
+  stepNumber: string;
+  instruction: string;
+  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  issues: string[];
+  issueSummary: string;
+  isOrphan: boolean;
+}
+
+export interface ProcedureRowsSummary {
+  evaluated: boolean;
+  totalVisible: number;
+  valid: number;
+  errors: number;
+  blankRecipeCodeCount: number;
+  orphanCount: number;
+  rows: ProcedureRowCheck[];
+}
+
 export interface ValidationResult {
   fileName: string;
   fileReadable: boolean;
@@ -86,6 +107,7 @@ export interface ValidationResult {
   approvedUnits: ApprovedUnitsSummary;
   masterRows: MasterRowsSummary;
   ingredientRows: IngredientRowsSummary;
+  procedureRows: ProcedureRowsSummary;
   errors: string[];
   warnings: string[];
   workbookValid: boolean;
