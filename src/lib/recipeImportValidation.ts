@@ -22,6 +22,26 @@ export interface ApprovedUnitsSummary {
   readable: boolean;
 }
 
+export interface MasterRowCheck {
+  rowNumber: number; // 1-based excel row number (header=1)
+  recipeCode: string;
+  recipeName: string;
+  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  issues: string[];
+  issueSummary: string;
+}
+
+export interface MasterRowsSummary {
+  evaluated: boolean;
+  totalVisible: number;
+  valid: number;
+  errors: number;
+  duplicateCodeCount: number;
+  blankCodeCount: number;
+  blankNameCount: number;
+  rows: MasterRowCheck[];
+}
+
 export interface ValidationResult {
   fileName: string;
   fileReadable: boolean;
@@ -30,6 +50,7 @@ export interface ValidationResult {
   sheetChecks: SheetCheck[];
   columnChecks: ColumnCheck[];
   approvedUnits: ApprovedUnitsSummary;
+  masterRows: MasterRowsSummary;
   errors: string[];
   warnings: string[];
   workbookValid: boolean;
