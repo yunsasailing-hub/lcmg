@@ -304,12 +304,11 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                     )}
                   </section>
                 )}
-              </div>
-            </ScrollArea>
+            </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
