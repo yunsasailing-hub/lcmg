@@ -13,9 +13,12 @@ import { toast } from '@/hooks/use-toast';
 
 import {
   validateRecipeWorkbook,
+  checkRecipeMasterAgainstDb,
   type ValidationResult,
   type ValidationStatus,
+  type ImportAction,
 } from '@/lib/recipeImportValidation';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   open: boolean;
@@ -26,6 +29,13 @@ function StatusBadge({ status }: { status: ValidationStatus }) {
   if (status === 'VALID') return <Badge className="bg-emerald-600 hover:bg-emerald-600">VALID</Badge>;
   if (status === 'WARNING') return <Badge className="bg-amber-500 hover:bg-amber-500">WARNING</Badge>;
   return <Badge variant="destructive">ERROR</Badge>;
+}
+
+function ActionBadge({ action }: { action: ImportAction }) {
+  if (action === 'NEW') return <Badge className="bg-sky-600 hover:bg-sky-600">NEW</Badge>;
+  if (action === 'UPDATE') return <Badge className="bg-indigo-600 hover:bg-indigo-600">UPDATE</Badge>;
+  if (action === 'ERROR') return <Badge variant="destructive">ERROR</Badge>;
+  return <Badge variant="secondary">—</Badge>;
 }
 
 export default function RecipeImportValidatorDialog({ open, onOpenChange }: Props) {
@@ -54,6 +64,12 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
     setRunning(true);
     try {
       const r = await validateRecipeWorkbook(file);
+      // Phase 2A: read-only DB existence check for master recipe codes
+      try {
+        await checkRecipeMasterAgainstDb(r, supabase as never);
+      } catch (err) {
+        r.errors.push('Database existence check failed.');
+      }
       setResult(r);
     } catch (e) {
       toast({
@@ -257,6 +273,18 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                       <div><span className="text-muted-foreground">Blank code: </span><strong>{result.masterRows.blankCodeCount}</strong></div>
                       <div><span className="text-muted-foreground">Blank name: </span><strong>{result.masterRows.blankNameCount}</strong></div>
                     </div>
+                    {result.masterRows.dbChecked && (
+                      <div className="mb-3 rounded-md border border-dashed bg-muted/30 p-2">
+                        <div className="mb-1 text-xs font-medium text-muted-foreground">
+                          Import Action Preview — DB check is read-only. No changes have been made.
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                          <div><span className="text-muted-foreground">NEW: </span><strong className="text-sky-600">{result.masterRows.newCount}</strong></div>
+                          <div><span className="text-muted-foreground">UPDATE: </span><strong className="text-indigo-600">{result.masterRows.updateCount}</strong></div>
+                          <div><span className="text-muted-foreground">DB duplicate (blocked): </span><strong className={result.masterRows.dbDuplicateCount ? 'text-destructive' : ''}>{result.masterRows.dbDuplicateCount}</strong></div>
+                        </div>
+                      </div>
+                    )}
                     {result.masterRows.rows.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No data rows to preview.</p>
                     ) : (
@@ -268,6 +296,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                             <TableHead>recipe_name</TableHead>
                             <TableHead className="w-24">Ingredients</TableHead>
                             <TableHead className="w-24">Procedures</TableHead>
+                            <TableHead className="w-24">Action</TableHead>
                             <TableHead className="w-24">Status</TableHead>
                             <TableHead>Issues</TableHead>
                           </TableRow>
@@ -291,6 +320,9 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                                 <span className={r.procedureCount === 0 ? 'text-amber-600' : ''}>
                                   {r.procedureCount}
                                 </span>
+                              </TableCell>
+                              <TableCell>
+                                <ActionBadge action={r.importAction} />
                               </TableCell>
                               <TableCell><StatusBadge status={r.status} /></TableCell>
                               <TableCell className={`text-xs ${r.status === 'WARNING' ? 'text-amber-600' : 'text-destructive'}`}>
