@@ -4,7 +4,7 @@ import RecipesShell from '@/components/recipes/RecipesShell';
 import EmptyState from '@/components/shared/EmptyState';
 
 interface Props {
-  titleKey: 'recipes' | 'categories' | 'units' | 'importExport' | 'settings';
+  titleKey: 'recipes' | 'categories' | 'units' | 'importExport' | 'settings' | 'moreModules';
 }
 
 export default function RecipesPlaceholder({ titleKey }: Props) {

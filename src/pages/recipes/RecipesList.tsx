@@ -36,7 +36,11 @@ const formatDate = (iso?: string | null) => {
   try { return new Date(iso).toLocaleDateString(); } catch { return iso; }
 };
 
-export default function RecipesList() {
+interface RecipesListProps {
+  kind?: 'food' | 'drink';
+}
+
+export default function RecipesList({ kind }: RecipesListProps = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { hasAnyRole } = useAuth();
@@ -67,6 +71,8 @@ export default function RecipesList() {
     const s = search.trim().toLowerCase();
     return recipes.filter(r => {
       if (!includeArchived && !r.is_active) return false;
+      if (kind === 'drink' && r.department !== 'bar') return false;
+      if (kind === 'food' && r.department === 'bar') return false;
       if (s) {
         const hay = `${r.name_en} ${r.code ?? ''}`.toLowerCase();
         if (!hay.includes(s)) return false;
@@ -83,7 +89,7 @@ export default function RecipesList() {
       if (activeFilter === 'not' && r.is_active) return false;
       return true;
     });
-  }, [recipes, includeArchived, search, categoryFilter, typeFilter, deptFilter, branchFilter, activeFilter]);
+  }, [recipes, kind, includeArchived, search, categoryFilter, typeFilter, deptFilter, branchFilter, activeFilter]);
 
   const visibleIds = useMemo(() => filtered.map(r => r.id), [filtered]);
   const { data: thumbMap = {} } = useRecipePrimaryImages(visibleIds);
@@ -103,10 +109,23 @@ export default function RecipesList() {
     }
   };
 
+  const titleKey =
+    kind === 'drink' ? 'recipes.drinkList.title'
+    : kind === 'food' ? 'recipes.foodList.title'
+    : 'recipes.list.title';
+  const subtitleKey =
+    kind === 'drink' ? 'recipes.drinkList.subtitle'
+    : kind === 'food' ? 'recipes.foodList.subtitle'
+    : 'recipes.list.subtitle';
+  const addLabelKey =
+    kind === 'drink' ? 'recipes.drinkList.add'
+    : kind === 'food' ? 'recipes.foodList.add'
+    : 'recipes.list.add';
+
   return (
     <RecipesShell
-      title={t('recipes.list.title')}
-      description={t('recipes.list.subtitle')}
+      title={t(titleKey)}
+      description={t(subtitleKey)}
       actions={
         canManage ? (
           <div className="flex gap-2">
@@ -114,7 +133,7 @@ export default function RecipesList() {
               <Upload className="h-4 w-4" /> Import
             </Button>
             <Button onClick={() => navigate('/recipes/list/new')}>
-              <Plus className="h-4 w-4" /> {t('recipes.list.add')}
+              <Plus className="h-4 w-4" /> {t(addLabelKey)}
             </Button>
           </div>
         ) : null

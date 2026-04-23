@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Plus, Pencil, Archive, ArchiveRestore, Search, Carrot, Eye, ArrowUpDown,
+  Upload, Download,
 } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import EmptyState from '@/components/shared/EmptyState';
 import IngredientFormDialog from '@/components/recipes/IngredientFormDialog';
+import IngredientImportDialog from '@/components/recipes/IngredientImportDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -30,6 +32,7 @@ import {
 } from '@/hooks/useIngredients';
 import { useRecipesAsIngredient } from '@/hooks/useRecipes';
 import { classifyByPrefix } from '@/lib/ingredientClassification';
+import { buildExportRows, downloadXlsx } from '@/lib/ingredientImportExport';
 import { toast } from '@/hooks/use-toast';
 
 type SortKey = 'name' | 'code' | 'category' | 'updated';
@@ -61,6 +64,7 @@ export default function RecipesIngredients() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Ingredient | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: ingredients = [], isLoading } = useIngredients(includeArchived);
   const { data: types = [] } = useIngredientTypes(true);
@@ -178,9 +182,32 @@ export default function RecipesIngredients() {
   const actions = (
     <div className="flex items-center gap-2">
       {canManage && (
-        <Button onClick={openAdd} size="sm">
-          <Plus className="h-4 w-4" /> {t('recipes.ingredients.add')}
-        </Button>
+        <>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4" /> {t('common.import')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              try {
+                const rows = buildExportRows(
+                  ingredients,
+                  { types, categories, units, storehouses },
+                  { scope: 'all' },
+                );
+                downloadXlsx(rows, { types, categories, units, storehouses }, { scope: 'all' });
+              } catch (e) {
+                toast({ title: t('common.error'), description: (e as Error).message, variant: 'destructive' });
+              }
+            }}
+          >
+            <Download className="h-4 w-4" /> {t('common.export')}
+          </Button>
+          <Button onClick={openAdd} size="sm">
+            <Plus className="h-4 w-4" /> {t('recipes.ingredients.add')}
+          </Button>
+        </>
       )}
     </div>
   );
@@ -403,6 +430,8 @@ export default function RecipesIngredients() {
         onOpenChange={setDialogOpen}
         ingredient={editing}
       />
+
+      <IngredientImportDialog open={importOpen} onOpenChange={setImportOpen} />
 
       <AlertDialog open={!!archiveTarget} onOpenChange={(o) => !o && setArchiveTarget(null)}>
         <AlertDialogContent>
