@@ -513,6 +513,63 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
     }
   }
 
+  // Phase 1D: Cross-check master ↔ ingredient sheets via recipe_code.
+  if (result.masterRows.evaluated && result.ingredientRows.evaluated) {
+    const masterCodes = new Map<string, number>(); // lowercased -> master row index
+    result.masterRows.rows.forEach((m, i) => {
+      if (m.recipeCode) masterCodes.set(m.recipeCode.trim().toLowerCase(), i);
+    });
+
+    // Mark orphan ingredient rows
+    let orphanCount = 0;
+    for (const ing of result.ingredientRows.rows) {
+      if (!ing.recipeCode) continue; // existing blank-code error already applied
+      const key = ing.recipeCode.trim().toLowerCase();
+      const masterIdx = masterCodes.get(key);
+      if (masterIdx === undefined) {
+        ing.isOrphan = true;
+        ing.issues.push('recipe_code not found in RECIPES_MASTER_IMPORT');
+        ing.issueSummary = ing.issues.join('; ');
+        if (ing.status !== 'ERROR') ing.status = 'ERROR';
+        orphanCount += 1;
+      } else {
+        result.masterRows.rows[masterIdx].ingredientCount += 1;
+      }
+    }
+
+    // Recompute ingredient summary error count after orphan marking
+    const ingValid = result.ingredientRows.rows.filter((r) => r.status === 'VALID').length;
+    result.ingredientRows.valid = ingValid;
+    result.ingredientRows.errors = result.ingredientRows.rows.length - ingValid;
+    result.ingredientRows.orphanCount = orphanCount;
+
+    // Master rows with zero ingredients → WARNING (do not override existing ERROR)
+    let noIngredientsCount = 0;
+    let warningCount = 0;
+    for (const m of result.masterRows.rows) {
+      if (m.ingredientCount === 0 && m.recipeCode) {
+        noIngredientsCount += 1;
+        if (m.status !== 'ERROR') {
+          m.issues.push('No ingredient rows found');
+          m.issueSummary = m.issues.join('; ');
+          m.status = 'WARNING';
+          warningCount += 1;
+        }
+      }
+    }
+    result.masterRows.noIngredientsCount = noIngredientsCount;
+    result.masterRows.warnings = warningCount;
+    // Recompute master valid count (errors unchanged; warnings reduce valid)
+    result.masterRows.valid = result.masterRows.rows.filter((r) => r.status === 'VALID').length;
+
+    if (orphanCount > 0) {
+      errors.push(`RECIPE_INGREDIENTS_IMPORT has ${orphanCount} orphan row(s) (unknown recipe_code).`);
+    }
+    if (warningCount > 0) {
+      warnings.push(`${warningCount} master recipe(s) have no ingredient rows.`);
+    }
+  }
+
   result.workbookValid = errors.length === 0;
   return result;
 }
