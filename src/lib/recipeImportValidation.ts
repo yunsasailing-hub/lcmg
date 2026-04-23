@@ -380,9 +380,11 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         totalVisible: rows.length,
         valid: validCount,
         errors: errorCount,
+        warnings: 0,
         duplicateCodeCount,
         blankCodeCount,
         blankNameCount,
+        noIngredientsCount: 0,
         rows,
       };
 
@@ -482,6 +484,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
           issues,
           issueSummary: issues.join('; '),
           quantityNormalized,
+          isOrphan: false,
         });
       });
 
@@ -498,6 +501,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         blankIngredientCodeCount: blankIngCode,
         blankRecipeCodeCount: blankRecipeCode,
         nonNumericQuantityCount: nonNumericQty,
+        orphanCount: 0,
         rows,
       };
 
