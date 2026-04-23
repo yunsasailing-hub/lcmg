@@ -156,16 +156,19 @@ function buildHeaderAliasMap(): Map<string, keyof typeof COLUMNS> {
 }
 const HEADER_ALIAS_MAP = buildHeaderAliasMap();
 
-/** Build a case-insensitive lookup of ACTIVE options keyed by trimmed-lower label. */
+/** Build a case-insensitive lookup of ACTIVE options keyed by normalized labels.
+ * Each item can be indexed under multiple keys (e.g. name_en and name_vi). */
 function buildActiveLookup<T extends { is_active: boolean }>(
   items: T[],
-  getLabel: (item: T) => string,
+  getLabels: (item: T) => Array<string | null | undefined>,
 ) {
   const m = new Map<string, T>();
   for (const it of items) {
     if (!it.is_active) continue;
-    const key = normKey(getLabel(it));
-    if (key) m.set(key, it);
+    for (const raw of getLabels(it)) {
+      const key = normLabel(raw);
+      if (key && !m.has(key)) m.set(key, it);
+    }
   }
   return m;
 }
