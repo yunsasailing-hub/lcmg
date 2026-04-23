@@ -21,6 +21,7 @@ export interface ApprovedUnitsSummary {
   total: number;
   sample: string[];
   readable: boolean;
+  values?: string[]; // full normalized list (lowercased, trimmed) — internal use
 }
 
 export interface MasterRowCheck {
@@ -43,6 +44,31 @@ export interface MasterRowsSummary {
   rows: MasterRowCheck[];
 }
 
+export interface IngredientRowCheck {
+  rowNumber: number;
+  recipeCode: string;
+  ingredientCode: string;
+  quantity: number | string; // normalized (number) or original string when invalid
+  unit: string;
+  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  issues: string[];
+  issueSummary: string;
+  quantityNormalized: boolean; // true when blank quantity defaulted to 0
+}
+
+export interface IngredientRowsSummary {
+  evaluated: boolean;
+  totalVisible: number;
+  valid: number;
+  errors: number;
+  blankQuantityNormalizedCount: number;
+  invalidUnitCount: number;
+  blankIngredientCodeCount: number;
+  blankRecipeCodeCount: number;
+  nonNumericQuantityCount: number;
+  rows: IngredientRowCheck[];
+}
+
 export interface ValidationResult {
   fileName: string;
   fileReadable: boolean;
@@ -52,6 +78,7 @@ export interface ValidationResult {
   columnChecks: ColumnCheck[];
   approvedUnits: ApprovedUnitsSummary;
   masterRows: MasterRowsSummary;
+  ingredientRows: IngredientRowsSummary;
   errors: string[];
   warnings: string[];
   workbookValid: boolean;
@@ -132,6 +159,18 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       duplicateCodeCount: 0,
       blankCodeCount: 0,
       blankNameCount: 0,
+      rows: [],
+    },
+    ingredientRows: {
+      evaluated: false,
+      totalVisible: 0,
+      valid: 0,
+      errors: 0,
+      blankQuantityNormalizedCount: 0,
+      invalidUnitCount: 0,
+      blankIngredientCodeCount: 0,
+      blankRecipeCodeCount: 0,
+      nonNumericQuantityCount: 0,
       rows: [],
     },
     errors,
