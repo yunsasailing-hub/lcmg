@@ -3,17 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Plus, Pencil, Archive, ArchiveRestore, Search, Carrot, Eye, ArrowUpDown,
-  Download, Upload,
 } from 'lucide-react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import EmptyState from '@/components/shared/EmptyState';
 import IngredientFormDialog from '@/components/recipes/IngredientFormDialog';
-import IngredientImportDialog from '@/components/recipes/IngredientImportDialog';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-  DropdownMenuLabel, DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { buildExportRows, downloadXlsx } from '@/lib/ingredientImportExport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
