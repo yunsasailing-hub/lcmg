@@ -13,9 +13,12 @@ import { toast } from '@/hooks/use-toast';
 
 import {
   validateRecipeWorkbook,
+  checkRecipeMasterAgainstDb,
   type ValidationResult,
   type ValidationStatus,
+  type ImportAction,
 } from '@/lib/recipeImportValidation';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   open: boolean;
@@ -26,6 +29,13 @@ function StatusBadge({ status }: { status: ValidationStatus }) {
   if (status === 'VALID') return <Badge className="bg-emerald-600 hover:bg-emerald-600">VALID</Badge>;
   if (status === 'WARNING') return <Badge className="bg-amber-500 hover:bg-amber-500">WARNING</Badge>;
   return <Badge variant="destructive">ERROR</Badge>;
+}
+
+function ActionBadge({ action }: { action: ImportAction }) {
+  if (action === 'NEW') return <Badge className="bg-sky-600 hover:bg-sky-600">NEW</Badge>;
+  if (action === 'UPDATE') return <Badge className="bg-indigo-600 hover:bg-indigo-600">UPDATE</Badge>;
+  if (action === 'ERROR') return <Badge variant="destructive">ERROR</Badge>;
+  return <Badge variant="secondary">—</Badge>;
 }
 
 export default function RecipeImportValidatorDialog({ open, onOpenChange }: Props) {
@@ -54,6 +64,12 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
     setRunning(true);
     try {
       const r = await validateRecipeWorkbook(file);
+      // Phase 2A: read-only DB existence check for master recipe codes
+      try {
+        await checkRecipeMasterAgainstDb(r, supabase as never);
+      } catch (err) {
+        r.errors.push('Database existence check failed.');
+      }
       setResult(r);
     } catch (e) {
       toast({
