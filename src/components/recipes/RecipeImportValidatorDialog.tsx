@@ -185,6 +185,18 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                               <span className="text-muted-foreground">Found: </span>
                               {c.found.length ? c.found.join(', ') : <em>none</em>}
                             </div>
+                            {c.aliasMatches && Object.keys(c.aliasMatches).length > 0 && (
+                              <div className="text-muted-foreground">
+                                Matched:{' '}
+                                {Object.entries(c.aliasMatches)
+                                  .map(([canon, actual]) =>
+                                    canon.toLowerCase() === actual.toLowerCase()
+                                      ? canon
+                                      : `${canon} ← ${actual}`,
+                                  )
+                                  .join(', ')}
+                              </div>
+                            )}
                             {c.missing.length > 0 && (
                               <div className="text-destructive">
                                 Missing: {c.missing.join(', ')}
