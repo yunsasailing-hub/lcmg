@@ -351,6 +351,16 @@ const vi: Translations = {
         includeImagesHint: 'Bỏ chọn để bỏ qua phần Hình ảnh và giảm dung lượng tệp.',
       },
     },
+    foodList: {
+      title: 'Công thức món ăn',
+      subtitle: 'Công thức bếp, pizza & bánh',
+      add: 'Thêm công thức',
+    },
+    drinkList: {
+      title: 'Công thức đồ uống',
+      subtitle: 'Công thức pha chế quầy bar',
+      add: 'Thêm công thức đồ uống',
+    },
     lines: {
       title: 'Nguyên liệu & Chi phí',
       editTitle: 'Sửa nguyên liệu',
