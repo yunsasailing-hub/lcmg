@@ -312,6 +312,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                       <div><span className="text-muted-foreground">Visible rows: </span><strong>{result.ingredientRows.totalVisible}</strong></div>
                       <div><span className="text-muted-foreground">Valid: </span><strong className="text-emerald-600">{result.ingredientRows.valid}</strong></div>
                       <div><span className="text-muted-foreground">Errors: </span><strong className={result.ingredientRows.errors ? 'text-destructive' : ''}>{result.ingredientRows.errors}</strong></div>
+                      <div><span className="text-muted-foreground">Orphan rows: </span><strong className={result.ingredientRows.orphanCount ? 'text-destructive' : ''}>{result.ingredientRows.orphanCount}</strong></div>
                       <div><span className="text-muted-foreground">Qty defaulted to 0: </span><strong>{result.ingredientRows.blankQuantityNormalizedCount}</strong></div>
                       <div><span className="text-muted-foreground">Invalid unit: </span><strong>{result.ingredientRows.invalidUnitCount}</strong></div>
                       <div><span className="text-muted-foreground">Blank ingredient_code: </span><strong>{result.ingredientRows.blankIngredientCodeCount}</strong></div>
