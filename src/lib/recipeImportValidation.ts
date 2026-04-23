@@ -76,7 +76,7 @@ export const REQUIRED_COLUMNS: Record<string, string[]> = {
 export const COLUMN_ALIASES: Record<string, Record<string, string[]>> = {
   RECIPES_MASTER_IMPORT: {
     recipe_code: ['recipe_code', 'recipe_id'],
-    recipe_name: ['recipe_name'],
+    recipe_name: ['recipe_name', 'name'],
   },
   RECIPE_INGREDIENTS_IMPORT: {
     recipe_code: ['recipe_code', 'recipe_id'],
