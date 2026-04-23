@@ -46,7 +46,7 @@ const isDerived = (r: AnyRow): r is DerivedRow => (r as any).__derived === true;
 export default function RecipesIngredients() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { hasAnyRole, user } = useAuth();
+  const { hasAnyRole } = useAuth();
   const canManage = hasAnyRole(['owner', 'manager']);
 
   const [includeArchived, setIncludeArchived] = useState(false);
