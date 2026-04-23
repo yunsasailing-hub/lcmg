@@ -290,7 +290,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                 )}
 
                 {/* Ingredient rows validation (Phase 1C) */}
-                {result.ingredientRows.evaluated && (
+                {result.ingredientRows?.evaluated && (
                   <section className="rounded-md border p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <h3 className="font-semibold">RECIPE_INGREDIENTS_IMPORT — Row Validation</h3>
