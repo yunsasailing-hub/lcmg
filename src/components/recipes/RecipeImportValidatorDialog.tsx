@@ -583,6 +583,61 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                     )}
                   </section>
                 )}
+
+                {/* Phase 3: Import Result */}
+                {runResult && (
+                  <section className="rounded-md border border-emerald-600/40 bg-emerald-500/5 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <h3 className="font-semibold">Import Result</h3>
+                    </div>
+                    <div className="mb-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3 lg:grid-cols-5">
+                      <div><span className="text-muted-foreground">Processed: </span><strong>{runResult.totalRecipesProcessed}</strong></div>
+                      <div><span className="text-muted-foreground">Created: </span><strong className="text-sky-600">{runResult.recipesCreated}</strong></div>
+                      <div><span className="text-muted-foreground">Updated: </span><strong className="text-indigo-600">{runResult.recipesUpdated}</strong></div>
+                      <div><span className="text-muted-foreground">Failed: </span><strong className={runResult.recipesFailed ? 'text-destructive' : ''}>{runResult.recipesFailed}</strong></div>
+                      <div><span className="text-muted-foreground">With warnings: </span><strong className={runResult.recipesWithWarnings ? 'text-amber-600' : ''}>{runResult.recipesWithWarnings}</strong></div>
+                      <div><span className="text-muted-foreground">Ingredient rows inserted: </span><strong>{runResult.ingredientRowsInserted}</strong></div>
+                      <div><span className="text-muted-foreground">Procedure rows inserted: </span><strong>{runResult.procedureRowsInserted}</strong></div>
+                      <div><span className="text-muted-foreground">Blank ingredient section: </span><strong className={runResult.recipesWithBlankIngredients ? 'text-amber-600' : ''}>{runResult.recipesWithBlankIngredients}</strong></div>
+                      <div><span className="text-muted-foreground">Blank procedure section: </span><strong className={runResult.recipesWithBlankProcedures ? 'text-amber-600' : ''}>{runResult.recipesWithBlankProcedures}</strong></div>
+                    </div>
+                    {runResult.rows.length > 0 && (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>recipe_code</TableHead>
+                            <TableHead>recipe_name</TableHead>
+                            <TableHead className="w-24">Action</TableHead>
+                            <TableHead className="w-24">Result</TableHead>
+                            <TableHead>Issue summary</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {runResult.rows.map((r) => (
+                            <TableRow key={r.recipeCode}>
+                              <TableCell className="font-mono text-xs">{r.recipeCode}</TableCell>
+                              <TableCell className="text-sm">{r.recipeName || <em className="text-muted-foreground">—</em>}</TableCell>
+                              <TableCell>
+                                <ActionBadge action={r.importAction} />
+                              </TableCell>
+                              <TableCell>
+                                {r.result === 'SUCCESS' ? (
+                                  <Badge className="bg-emerald-600 hover:bg-emerald-600">SUCCESS</Badge>
+                                ) : (
+                                  <Badge variant="destructive">FAILED</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className={`text-xs ${r.result === 'FAILED' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                {r.issueSummary}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </section>
+                )}
             </div>
           )}
         </div>
