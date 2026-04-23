@@ -44,10 +44,13 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [runResult, setRunResult] = useState<ImportRunResult | null>(null);
 
   const reset = () => {
     setFile(null);
     setResult(null);
+    setRunResult(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -55,6 +58,37 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
     const f = e.target.files?.[0] ?? null;
     setFile(f);
     setResult(null);
+    setRunResult(null);
+  };
+
+  const onImport = async () => {
+    if (!file || !result) return;
+    if (result.errors.length > 0) {
+      toast({
+        title: 'Import blocked',
+        description: 'Resolve all errors before importing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setImporting(true);
+    setRunResult(null);
+    try {
+      const run = await executeRecipeImport(file, result, supabase);
+      setRunResult(run);
+      toast({
+        title: 'Import finished',
+        description: `${run.recipesCreated} created, ${run.recipesUpdated} updated, ${run.recipesFailed} failed.`,
+      });
+    } catch (e) {
+      toast({
+        title: 'Import failed',
+        description: e instanceof Error ? e.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const onValidate = async () => {
