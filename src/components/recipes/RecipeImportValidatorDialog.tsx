@@ -250,7 +250,9 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                       <div><span className="text-muted-foreground">Visible rows: </span><strong>{result.masterRows.totalVisible}</strong></div>
                       <div><span className="text-muted-foreground">Valid: </span><strong className="text-emerald-600">{result.masterRows.valid}</strong></div>
                       <div><span className="text-muted-foreground">Errors: </span><strong className={result.masterRows.errors ? 'text-destructive' : ''}>{result.masterRows.errors}</strong></div>
+                      <div><span className="text-muted-foreground">Warnings: </span><strong className={result.masterRows.warnings ? 'text-amber-600' : ''}>{result.masterRows.warnings}</strong></div>
                       <div><span className="text-muted-foreground">Dup. codes: </span><strong>{result.masterRows.duplicateCodeCount}</strong></div>
+                      <div><span className="text-muted-foreground">No ingredients: </span><strong className={result.masterRows.noIngredientsCount ? 'text-amber-600' : ''}>{result.masterRows.noIngredientsCount}</strong></div>
                       <div><span className="text-muted-foreground">Blank code: </span><strong>{result.masterRows.blankCodeCount}</strong></div>
                       <div><span className="text-muted-foreground">Blank name: </span><strong>{result.masterRows.blankNameCount}</strong></div>
                     </div>
@@ -263,6 +265,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                             <TableHead className="w-16">Row</TableHead>
                             <TableHead>recipe_code</TableHead>
                             <TableHead>recipe_name</TableHead>
+                            <TableHead className="w-24">Ingredients</TableHead>
                             <TableHead className="w-24">Status</TableHead>
                             <TableHead>Issues</TableHead>
                           </TableRow>
@@ -277,8 +280,13 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                               <TableCell className="text-sm">
                                 {r.recipeName || <em className="text-muted-foreground">—</em>}
                               </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                <span className={r.ingredientCount === 0 ? 'text-amber-600' : ''}>
+                                  {r.ingredientCount}
+                                </span>
+                              </TableCell>
                               <TableCell><StatusBadge status={r.status} /></TableCell>
-                              <TableCell className="text-xs text-destructive">
+                              <TableCell className={`text-xs ${r.status === 'WARNING' ? 'text-amber-600' : 'text-destructive'}`}>
                                 {r.issueSummary || <span className="text-muted-foreground">—</span>}
                               </TableCell>
                             </TableRow>
@@ -304,6 +312,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                       <div><span className="text-muted-foreground">Visible rows: </span><strong>{result.ingredientRows.totalVisible}</strong></div>
                       <div><span className="text-muted-foreground">Valid: </span><strong className="text-emerald-600">{result.ingredientRows.valid}</strong></div>
                       <div><span className="text-muted-foreground">Errors: </span><strong className={result.ingredientRows.errors ? 'text-destructive' : ''}>{result.ingredientRows.errors}</strong></div>
+                      <div><span className="text-muted-foreground">Orphan rows: </span><strong className={result.ingredientRows.orphanCount ? 'text-destructive' : ''}>{result.ingredientRows.orphanCount}</strong></div>
                       <div><span className="text-muted-foreground">Qty defaulted to 0: </span><strong>{result.ingredientRows.blankQuantityNormalizedCount}</strong></div>
                       <div><span className="text-muted-foreground">Invalid unit: </span><strong>{result.ingredientRows.invalidUnitCount}</strong></div>
                       <div><span className="text-muted-foreground">Blank ingredient_code: </span><strong>{result.ingredientRows.blankIngredientCodeCount}</strong></div>

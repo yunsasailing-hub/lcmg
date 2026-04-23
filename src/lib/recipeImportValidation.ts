@@ -28,9 +28,10 @@ export interface MasterRowCheck {
   rowNumber: number; // 1-based excel row number (header=1)
   recipeCode: string;
   recipeName: string;
-  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  status: ValidationStatus;
   issues: string[];
   issueSummary: string;
+  ingredientCount: number;
 }
 
 export interface MasterRowsSummary {
@@ -38,9 +39,11 @@ export interface MasterRowsSummary {
   totalVisible: number;
   valid: number;
   errors: number;
+  warnings: number;
   duplicateCodeCount: number;
   blankCodeCount: number;
   blankNameCount: number;
+  noIngredientsCount: number;
   rows: MasterRowCheck[];
 }
 
@@ -54,6 +57,7 @@ export interface IngredientRowCheck {
   issues: string[];
   issueSummary: string;
   quantityNormalized: boolean; // true when blank quantity defaulted to 0
+  isOrphan: boolean; // recipe_code not found in RECIPES_MASTER_IMPORT
 }
 
 export interface IngredientRowsSummary {
@@ -66,6 +70,7 @@ export interface IngredientRowsSummary {
   blankIngredientCodeCount: number;
   blankRecipeCodeCount: number;
   nonNumericQuantityCount: number;
+  orphanCount: number;
   rows: IngredientRowCheck[];
 }
 
@@ -156,9 +161,11 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       totalVisible: 0,
       valid: 0,
       errors: 0,
+      warnings: 0,
       duplicateCodeCount: 0,
       blankCodeCount: 0,
       blankNameCount: 0,
+      noIngredientsCount: 0,
       rows: [],
     },
     ingredientRows: {
@@ -171,6 +178,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       blankIngredientCodeCount: 0,
       blankRecipeCodeCount: 0,
       nonNumericQuantityCount: 0,
+      orphanCount: 0,
       rows: [],
     },
     errors,
@@ -327,6 +335,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
           status: 'VALID',
           issues,
           issueSummary: '',
+          ingredientCount: 0,
         });
 
         if (codeRaw) {
@@ -371,9 +380,11 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         totalVisible: rows.length,
         valid: validCount,
         errors: errorCount,
+        warnings: 0,
         duplicateCodeCount,
         blankCodeCount,
         blankNameCount,
+        noIngredientsCount: 0,
         rows,
       };
 
@@ -473,6 +484,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
           issues,
           issueSummary: issues.join('; '),
           quantityNormalized,
+          isOrphan: false,
         });
       });
 
@@ -489,6 +501,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         blankIngredientCodeCount: blankIngCode,
         blankRecipeCodeCount: blankRecipeCode,
         nonNumericQuantityCount: nonNumericQty,
+        orphanCount: 0,
         rows,
       };
 
@@ -497,6 +510,63 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       }
     } catch {
       errors.push('RECIPE_INGREDIENTS_IMPORT rows could not be read.');
+    }
+  }
+
+  // Phase 1D: Cross-check master ↔ ingredient sheets via recipe_code.
+  if (result.masterRows.evaluated && result.ingredientRows.evaluated) {
+    const masterCodes = new Map<string, number>(); // lowercased -> master row index
+    result.masterRows.rows.forEach((m, i) => {
+      if (m.recipeCode) masterCodes.set(m.recipeCode.trim().toLowerCase(), i);
+    });
+
+    // Mark orphan ingredient rows
+    let orphanCount = 0;
+    for (const ing of result.ingredientRows.rows) {
+      if (!ing.recipeCode) continue; // existing blank-code error already applied
+      const key = ing.recipeCode.trim().toLowerCase();
+      const masterIdx = masterCodes.get(key);
+      if (masterIdx === undefined) {
+        ing.isOrphan = true;
+        ing.issues.push('recipe_code not found in RECIPES_MASTER_IMPORT');
+        ing.issueSummary = ing.issues.join('; ');
+        if (ing.status !== 'ERROR') ing.status = 'ERROR';
+        orphanCount += 1;
+      } else {
+        result.masterRows.rows[masterIdx].ingredientCount += 1;
+      }
+    }
+
+    // Recompute ingredient summary error count after orphan marking
+    const ingValid = result.ingredientRows.rows.filter((r) => r.status === 'VALID').length;
+    result.ingredientRows.valid = ingValid;
+    result.ingredientRows.errors = result.ingredientRows.rows.length - ingValid;
+    result.ingredientRows.orphanCount = orphanCount;
+
+    // Master rows with zero ingredients → WARNING (do not override existing ERROR)
+    let noIngredientsCount = 0;
+    let warningCount = 0;
+    for (const m of result.masterRows.rows) {
+      if (m.ingredientCount === 0 && m.recipeCode) {
+        noIngredientsCount += 1;
+        if (m.status !== 'ERROR') {
+          m.issues.push('No ingredient rows found');
+          m.issueSummary = m.issues.join('; ');
+          m.status = 'WARNING';
+          warningCount += 1;
+        }
+      }
+    }
+    result.masterRows.noIngredientsCount = noIngredientsCount;
+    result.masterRows.warnings = warningCount;
+    // Recompute master valid count (errors unchanged; warnings reduce valid)
+    result.masterRows.valid = result.masterRows.rows.filter((r) => r.status === 'VALID').length;
+
+    if (orphanCount > 0) {
+      errors.push(`RECIPE_INGREDIENTS_IMPORT has ${orphanCount} orphan row(s) (unknown recipe_code).`);
+    }
+    if (warningCount > 0) {
+      warnings.push(`${warningCount} master recipe(s) have no ingredient rows.`);
     }
   }
 
