@@ -28,9 +28,10 @@ export interface MasterRowCheck {
   rowNumber: number; // 1-based excel row number (header=1)
   recipeCode: string;
   recipeName: string;
-  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  status: ValidationStatus;
   issues: string[];
   issueSummary: string;
+  ingredientCount: number;
 }
 
 export interface MasterRowsSummary {
@@ -38,9 +39,11 @@ export interface MasterRowsSummary {
   totalVisible: number;
   valid: number;
   errors: number;
+  warnings: number;
   duplicateCodeCount: number;
   blankCodeCount: number;
   blankNameCount: number;
+  noIngredientsCount: number;
   rows: MasterRowCheck[];
 }
 
@@ -54,6 +57,7 @@ export interface IngredientRowCheck {
   issues: string[];
   issueSummary: string;
   quantityNormalized: boolean; // true when blank quantity defaulted to 0
+  isOrphan: boolean; // recipe_code not found in RECIPES_MASTER_IMPORT
 }
 
 export interface IngredientRowsSummary {
@@ -66,6 +70,7 @@ export interface IngredientRowsSummary {
   blankIngredientCodeCount: number;
   blankRecipeCodeCount: number;
   nonNumericQuantityCount: number;
+  orphanCount: number;
   rows: IngredientRowCheck[];
 }
 
