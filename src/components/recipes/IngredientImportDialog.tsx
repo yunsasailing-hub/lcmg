@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, AlertTriangle, CheckCircle2, FileSpreadsheet, Upload } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, Upload } from 'lucide-react';
 
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -62,6 +62,16 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
   const [tab, setTab] = useState<'all' | RowSeverity>('all');
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [failures, setFailures] = useState<{ rowNumber: number; code: string; error: string }[]>([]);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  const toggleRow = (n: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+  };
 
   const counts = useMemo(() => {
     const c = { valid: 0, warning: 0, invalid: 0, create: 0, update: 0 };
