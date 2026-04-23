@@ -226,19 +226,24 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <Button
-                          disabled={!allowed}
-                          onClick={() =>
-                            toast({
-                              title: 'Preview only',
-                              description: 'Import execution will be added in next phase.',
-                            })
-                          }
+                          disabled={!allowed || importing}
+                          onClick={onImport}
                         >
-                          <Upload className="h-4 w-4" /> Import Recipes
+                          {importing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          {importing ? 'Importing…' : 'Import Recipes'}
                         </Button>
                         {!allowed && (
                           <span className="text-xs text-muted-foreground">
                             Fix blocking errors to enable import.
+                          </span>
+                        )}
+                        {importing && (
+                          <span className="text-xs text-muted-foreground">
+                            Writing to database — please wait.
                           </span>
                         )}
                       </div>
