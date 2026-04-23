@@ -6,7 +6,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -75,8 +74,8 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
         onOpenChange(v);
       }}
     >
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl flex flex-col max-h-[90vh] p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
             Recipe Import — Step 1 Validation
@@ -84,10 +83,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
           <DialogDescription>
             Upload an .xlsx workbook to validate its structure. No database changes are made in this step.
           </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 pt-3">
             <input
               ref={fileInputRef}
               type="file"
@@ -102,10 +98,11 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
               <span className="text-xs text-muted-foreground truncate">{file.name}</span>
             )}
           </div>
+        </DialogHeader>
 
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           {result && (
-            <ScrollArea className="max-h-[60vh] pr-3">
-              <div className="space-y-5">
+            <div className="space-y-5">
                 {/* Summary */}
                 <section className="rounded-md border p-3">
                   <div className="flex items-center gap-2">
@@ -306,12 +303,11 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                     )}
                   </section>
                 )}
-              </div>
-            </ScrollArea>
+            </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
