@@ -35,6 +35,7 @@ export interface MasterRowCheck {
   issueSummary: string;
   ingredientCount: number;
   procedureCount: number;
+  importAction: ImportAction;
 }
 
 export interface MasterRowsSummary {
@@ -48,6 +49,10 @@ export interface MasterRowsSummary {
   blankNameCount: number;
   noIngredientsCount: number;
   noProceduresCount: number;
+  newCount: number;
+  updateCount: number;
+  dbDuplicateCount: number;
+  dbChecked: boolean;
   rows: MasterRowCheck[];
 }
 
