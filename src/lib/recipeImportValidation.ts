@@ -198,6 +198,10 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       blankNameCount: 0,
       noIngredientsCount: 0,
       noProceduresCount: 0,
+      newCount: 0,
+      updateCount: 0,
+      dbDuplicateCount: 0,
+      dbChecked: false,
       rows: [],
     },
     ingredientRows: {
