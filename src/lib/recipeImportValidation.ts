@@ -744,3 +744,89 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
   result.workbookValid = errors.length === 0;
   return result;
 }
+
+/**
+ * Phase 2A: Read-only DB existence check for recipe master rows.
+ * Mutates the provided result in place. No database writes.
+ */
+export async function checkRecipeMasterAgainstDb(
+  result: ValidationResult,
+  supabase: {
+    from: (table: string) => {
+      select: (cols: string) => {
+        in: (col: string, vals: string[]) => Promise<{ data: { code: string }[] | null; error: unknown }>;
+      };
+    };
+  },
+): Promise<void> {
+  if (!result.masterRows.evaluated) return;
+  const codes = Array.from(
+    new Set(
+      result.masterRows.rows
+        .map((r) => r.recipeCode.trim())
+        .filter((c) => c.length > 0),
+    ),
+  );
+  // Initialize default action for blank-code rows
+  for (const r of result.masterRows.rows) {
+    if (!r.recipeCode) r.importAction = 'ERROR';
+  }
+
+  // Count occurrences in DB (case-insensitive on code)
+  const dbCounts = new Map<string, number>();
+  if (codes.length > 0) {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('code')
+      .in('code', codes);
+    if (error) {
+      result.errors.push('Database existence check failed.');
+      return;
+    }
+    for (const row of data ?? []) {
+      const key = String(row.code ?? '').trim().toLowerCase();
+      if (!key) continue;
+      dbCounts.set(key, (dbCounts.get(key) ?? 0) + 1);
+    }
+  }
+
+  let newCount = 0;
+  let updateCount = 0;
+  let dbDuplicateCount = 0;
+
+  for (const r of result.masterRows.rows) {
+    if (!r.recipeCode) continue;
+    const key = r.recipeCode.trim().toLowerCase();
+    const count = dbCounts.get(key) ?? 0;
+    if (count === 0) {
+      r.importAction = 'NEW';
+      newCount += 1;
+    } else if (count === 1) {
+      r.importAction = 'UPDATE';
+      updateCount += 1;
+    } else {
+      r.importAction = 'ERROR';
+      r.issues.push('Duplicate recipe_code already exists in database');
+      r.issueSummary = r.issues.join('; ');
+      r.status = 'ERROR';
+      dbDuplicateCount += 1;
+    }
+  }
+
+  result.masterRows.newCount = newCount;
+  result.masterRows.updateCount = updateCount;
+  result.masterRows.dbDuplicateCount = dbDuplicateCount;
+  result.masterRows.dbChecked = true;
+
+  // Recompute master valid/error/warning counts
+  result.masterRows.errors = result.masterRows.rows.filter((r) => r.status === 'ERROR').length;
+  result.masterRows.warnings = result.masterRows.rows.filter((r) => r.status === 'WARNING').length;
+  result.masterRows.valid = result.masterRows.rows.filter((r) => r.status === 'VALID').length;
+
+  if (dbDuplicateCount > 0) {
+    result.errors.push(
+      `${dbDuplicateCount} master recipe(s) blocked: duplicate recipe_code already exists in database.`,
+    );
+    result.workbookValid = result.errors.length === 0;
+  }
+}
