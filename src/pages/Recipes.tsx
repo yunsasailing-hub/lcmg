@@ -19,6 +19,11 @@ export default function Recipes() {
       <Route path="drinks" element={<RecipesList kind="drink" />} />
       <Route path="more" element={<RecipesPlaceholder titleKey="moreModules" />} />
       <Route path="settings" element={<RecipesSettings />} />
+      {/* Legacy redirects — keep app rendering for old URLs */}
+      <Route path="import-export" element={<Navigate to="/recipes/ingredients" replace />} />
+      <Route path="categories" element={<Navigate to="/recipes/settings" replace />} />
+      <Route path="units" element={<Navigate to="/recipes/settings" replace />} />
+      <Route path="*" element={<Navigate to="/recipes" replace />} />
     </Routes>
   );
 }
