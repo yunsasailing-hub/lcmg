@@ -253,6 +253,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                       <div><span className="text-muted-foreground">Warnings: </span><strong className={result.masterRows.warnings ? 'text-amber-600' : ''}>{result.masterRows.warnings}</strong></div>
                       <div><span className="text-muted-foreground">Dup. codes: </span><strong>{result.masterRows.duplicateCodeCount}</strong></div>
                       <div><span className="text-muted-foreground">No ingredients: </span><strong className={result.masterRows.noIngredientsCount ? 'text-amber-600' : ''}>{result.masterRows.noIngredientsCount}</strong></div>
+                      <div><span className="text-muted-foreground">No procedures: </span><strong className={result.masterRows.noProceduresCount ? 'text-amber-600' : ''}>{result.masterRows.noProceduresCount}</strong></div>
                       <div><span className="text-muted-foreground">Blank code: </span><strong>{result.masterRows.blankCodeCount}</strong></div>
                       <div><span className="text-muted-foreground">Blank name: </span><strong>{result.masterRows.blankNameCount}</strong></div>
                     </div>
@@ -266,6 +267,7 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                             <TableHead>recipe_code</TableHead>
                             <TableHead>recipe_name</TableHead>
                             <TableHead className="w-24">Ingredients</TableHead>
+                            <TableHead className="w-24">Procedures</TableHead>
                             <TableHead className="w-24">Status</TableHead>
                             <TableHead>Issues</TableHead>
                           </TableRow>
@@ -283,6 +285,11 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                               <TableCell className="font-mono text-xs">
                                 <span className={r.ingredientCount === 0 ? 'text-amber-600' : ''}>
                                   {r.ingredientCount}
+                                </span>
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                <span className={r.procedureCount === 0 ? 'text-amber-600' : ''}>
+                                  {r.procedureCount}
                                 </span>
                               </TableCell>
                               <TableCell><StatusBadge status={r.status} /></TableCell>
