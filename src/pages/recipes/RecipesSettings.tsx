@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import RecipesShell from '@/components/recipes/RecipesShell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import OptionListManager, { type FieldDef } from '@/components/recipes/OptionListManager';
 import {
   useIngredientTypes, useIngredientCategories,
@@ -16,13 +18,14 @@ export default function RecipesSettings() {
   const canManage = hasAnyRole(['owner', 'manager']);
 
   const [tab, setTab] = useState('ingredient_types');
+  const [showInactive, setShowInactive] = useState(false);
 
-  const { data: ingTypes = [], isLoading: itLoading } = useIngredientTypes(true);
-  const { data: ingCategories = [], isLoading: icLoading } = useIngredientCategories(true);
-  const { data: recTypes = [], isLoading: rtLoading } = useRecipeTypes(true);
-  const { data: recCategories = [], isLoading: rcLoading } = useRecipeCategories(true);
-  const { data: units = [], isLoading: uLoading } = useRecipeUnits(true);
-  const { data: storehouses = [], isLoading: sLoading } = useStorehouses(true);
+  const { data: ingTypes = [], isLoading: itLoading } = useIngredientTypes(showInactive);
+  const { data: ingCategories = [], isLoading: icLoading } = useIngredientCategories(showInactive);
+  const { data: recTypes = [], isLoading: rtLoading } = useRecipeTypes(showInactive);
+  const { data: recCategories = [], isLoading: rcLoading } = useRecipeCategories(showInactive);
+  const { data: units = [], isLoading: uLoading } = useRecipeUnits(showInactive);
+  const { data: storehouses = [], isLoading: sLoading } = useStorehouses(showInactive);
 
   const nameFields: FieldDef[] = [
     { key: 'name_en', label: t('recipes.settings.nameEn'), type: 'text', required: true },
@@ -51,6 +54,12 @@ export default function RecipesSettings() {
       description={t('recipes.settings.subtitle')}
     >
       <Tabs value={tab} onValueChange={setTab}>
+        <div className="mb-3 flex items-center justify-end gap-2">
+          <Switch id="settings-show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
+          <Label htmlFor="settings-show-inactive" className="text-sm">
+            {t('recipes.settings.showInactive', 'Show inactive')}
+          </Label>
+        </div>
         <TabsList className="mb-6 grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           <TabsTrigger value="ingredient_types">{t('recipes.settings.tabs.ingredientTypes')}</TabsTrigger>
           <TabsTrigger value="ingredient_categories">{t('recipes.settings.tabs.ingredientCategories')}</TabsTrigger>
