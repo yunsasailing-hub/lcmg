@@ -153,6 +153,64 @@ export default function RecipeImportValidatorDialog({ open, onOpenChange }: Prop
                   )}
                 </section>
 
+                {/* Phase 2B: Import eligibility gate */}
+                {(() => {
+                  const allowed = result.errors.length === 0;
+                  const m = result.masterRows;
+                  return (
+                    <section
+                      className={`rounded-md border p-4 ${
+                        allowed
+                          ? 'border-emerald-600/40 bg-emerald-500/10'
+                          : 'border-destructive/40 bg-destructive/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {allowed ? (
+                          <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                        ) : (
+                          <ShieldAlert className="h-5 w-5 text-destructive" />
+                        )}
+                        <h3 className={`font-semibold ${allowed ? 'text-emerald-700' : 'text-destructive'}`}>
+                          {allowed ? 'IMPORT ALLOWED' : 'IMPORT BLOCKED'}
+                        </h3>
+                      </div>
+                      <p className="mt-1 text-sm">
+                        {allowed
+                          ? 'No blocking errors found. Import can proceed. Warnings will not block import.'
+                          : 'Blocking errors found. Resolve all errors before importing.'}
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3 lg:grid-cols-4">
+                        <div><span className="text-muted-foreground">Total errors: </span><strong className={result.errors.length ? 'text-destructive' : ''}>{result.errors.length}</strong></div>
+                        <div><span className="text-muted-foreground">Total warnings: </span><strong className={result.warnings.length ? 'text-amber-600' : ''}>{result.warnings.length}</strong></div>
+                        <div><span className="text-muted-foreground">NEW: </span><strong className="text-sky-600">{m.newCount}</strong></div>
+                        <div><span className="text-muted-foreground">UPDATE: </span><strong className="text-indigo-600">{m.updateCount}</strong></div>
+                        <div><span className="text-muted-foreground">DB duplicate (blocked): </span><strong className={m.dbDuplicateCount ? 'text-destructive' : ''}>{m.dbDuplicateCount}</strong></div>
+                        <div><span className="text-muted-foreground">No ingredients: </span><strong className={m.noIngredientsCount ? 'text-amber-600' : ''}>{m.noIngredientsCount}</strong></div>
+                        <div><span className="text-muted-foreground">No procedures: </span><strong className={m.noProceduresCount ? 'text-amber-600' : ''}>{m.noProceduresCount}</strong></div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Button
+                          disabled={!allowed}
+                          onClick={() =>
+                            toast({
+                              title: 'Preview only',
+                              description: 'Import execution will be added in next phase.',
+                            })
+                          }
+                        >
+                          <Upload className="h-4 w-4" /> Import Recipes
+                        </Button>
+                        {!allowed && (
+                          <span className="text-xs text-muted-foreground">
+                            Fix blocking errors to enable import.
+                          </span>
+                        )}
+                      </div>
+                    </section>
+                  );
+                })()}
+
                 {/* Sheet validation */}
                 <section>
                   <h3 className="mb-2 font-semibold">Sheet Validation</h3>
