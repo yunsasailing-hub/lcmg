@@ -2,6 +2,8 @@ import * as XLSX from 'xlsx';
 
 export type ValidationStatus = 'VALID' | 'WARNING' | 'ERROR';
 
+export type ImportAction = 'NEW' | 'UPDATE' | 'ERROR' | 'PENDING';
+
 export interface SheetCheck {
   name: string;
   detected: boolean;
