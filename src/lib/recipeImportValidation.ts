@@ -370,6 +370,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
           issues,
           issueSummary: '',
           ingredientCount: 0,
+          procedureCount: 0,
         });
 
         if (codeRaw) {
@@ -419,6 +420,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         blankCodeCount,
         blankNameCount,
         noIngredientsCount: 0,
+        noProceduresCount: 0,
         rows,
       };
 
