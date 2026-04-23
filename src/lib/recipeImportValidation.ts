@@ -382,6 +382,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
           issueSummary: '',
           ingredientCount: 0,
           procedureCount: 0,
+          importAction: 'PENDING',
         });
 
         if (codeRaw) {
@@ -432,6 +433,10 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
         blankNameCount,
         noIngredientsCount: 0,
         noProceduresCount: 0,
+        newCount: 0,
+        updateCount: 0,
+        dbDuplicateCount: 0,
+        dbChecked: false,
         rows,
       };
 
