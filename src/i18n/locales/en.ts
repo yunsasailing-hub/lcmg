@@ -235,18 +235,6 @@ const en = {
       subtitle: 'Recipe master records — categories, types, departments and yields',
       detailTitle: 'Recipe details',
       add: 'Add Recipe',
-    },
-    foodList: {
-      title: 'Food Recipes',
-      subtitle: 'Kitchen, pizza & bakery recipes',
-      add: 'Add Recipe',
-    },
-    drinkList: {
-      title: 'Drink Recipes',
-      subtitle: 'Bar drink recipes',
-      add: 'Add Drink Recipe',
-    },
-    listExtras: {
       searchPlaceholder: 'Search by ID or name…',
       allCategories: 'All categories',
       allTypes: 'All types',
