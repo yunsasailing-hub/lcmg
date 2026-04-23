@@ -51,8 +51,10 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
   const { data: ingredients = [] } = useIngredients(true);
   const { data: types = [] } = useIngredientTypes(true);
   const { data: categories = [] } = useIngredientCategories(true);
-  // Only approved (active) units accepted in imports
-  const { data: units = [] } = useRecipeUnits(false);
+  // Pass ALL units (including archived) so previously-exported labels remain
+  // round-trip importable. Validator promotes active matches and treats
+  // inactive ones as alias-only fallbacks.
+  const { data: units = [] } = useRecipeUnits(true);
   const { data: storehouses = [] } = useStorehouses(true);
 
   const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload');
