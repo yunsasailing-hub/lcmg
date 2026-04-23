@@ -254,8 +254,8 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[92vh] max-w-5xl overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-hidden flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
             Import Ingredients
@@ -267,8 +267,9 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
         {step === 'upload' && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 py-8">
+          <div className="flex flex-col items-center justify-center gap-4 py-8">
             <div className="rounded-full bg-muted p-6">
               <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
             </div>
@@ -294,7 +295,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
         )}
 
         {step === 'preview' && (
-          <div className="flex-1 flex flex-col min-h-0 gap-3">
+          <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">{fileName}</span>
               <span className="text-muted-foreground">·</span>
@@ -321,7 +322,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                 <TabsTrigger value="invalid">Invalid ({counts.invalid})</TabsTrigger>
               </TabsList>
               <TabsContent value={tab} className="mt-3">
-                <ScrollArea className="h-[50vh] rounded-lg border">
+                <div className="rounded-lg border overflow-x-auto">
                   <Table>
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
@@ -333,7 +334,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                         <TableHead>{COLUMNS.type}</TableHead>
                         <TableHead>{COLUMNS.category}</TableHead>
                         <TableHead>{COLUMNS.unit}</TableHead>
-                        <TableHead>Issues</TableHead>
+                        <TableHead className="min-w-[260px]">Issues</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -347,7 +348,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                           <TableCell className="text-sm">{r.raw[COLUMNS.type]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.category]}</TableCell>
                           <TableCell className="text-sm">{r.raw[COLUMNS.unit]}</TableCell>
-                          <TableCell className="text-xs">
+                          <TableCell className="text-xs max-w-[360px] whitespace-normal break-words">
                             {r.errors.length > 0 && (
                               <ul className="list-disc list-inside text-destructive space-y-0.5">
                                 {r.errors.map((e, i) => (
@@ -374,14 +375,14 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                       )}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
         )}
 
         {step === 'result' && summary && (
-          <div className="flex-1 flex flex-col gap-4 py-2">
+          <div className="flex flex-col gap-4 py-2">
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <StatBox label="Total" value={summary.total} />
               <StatBox label="Created" value={summary.created} tone="emerald" />
@@ -392,7 +393,7 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
             {failures.length > 0 && (
               <div>
                 <p className="text-sm font-medium mb-2">Failures</p>
-                <ScrollArea className="h-[40vh] rounded-lg border">
+                <div className="rounded-lg border overflow-x-auto">
                   <Table>
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
@@ -411,13 +412,14 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
                       ))}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </div>
             )}
           </div>
         )}
+        </div>
 
-        <DialogFooter className="border-t pt-3">
+        <DialogFooter className="border-t px-6 py-3 shrink-0 bg-background">
           {step === 'upload' && (
             <Button variant="outline" onClick={() => handleClose(false)}>
               Cancel
