@@ -301,7 +301,16 @@ export async function readFileAsRows(file: File): Promise<Record<string, string>
 function normalizeRowKeys(row: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(row)) {
-    out[norm(k)] = norm(v);
+    const trimmed = norm(k);
+    out[trimmed] = norm(v);
+    // If this header matches a known alias, also expose the value under the canonical header
+    const canonicalKey = HEADER_ALIAS_MAP.get(trimmed.toLowerCase());
+    if (canonicalKey) {
+      const canonicalHeader = COLUMNS[canonicalKey];
+      if (!(canonicalHeader in out) || !out[canonicalHeader]) {
+        out[canonicalHeader] = norm(v);
+      }
+    }
   }
   return out;
 }
