@@ -349,6 +349,16 @@ const en = {
         includeImagesHint: 'Uncheck to skip the Media section and reduce file size.',
       },
     },
+    foodList: {
+      title: 'Food Recipes',
+      subtitle: 'Kitchen, pizza & bakery recipes',
+      add: 'Add Recipe',
+    },
+    drinkList: {
+      title: 'Drink Recipes',
+      subtitle: 'Bar drink recipes',
+      add: 'Add Drink Recipe',
+    },
     lines: {
       title: 'Ingredients & Cost',
       editTitle: 'Edit Ingredients',
