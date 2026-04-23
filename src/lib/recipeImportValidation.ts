@@ -190,6 +190,7 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       blankCodeCount: 0,
       blankNameCount: 0,
       noIngredientsCount: 0,
+      noProceduresCount: 0,
       rows: [],
     },
     ingredientRows: {
@@ -202,6 +203,15 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       blankIngredientCodeCount: 0,
       blankRecipeCodeCount: 0,
       nonNumericQuantityCount: 0,
+      orphanCount: 0,
+      rows: [],
+    },
+    procedureRows: {
+      evaluated: false,
+      totalVisible: 0,
+      valid: 0,
+      errors: 0,
+      blankRecipeCodeCount: 0,
       orphanCount: 0,
       rows: [],
     },
