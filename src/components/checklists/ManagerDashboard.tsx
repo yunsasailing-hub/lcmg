@@ -234,6 +234,86 @@ function useSubmitterName(userId: string | null | undefined) {
 
 // ─── Checklist Detail (read-only) ───
 
+function InstanceBranchRow({ instance }: { instance: any }) {
+  const { data: branches } = useBranches();
+  const updateBranch = useUpdateInstanceBranch();
+  const [open, setOpen] = useState(false);
+  const [branchId, setBranchId] = useState<string | null>(null);
+
+  const branchName =
+    instance.branch?.name ||
+    branches?.find((b) => b.id === instance.branch_id)?.name ||
+    null;
+
+  const isLocked = !!instance.branch_id;
+  const isCompleted = ['completed', 'verified'].includes(instance.status);
+  const canSetOnce = !isLocked && !isCompleted;
+
+  const handleSave = () => {
+    if (!branchId) { toast.error('Pick a branch'); return; }
+    updateBranch.mutate(
+      { instanceId: instance.id, branchId },
+      {
+        onSuccess: () => {
+          toast.success('Branch set. This field is now locked.');
+          setOpen(false);
+        },
+        onError: (err: any) => toast.error(err?.message || 'Failed to set branch'),
+      }
+    );
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3 text-sm">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-muted-foreground">Branch</span>
+        {branchName ? (
+          <Badge variant="outline" className="text-xs normal-case">{branchName}</Badge>
+        ) : (
+          <Badge variant="secondary" className="text-xs normal-case">Unknown / Legacy</Badge>
+        )}
+        {isLocked && (
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Locked</span>
+        )}
+      </div>
+      {canSetOnce && (
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm">Set branch</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Set branch for this checklist</AlertDialogTitle>
+              <AlertDialogDescription>
+                You can set the branch one time on this legacy checklist. After saving it will be locked permanently.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-2">
+              <Select value={branchId ?? ''} onValueChange={(v) => setBranchId(v)}>
+                <SelectTrigger><SelectValue placeholder="Select branch…" /></SelectTrigger>
+                <SelectContent>
+                  {branches?.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleSave(); }}
+                disabled={updateBranch.isPending || !branchId}
+              >
+                {updateBranch.isPending ? 'Saving…' : 'Save & lock'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </div>
+  );
+}
+
 function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
   instanceId: string;
   templateId: string;
