@@ -410,6 +410,60 @@ function AssignDialog({ template }: { template: any }) {
   );
 }
 
+// ─── Edit Default Branch Dialog (Owner / Manager) ───
+
+function EditTemplateBranchDialog({ template }: { template: any }) {
+  const [open, setOpen] = useState(false);
+  const [branchId, setBranchId] = useState<string | null>(template?.branch_id ?? null);
+  const updateBranch = useUpdateTemplateBranch();
+  const { data: branches } = useBranches();
+
+  const currentBranchName = branches?.find((b) => b.id === template?.branch_id)?.name;
+
+  const handleSave = () => {
+    updateBranch.mutate(
+      { templateId: template.id, branchId },
+      {
+        onSuccess: () => {
+          toast.success('Default branch updated');
+          setOpen(false);
+        },
+        onError: (err: any) => toast.error(err.message || 'Failed to update branch'),
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setBranchId(template?.branch_id ?? null); }}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+          {template?.branch_id ? 'Change branch' : 'Set branch'}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Default Branch</DialogTitle>
+          <DialogDescription>
+            {currentBranchName
+              ? `Currently: ${currentBranchName}`
+              : 'No branch is currently set on this template.'}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-2">
+          <Label>Branch</Label>
+          <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSave} disabled={updateBranch.isPending || !branchId}>
+            {updateBranch.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main ───
 
 export default function TemplateManager() {
