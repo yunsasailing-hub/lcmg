@@ -555,6 +555,8 @@ export default function TemplateManager() {
             const taskCount = tasks.length;
             const isExpanded = expandedId === tpl.id;
             const aCount = assignmentCounts?.[tpl.id] || 0;
+            const branchName = branches?.find((b) => b.id === (tpl as any).branch_id)?.name;
+            const branchMissing = !(tpl as any).branch_id;
 
             return (
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
@@ -571,6 +573,20 @@ export default function TemplateManager() {
                           {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
                           {aCount > 0 && ` · ${aCount} assignment${aCount !== 1 ? 's' : ''}`}
                         </p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {branchMissing ? (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Branch missing</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 normal-case">
+                              Branch: {branchName ?? 'Unknown'}
+                            </Badge>
+                          )}
+                          {canManageTemplates && (
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <EditTemplateBranchDialog template={tpl} />
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
