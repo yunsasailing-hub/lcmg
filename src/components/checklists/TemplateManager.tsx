@@ -26,6 +26,8 @@ import {
   useDeleteTemplateTask,
   useActiveUsersForAssignment,
   useCreateAssignment,
+  useUpdateTemplateBranch,
+  useBranches,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
@@ -36,6 +38,7 @@ import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklist
 import { useAssignmentCountByTemplate } from '@/hooks/useAssignments';
 import AssignmentManager from '@/components/checklists/AssignmentManager';
 import WarningRecipientsField from '@/components/checklists/WarningRecipientsField';
+import BranchSelect from '@/components/checklists/BranchSelect';
 
 const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
   opening: '10:00',
@@ -51,6 +54,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   const [type, setType] = useState<ChecklistType>('opening');
   const [department, setDepartment] = useState<Department>('kitchen');
   const [dueTime, setDueTime] = useState(DEFAULT_DUE_TIMES['opening']);
+  const [branchId, setBranchId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
     { title: '', photo_requirement: 'none' },
   ]);
@@ -73,7 +77,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
         title: title.trim(),
         checklist_type: type,
         department,
-        branch_id: null,
+        branch_id: branchId,
         default_due_time: dueTime + ':00',
         warning_recipient_user_ids: warningRecipientUserIds,
       },
@@ -98,6 +102,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
     setType('opening');
     setDepartment('kitchen');
     setDueTime(DEFAULT_DUE_TIMES['opening']);
+    setBranchId(null);
     setTasks([{ title: '', photo_requirement: 'none' }]);
     setWarningRecipientUserIds([]);
   };
@@ -147,6 +152,14 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
           <div>
             <Label>Default Due Time</Label>
             <Input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-36" />
+          </div>
+
+          <div>
+            <Label>Default Branch</Label>
+            <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
+            <p className="text-xs text-muted-foreground mt-1">
+              Required for new activations. Existing templates without a branch can be edited later.
+            </p>
           </div>
 
           <WarningRecipientsField
@@ -214,6 +227,7 @@ function AssignDialog({ template }: { template: any }) {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
+  const [branchId, setBranchId] = useState<string | null>(template?.branch_id ?? null);
   const [warningRecipientUserIds, setWarningRecipientUserIds] = useState<string[]>(
     Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
   );
@@ -233,6 +247,7 @@ function AssignDialog({ template }: { template: any }) {
     if (!userId) { toast.error('Select a user'); return; }
     if (!startDate) { toast.error('Select a start date'); return; }
     if (endDate && endDate < startDate) { toast.error('End date cannot be before start date'); return; }
+    if (!branchId) { toast.error('Select a branch'); return; }
 
     createAssignment.mutate({
       template_id: template.id,
@@ -241,6 +256,7 @@ function AssignDialog({ template }: { template: any }) {
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
       notes: notes.trim() || null,
+      branch_id: branchId,
       warning_recipient_user_ids: warningRecipientUserIds,
     }, {
       onSuccess: () => {
@@ -261,6 +277,7 @@ function AssignDialog({ template }: { template: any }) {
     setStartDate(new Date());
     setEndDate(undefined);
     setNotes('');
+    setBranchId(template?.branch_id ?? null);
     setWarningRecipientUserIds(
       Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
     );
@@ -364,6 +381,17 @@ function AssignDialog({ template }: { template: any }) {
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes…" rows={2} />
           </div>
 
+          {/* Branch */}
+          <div>
+            <Label>Branch *</Label>
+            <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
+            {!template?.branch_id && (
+              <p className="text-xs text-muted-foreground mt-1">
+                This template has no default branch. Pick one for this assignment.
+              </p>
+            )}
+          </div>
+
           <WarningRecipientsField
             value={warningRecipientUserIds}
             onChange={setWarningRecipientUserIds}
@@ -382,10 +410,67 @@ function AssignDialog({ template }: { template: any }) {
   );
 }
 
+// ─── Edit Default Branch Dialog (Owner / Manager) ───
+
+function EditTemplateBranchDialog({ template }: { template: any }) {
+  const [open, setOpen] = useState(false);
+  const [branchId, setBranchId] = useState<string | null>(template?.branch_id ?? null);
+  const updateBranch = useUpdateTemplateBranch();
+  const { data: branches } = useBranches();
+
+  const currentBranchName = branches?.find((b) => b.id === template?.branch_id)?.name;
+
+  const handleSave = () => {
+    updateBranch.mutate(
+      { templateId: template.id, branchId },
+      {
+        onSuccess: () => {
+          toast.success('Default branch updated');
+          setOpen(false);
+        },
+        onError: (err: any) => toast.error(err.message || 'Failed to update branch'),
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setBranchId(template?.branch_id ?? null); }}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+          {template?.branch_id ? 'Change branch' : 'Set branch'}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Default Branch</DialogTitle>
+          <DialogDescription>
+            {currentBranchName
+              ? `Currently: ${currentBranchName}`
+              : 'No branch is currently set on this template.'}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-2">
+          <Label>Branch</Label>
+          <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSave} disabled={updateBranch.isPending || !branchId}>
+            {updateBranch.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main ───
 
 export default function TemplateManager() {
+  const { hasAnyRole } = useAuth();
+  const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const { data: templates, isLoading, refetch } = useTemplates();
+  const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
@@ -470,6 +555,8 @@ export default function TemplateManager() {
             const taskCount = tasks.length;
             const isExpanded = expandedId === tpl.id;
             const aCount = assignmentCounts?.[tpl.id] || 0;
+            const branchName = branches?.find((b) => b.id === (tpl as any).branch_id)?.name;
+            const branchMissing = !(tpl as any).branch_id;
 
             return (
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
@@ -486,6 +573,20 @@ export default function TemplateManager() {
                           {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
                           {aCount > 0 && ` · ${aCount} assignment${aCount !== 1 ? 's' : ''}`}
                         </p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {branchMissing ? (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Branch missing</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 normal-case">
+                              Branch: {branchName ?? 'Unknown'}
+                            </Badge>
+                          )}
+                          {canManageTemplates && (
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <EditTemplateBranchDialog template={tpl} />
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

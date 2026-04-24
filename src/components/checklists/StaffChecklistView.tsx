@@ -93,6 +93,10 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
                 <span className="capitalize">{instance.checklist_type}</span>
                 <span>·</span>
                 <span className="capitalize">{instance.department}</span>
+                <span>·</span>
+                <span className="truncate">
+                  {(instance as any).branch?.name ?? 'Unknown / Legacy'}
+                </span>
                 {(instance as any).due_datetime && (
                   <>
                     <span>·</span>
@@ -318,6 +322,10 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             </div>
             <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground mt-0.5">
               <span className="capitalize">{instance?.checklist_type} · {instance?.department}</span>
+              <span>·</span>
+              <span className="truncate">
+                {(instance as any)?.branch?.name ?? 'Unknown / Legacy'}
+              </span>
               {(instance as any)?.due_datetime && (
                 <>
                   <span>·</span>
