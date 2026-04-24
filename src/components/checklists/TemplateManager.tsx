@@ -26,7 +26,6 @@ import {
   useDeleteTemplateTask,
   useActiveUsersForAssignment,
   useCreateAssignment,
-  useUpdateTemplateBranch,
   useBranches,
   type PhotoRequirement,
   type ChecklistType,
@@ -69,6 +68,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
   const handleCreate = () => {
     if (!title.trim()) { toast.error('Template title is required'); return; }
+    if (!branchId) { toast.error('Branch is required'); return; }
     const validTasks = tasks.filter(t => t.title.trim());
     if (!validTasks.length) { toast.error('Add at least one task'); return; }
 
@@ -155,10 +155,11 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
           </div>
 
           <div>
-            <Label>Default Branch</Label>
+            <Label>Branch *</Label>
             <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
             <p className="text-xs text-muted-foreground mt-1">
-              Required for new activations. Existing templates without a branch can be edited later.
+              Branch is part of the template identity and cannot be changed later.
+              To use the same checklist on another branch, create a new template.
             </p>
           </div>
 
@@ -227,13 +228,17 @@ function AssignDialog({ template }: { template: any }) {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
-  const [branchId, setBranchId] = useState<string | null>(template?.branch_id ?? null);
   const [warningRecipientUserIds, setWarningRecipientUserIds] = useState<string[]>(
     Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
   );
 
   const { data: users, isLoading: usersLoading, isError: usersError } = useActiveUsersForAssignment();
+  const { data: branches } = useBranches();
   const createAssignment = useCreateAssignment();
+
+  const templateBranchId: string | null = template?.branch_id ?? null;
+  const templateBranchName = branches?.find((b) => b.id === templateBranchId)?.name ?? null;
+  const branchMissing = !templateBranchId;
 
   // Sort users: same department first
   const sortedUsers = [...(users || [])].sort((a, b) => {
@@ -244,10 +249,13 @@ function AssignDialog({ template }: { template: any }) {
   });
 
   const handleAssign = () => {
+    if (branchMissing) {
+      toast.error('This template has no branch. Please create a new template with a branch selected.');
+      return;
+    }
     if (!userId) { toast.error('Select a user'); return; }
     if (!startDate) { toast.error('Select a start date'); return; }
     if (endDate && endDate < startDate) { toast.error('End date cannot be before start date'); return; }
-    if (!branchId) { toast.error('Select a branch'); return; }
 
     createAssignment.mutate({
       template_id: template.id,
@@ -256,7 +264,7 @@ function AssignDialog({ template }: { template: any }) {
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
       notes: notes.trim() || null,
-      branch_id: branchId,
+      branch_id: templateBranchId,
       warning_recipient_user_ids: warningRecipientUserIds,
     }, {
       onSuccess: () => {
@@ -277,7 +285,6 @@ function AssignDialog({ template }: { template: any }) {
     setStartDate(new Date());
     setEndDate(undefined);
     setNotes('');
-    setBranchId(template?.branch_id ?? null);
     setWarningRecipientUserIds(
       Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
     );
@@ -383,12 +390,18 @@ function AssignDialog({ template }: { template: any }) {
 
           {/* Branch */}
           <div>
-            <Label>Branch *</Label>
-            <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
-            {!template?.branch_id && (
-              <p className="text-xs text-muted-foreground mt-1">
-                This template has no default branch. Pick one for this assignment.
-              </p>
+            <Label>Branch</Label>
+            {branchMissing ? (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                This template has no branch. Please create a new template with a branch selected.
+              </div>
+            ) : (
+              <div className="rounded-md border bg-muted/30 p-2 text-sm">
+                <Badge variant="outline" className="normal-case">{templateBranchName ?? 'Unknown'}</Badge>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Inherited from the template and cannot be changed.
+                </p>
+              </div>
             )}
           </div>
 
@@ -401,62 +414,8 @@ function AssignDialog({ template }: { template: any }) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleAssign} disabled={createAssignment.isPending || !userId}>
+          <Button onClick={handleAssign} disabled={createAssignment.isPending || !userId || branchMissing}>
             {createAssignment.isPending ? 'Assigning…' : 'Assign'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Edit Default Branch Dialog (Owner / Manager) ───
-
-function EditTemplateBranchDialog({ template }: { template: any }) {
-  const [open, setOpen] = useState(false);
-  const [branchId, setBranchId] = useState<string | null>(template?.branch_id ?? null);
-  const updateBranch = useUpdateTemplateBranch();
-  const { data: branches } = useBranches();
-
-  const currentBranchName = branches?.find((b) => b.id === template?.branch_id)?.name;
-
-  const handleSave = () => {
-    updateBranch.mutate(
-      { templateId: template.id, branchId },
-      {
-        onSuccess: () => {
-          toast.success('Default branch updated');
-          setOpen(false);
-        },
-        onError: (err: any) => toast.error(err.message || 'Failed to update branch'),
-      }
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setBranchId(template?.branch_id ?? null); }}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
-          {template?.branch_id ? 'Change branch' : 'Set branch'}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <DialogHeader>
-          <DialogTitle>Default Branch</DialogTitle>
-          <DialogDescription>
-            {currentBranchName
-              ? `Currently: ${currentBranchName}`
-              : 'No branch is currently set on this template.'}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="py-2">
-          <Label>Branch</Label>
-          <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={updateBranch.isPending || !branchId}>
-            {updateBranch.isPending ? 'Saving…' : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -575,16 +534,13 @@ export default function TemplateManager() {
                         </p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           {branchMissing ? (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Branch missing</Badge>
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 normal-case">
+                              Branch missing — recreate or duplicate with branch
+                            </Badge>
                           ) : (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 normal-case">
                               Branch: {branchName ?? 'Unknown'}
                             </Badge>
-                          )}
-                          {canManageTemplates && (
-                            <span onClick={(e) => e.stopPropagation()}>
-                              <EditTemplateBranchDialog template={tpl} />
-                            </span>
                           )}
                         </div>
                       </div>
