@@ -467,7 +467,10 @@ function EditTemplateBranchDialog({ template }: { template: any }) {
 // ─── Main ───
 
 export default function TemplateManager() {
+  const { hasAnyRole } = useAuth();
+  const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const { data: templates, isLoading, refetch } = useTemplates();
+  const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
