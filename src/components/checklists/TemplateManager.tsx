@@ -381,6 +381,17 @@ function AssignDialog({ template }: { template: any }) {
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes…" rows={2} />
           </div>
 
+          {/* Branch */}
+          <div>
+            <Label>Branch *</Label>
+            <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
+            {!template?.branch_id && (
+              <p className="text-xs text-muted-foreground mt-1">
+                This template has no default branch. Pick one for this assignment.
+              </p>
+            )}
+          </div>
+
           <WarningRecipientsField
             value={warningRecipientUserIds}
             onChange={setWarningRecipientUserIds}
