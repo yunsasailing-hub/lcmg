@@ -534,16 +534,13 @@ export default function TemplateManager() {
                         </p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           {branchMissing ? (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Branch missing</Badge>
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 normal-case">
+                              Branch missing — recreate or duplicate with branch
+                            </Badge>
                           ) : (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 normal-case">
                               Branch: {branchName ?? 'Unknown'}
                             </Badge>
-                          )}
-                          {canManageTemplates && (
-                            <span onClick={(e) => e.stopPropagation()}>
-                              <EditTemplateBranchDialog template={tpl} />
-                            </span>
                           )}
                         </div>
                       </div>
