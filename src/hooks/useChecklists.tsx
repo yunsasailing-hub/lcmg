@@ -550,32 +550,6 @@ export function useCreateAssignment() {
   });
 }
 
-// ─── Branch update hooks (Owner / Manager only — UI-gated) ───
-
-/**
- * Set the default branch on a checklist template.
- * Allowed: owner / manager.
- */
-export function useUpdateTemplateBranch() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ templateId, branchId }: { templateId: string; branchId: string | null }) => {
-      const { data, error } = await supabase
-        .from('checklist_templates')
-        .update({ branch_id: branchId } as any)
-        .eq('id', templateId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
-    },
-  });
-}
-
-/**
- * One-time branch fix on a legacy checklist instance whose branch is missing.
- * Owner / Manager only — UI must hide the action once branch_id is set.
- */
+// Branch is part of template identity. It is set at creation time only and
+// cannot be edited afterwards. Legacy templates / instances without a branch
+// must be replaced (recreate template) or the assignment cancelled and reassigned.
