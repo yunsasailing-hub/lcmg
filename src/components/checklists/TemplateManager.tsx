@@ -26,6 +26,8 @@ import {
   useDeleteTemplateTask,
   useActiveUsersForAssignment,
   useCreateAssignment,
+  useUpdateTemplateBranch,
+  useBranches,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
@@ -36,6 +38,7 @@ import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklist
 import { useAssignmentCountByTemplate } from '@/hooks/useAssignments';
 import AssignmentManager from '@/components/checklists/AssignmentManager';
 import WarningRecipientsField from '@/components/checklists/WarningRecipientsField';
+import BranchSelect from '@/components/checklists/BranchSelect';
 
 const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
   opening: '10:00',
