@@ -27,7 +27,7 @@ export function useMyChecklists(date?: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('checklist_instances')
-        .select('*, template:checklist_templates(title, department, checklist_type)')
+        .select('*, template:checklist_templates(title, department, checklist_type), branch:branches(id, name)')
         .eq('assigned_to', user!.id)
         .eq('scheduled_date', targetDate)
         .order('created_at', { ascending: false });
@@ -167,7 +167,7 @@ export function useAllChecklists(filters?: ChecklistFilters) {
     queryFn: async () => {
       let query = supabase
         .from('checklist_instances')
-        .select('*, template:checklist_templates(title, department, checklist_type)')
+        .select('*, template:checklist_templates(title, department, checklist_type), branch:branches(id, name)')
         .order('scheduled_date', { ascending: false });
 
       if (filters?.date) query = query.eq('scheduled_date', filters.date);
