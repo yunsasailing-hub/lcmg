@@ -26,7 +26,6 @@ import {
   useDeleteTemplateTask,
   useActiveUsersForAssignment,
   useCreateAssignment,
-  useUpdateTemplateBranch,
   useBranches,
   type PhotoRequirement,
   type ChecklistType,
