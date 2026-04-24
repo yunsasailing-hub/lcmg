@@ -93,6 +93,10 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
                 <span className="capitalize">{instance.checklist_type}</span>
                 <span>·</span>
                 <span className="capitalize">{instance.department}</span>
+                <span>·</span>
+                <span className="truncate">
+                  {(instance as any).branch?.name ?? 'Unknown / Legacy'}
+                </span>
                 {(instance as any).due_datetime && (
                   <>
                     <span>·</span>
