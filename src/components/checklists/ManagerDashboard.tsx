@@ -22,7 +22,6 @@ import {
   useTaskCompletions,
   useDeleteInstance,
   useBranches,
-  useUpdateInstanceBranch,
   type ChecklistFilters,
   type ChecklistStatus,
   type Department,
