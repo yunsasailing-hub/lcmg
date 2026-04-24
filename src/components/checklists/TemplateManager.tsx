@@ -227,6 +227,7 @@ function AssignDialog({ template }: { template: any }) {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
+  const [branchId, setBranchId] = useState<string | null>(template?.branch_id ?? null);
   const [warningRecipientUserIds, setWarningRecipientUserIds] = useState<string[]>(
     Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
   );
@@ -246,6 +247,7 @@ function AssignDialog({ template }: { template: any }) {
     if (!userId) { toast.error('Select a user'); return; }
     if (!startDate) { toast.error('Select a start date'); return; }
     if (endDate && endDate < startDate) { toast.error('End date cannot be before start date'); return; }
+    if (!branchId) { toast.error('Select a branch'); return; }
 
     createAssignment.mutate({
       template_id: template.id,
@@ -254,6 +256,7 @@ function AssignDialog({ template }: { template: any }) {
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
       notes: notes.trim() || null,
+      branch_id: branchId,
       warning_recipient_user_ids: warningRecipientUserIds,
     }, {
       onSuccess: () => {
@@ -274,6 +277,7 @@ function AssignDialog({ template }: { template: any }) {
     setStartDate(new Date());
     setEndDate(undefined);
     setNotes('');
+    setBranchId(template?.branch_id ?? null);
     setWarningRecipientUserIds(
       Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
     );
