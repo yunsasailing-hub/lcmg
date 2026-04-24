@@ -68,6 +68,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
   const handleCreate = () => {
     if (!title.trim()) { toast.error('Template title is required'); return; }
+    if (!branchId) { toast.error('Branch is required'); return; }
     const validTasks = tasks.filter(t => t.title.trim());
     if (!validTasks.length) { toast.error('Add at least one task'); return; }
 
@@ -154,10 +155,11 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
           </div>
 
           <div>
-            <Label>Default Branch</Label>
+            <Label>Branch *</Label>
             <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
             <p className="text-xs text-muted-foreground mt-1">
-              Required for new activations. Existing templates without a branch can be edited later.
+              Branch is part of the template identity and cannot be changed later.
+              To use the same checklist on another branch, create a new template.
             </p>
           </div>
 
