@@ -154,6 +154,14 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
             <Input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-36" />
           </div>
 
+          <div>
+            <Label>Default Branch</Label>
+            <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
+            <p className="text-xs text-muted-foreground mt-1">
+              Required for new activations. Existing templates without a branch can be edited later.
+            </p>
+          </div>
+
           <WarningRecipientsField
             value={warningRecipientUserIds}
             onChange={setWarningRecipientUserIds}
