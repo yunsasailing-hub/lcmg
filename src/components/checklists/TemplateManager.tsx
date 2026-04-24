@@ -390,12 +390,18 @@ function AssignDialog({ template }: { template: any }) {
 
           {/* Branch */}
           <div>
-            <Label>Branch *</Label>
-            <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
-            {!template?.branch_id && (
-              <p className="text-xs text-muted-foreground mt-1">
-                This template has no default branch. Pick one for this assignment.
-              </p>
+            <Label>Branch</Label>
+            {branchMissing ? (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                This template has no branch. Please create a new template with a branch selected.
+              </div>
+            ) : (
+              <div className="rounded-md border bg-muted/30 p-2 text-sm">
+                <Badge variant="outline" className="normal-case">{templateBranchName ?? 'Unknown'}</Badge>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Inherited from the template and cannot be changed.
+                </p>
+              </div>
             )}
           </div>
 
@@ -408,62 +414,8 @@ function AssignDialog({ template }: { template: any }) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleAssign} disabled={createAssignment.isPending || !userId}>
+          <Button onClick={handleAssign} disabled={createAssignment.isPending || !userId || branchMissing}>
             {createAssignment.isPending ? 'Assigning…' : 'Assign'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Edit Default Branch Dialog (Owner / Manager) ───
-
-function EditTemplateBranchDialog({ template }: { template: any }) {
-  const [open, setOpen] = useState(false);
-  const [branchId, setBranchId] = useState<string | null>(template?.branch_id ?? null);
-  const updateBranch = useUpdateTemplateBranch();
-  const { data: branches } = useBranches();
-
-  const currentBranchName = branches?.find((b) => b.id === template?.branch_id)?.name;
-
-  const handleSave = () => {
-    updateBranch.mutate(
-      { templateId: template.id, branchId },
-      {
-        onSuccess: () => {
-          toast.success('Default branch updated');
-          setOpen(false);
-        },
-        onError: (err: any) => toast.error(err.message || 'Failed to update branch'),
-      }
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v) setBranchId(template?.branch_id ?? null); }}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
-          {template?.branch_id ? 'Change branch' : 'Set branch'}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <DialogHeader>
-          <DialogTitle>Default Branch</DialogTitle>
-          <DialogDescription>
-            {currentBranchName
-              ? `Currently: ${currentBranchName}`
-              : 'No branch is currently set on this template.'}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="py-2">
-          <Label>Branch</Label>
-          <BranchSelect value={branchId} onChange={setBranchId} placeholder="Select branch…" />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={updateBranch.isPending || !branchId}>
-            {updateBranch.isPending ? 'Saving…' : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>
