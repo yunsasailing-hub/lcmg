@@ -549,3 +549,52 @@ export function useCreateAssignment() {
     },
   });
 }
+
+// ─── Branch update hooks (Owner / Manager only — UI-gated) ───
+
+/**
+ * Set the default branch on a checklist template.
+ * Allowed: owner / manager.
+ */
+export function useUpdateTemplateBranch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ templateId, branchId }: { templateId: string; branchId: string | null }) => {
+      const { data, error } = await supabase
+        .from('checklist_templates')
+        .update({ branch_id: branchId } as any)
+        .eq('id', templateId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+    },
+  });
+}
+
+/**
+ * One-time branch fix on a legacy checklist instance whose branch is missing.
+ * Owner / Manager only — UI must hide the action once branch_id is set.
+ */
+export function useUpdateInstanceBranch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ instanceId, branchId }: { instanceId: string; branchId: string }) => {
+      const { data, error } = await supabase
+        .from('checklist_instances')
+        .update({ branch_id: branchId } as any)
+        .eq('id', instanceId)
+        .is('branch_id', null) // safeguard: only update legacy rows missing branch
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+    },
+  });
+}
