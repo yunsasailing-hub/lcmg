@@ -54,6 +54,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
   const [type, setType] = useState<ChecklistType>('opening');
   const [department, setDepartment] = useState<Department>('kitchen');
   const [dueTime, setDueTime] = useState(DEFAULT_DUE_TIMES['opening']);
+  const [branchId, setBranchId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
     { title: '', photo_requirement: 'none' },
   ]);
@@ -76,7 +77,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
         title: title.trim(),
         checklist_type: type,
         department,
-        branch_id: null,
+        branch_id: branchId,
         default_due_time: dueTime + ':00',
         warning_recipient_user_ids: warningRecipientUserIds,
       },
@@ -101,6 +102,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
     setType('opening');
     setDepartment('kitchen');
     setDueTime(DEFAULT_DUE_TIMES['opening']);
+    setBranchId(null);
     setTasks([{ title: '', photo_requirement: 'none' }]);
     setWarningRecipientUserIds([]);
   };
