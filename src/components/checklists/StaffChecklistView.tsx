@@ -20,14 +20,13 @@ import { logSaveStep } from '@/lib/saveDebug';
 import PhotoSaveDebugPanel from './PhotoSaveDebugPanel';
 import {
   useMyChecklists,
-  useTemplateTasks,
+  useInstanceTasks,
   useTaskCompletions,
   useUpsertCompletion,
   useSubmitChecklist,
   useUpdateInstanceNotes,
   uploadChecklistPhoto,
   type ChecklistStatus,
-  type PhotoRequirement,
 } from '@/hooks/useChecklists';
 
 // ─── Status helpers ───
@@ -121,7 +120,7 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
 function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: string; templateId: string; onBack: () => void }) {
   const { user } = useAuth();
   const { data: checklists } = useMyChecklists();
-  const { data: tasks } = useTemplateTasks(templateId);
+  const { data: tasks } = useInstanceTasks(instanceId, templateId);
   const { data: completions, isLoading: loadingCompletions } = useTaskCompletions(instanceId);
   const upsert = useUpsertCompletion();
   const submit = useSubmitChecklist();
@@ -135,6 +134,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const instance = checklists?.find(c => c.id === instanceId);
   const tpl = instance?.template as any;
   const { profile, roles } = useAuth();
+  const showOwnerDebug = roles.includes('owner');
 
   // ─── Edit eligibility (department-aware, escalation ≠ lock) ───
   const isManagerOrOwner = roles.includes('owner') || roles.includes('manager');
@@ -159,20 +159,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
     return map;
   }, [completions]);
 
-  const canSubmit = useMemo(() => {
-    if (!tasks || !isEditable) return false;
-    return tasks.every(task => {
-      const c = completionMap[task.id];
-      if (!c?.is_completed) return false;
-      if (task.photo_requirement === 'mandatory' && !c.photo_url) return false;
-      if ((task as any).note_requirement === 'mandatory') {
-        const saved = c.comment?.trim();
-        const draft = comments[task.id]?.trim();
-        if (!saved && !draft) return false;
-      }
-      return true;
-    });
-  }, [tasks, completionMap, isEditable, comments]);
+  const canSubmit = isEditable;
 
   const handleToggle = (taskId: string, checked: boolean) => {
     upsert.mutate({
@@ -290,36 +277,47 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   };
 
   const handleSubmit = () => {
-    if (!tasks) return;
+    if (!tasks) {
+      toast.error('Checklist tasks are still loading. Please try again.');
+      return;
+    }
+    if (!tasks.length) {
+      toast.error('No checklist tasks found.');
+      return;
+    }
     // Per-task validation with explicit messages
     for (const task of tasks) {
-      const c = completionMap[task.id];
+      const taskKey = task.template_task_id ?? task.id;
+      const c = completionMap[taskKey];
       if (!c?.is_completed) {
         toast.error(`Please complete: ${task.title}`);
         return;
       }
-      if (task.photo_requirement === 'mandatory' && !c.photo_url) {
+      const photoRequired = task.photo_required === true;
+      const noteRequired = task.note_required === true;
+      if (photoRequired && !c.photo_url) {
         toast.error(`Please add the required photo for: ${task.title}`);
         return;
       }
-      if ((task as any).note_requirement === 'mandatory') {
-        const draft = comments[task.id]?.trim();
+      if (noteRequired) {
+        const draft = comments[taskKey]?.trim();
         const saved = c.comment?.trim();
         if (!saved && !draft) {
           toast.error(`Please fill the required note for: ${task.title}`);
-          setExpandedComment(task.id);
+          setExpandedComment(taskKey);
           return;
         }
       }
     }
     // Persist any pending draft notes for mandatory tasks before submit
     for (const task of tasks) {
-      const draft = comments[task.id]?.trim();
-      if (draft && draft !== completionMap[task.id]?.comment) {
+      const taskKey = task.template_task_id ?? task.id;
+      const draft = comments[taskKey]?.trim();
+      if (draft && draft !== completionMap[taskKey]?.comment) {
         upsert.mutate({
           instance_id: instanceId,
-          task_id: task.id,
-          is_completed: completionMap[task.id]?.is_completed ?? false,
+          task_id: taskKey,
+          is_completed: completionMap[taskKey]?.is_completed ?? false,
           comment: draft,
         });
       }
@@ -399,12 +397,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           ) : (
             <div className="space-y-3">
               {tasks?.map(task => {
-                const c = completionMap[task.id];
+                const taskKey = task.template_task_id ?? task.id;
+                const c = completionMap[taskKey];
                 const done = !!c?.is_completed;
-                const needsPhoto = task.photo_requirement === 'mandatory' && !c?.photo_url;
-                const photoReq = task.photo_requirement as PhotoRequirement;
-                const noteReq = (task as any).note_requirement as 'none' | 'optional' | 'mandatory' | undefined;
-                const needsNote = noteReq === 'mandatory' && !(c?.comment?.trim() || comments[task.id]?.trim());
+                const photoRequired = task.photo_required === true;
+                const noteRequired = task.note_required === true;
+                const needsPhoto = photoRequired && !c?.photo_url;
+                const needsNote = noteRequired && !(c?.comment?.trim() || comments[taskKey]?.trim());
 
                 return (
                   <div
@@ -417,25 +416,27 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                           {task.title}
                         </p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {photoReq === 'mandatory' && (
+                          {photoRequired && (
                             <Badge variant="destructive" className="text-xs">📸 Photo required</Badge>
                           )}
-                          {photoReq === 'optional' && (
-                            <Badge variant="secondary" className="text-xs">📷 Photo optional</Badge>
-                          )}
-                          {noteReq === 'mandatory' && (
+                          {noteRequired && (
                             <Badge variant="destructive" className="text-xs">📝 Note required</Badge>
                           )}
-                          {noteReq === 'optional' && (
-                            <Badge variant="secondary" className="text-xs">📝 Note optional</Badge>
-                          )}
                         </div>
+                        {task.instruction && (
+                          <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">{task.instruction}</p>
+                        )}
+                        {showOwnerDebug && (
+                          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                            Debug: {task.title} · photo_required={String(task.photo_required)} · note_required={String(task.note_required)} · comment exists={c?.comment?.trim() || comments[taskKey]?.trim() ? 'yes' : 'no'} · photo exists={c?.photo_url ? 'yes' : 'no'}
+                          </p>
+                        )}
                       </div>
                       {/* Large tap target wrapping the checkbox */}
                       <button
                         type="button"
                         disabled={!isEditable}
-                        onClick={() => isEditable && handleToggle(task.id, !done)}
+                        onClick={() => isEditable && handleToggle(taskKey, !done)}
                         className="shrink-0 flex items-center justify-center h-14 w-14 md:h-16 md:w-16 rounded-xl border-2 border-input hover:bg-accent active:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         aria-label={done ? 'Mark incomplete' : 'Mark complete'}
                       >
@@ -453,17 +454,17 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                           variant="outline"
                           size="sm"
                           className="h-10 px-4"
-                          disabled={uploading === task.id}
-                          onClick={() => handlePhoto(task.id)}
+                          disabled={uploading === taskKey}
+                          onClick={() => handlePhoto(taskKey)}
                         >
                           <Camera className="h-4 w-4 mr-2" />
-                          {uploading === task.id ? 'Uploading…' : c?.photo_url ? 'Replace photo' : 'Add photo'}
+                          {uploading === taskKey ? 'Uploading…' : c?.photo_url ? 'Replace photo' : 'Add photo'}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-10 px-4"
-                          onClick={() => setExpandedComment(expandedComment === task.id ? null : task.id)}
+                          onClick={() => setExpandedComment(expandedComment === taskKey ? null : taskKey)}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Comment
@@ -481,15 +482,15 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                       <p className="text-sm text-muted-foreground italic">💬 {c.comment}</p>
                     )}
 
-                    {expandedComment === task.id && isEditable && (
+                    {expandedComment === taskKey && isEditable && (
                       <div className="flex gap-2">
                         <Textarea
                           placeholder="Add a comment..."
-                          value={comments[task.id] || ''}
-                          onChange={e => setComments(prev => ({ ...prev, [task.id]: e.target.value }))}
+                          value={comments[taskKey] || ''}
+                          onChange={e => setComments(prev => ({ ...prev, [taskKey]: e.target.value }))}
                           className="min-h-[72px] text-base"
                         />
-                        <Button size="icon" className="shrink-0 h-12 w-12" onClick={() => handleComment(task.id)}>
+                        <Button size="icon" className="shrink-0 h-12 w-12" onClick={() => handleComment(taskKey)}>
                           <Send className="h-5 w-5" />
                         </Button>
                       </div>

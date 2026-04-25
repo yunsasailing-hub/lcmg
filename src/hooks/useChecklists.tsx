@@ -17,6 +17,26 @@ export type ChecklistTemplate = Tables<'checklist_templates'>;
 export type ChecklistInstance = Tables<'checklist_instances'>;
 export type TaskCompletion = Tables<'checklist_task_completions'>;
 
+export type AssignedChecklistTask = {
+  id: string;
+  instance_id: string;
+  template_task_id: string | null;
+  title: string;
+  instruction: string | null;
+  sort_order: number;
+  photo_required: boolean | null;
+  note_required: boolean | null;
+  is_active: boolean | null;
+};
+
+function splitTemplateTaskTitle(value: string) {
+  const [title, ...instructionParts] = value.split('\n');
+  return {
+    title: title || value,
+    instruction: instructionParts.join('\n').trim() || null,
+  };
+}
+
 // ─── Staff Hooks ───
 
 export function useMyChecklists(date?: string) {
@@ -52,6 +72,46 @@ export function useTemplateTasks(templateId: string | undefined) {
       return data;
     },
     enabled: !!templateId,
+  });
+}
+
+export function useInstanceTasks(instanceId: string | undefined, templateId: string | undefined) {
+  return useQuery<AssignedChecklistTask[]>({
+    queryKey: ['instance-tasks', instanceId, templateId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('checklist_instance_tasks')
+        .select('*')
+        .eq('instance_id', instanceId!)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      if (data?.length) return data as AssignedChecklistTask[];
+
+      const { data: templateTasks, error: templateError } = await supabase
+        .from('checklist_template_tasks')
+        .select('*')
+        .eq('template_id', templateId!)
+        .order('sort_order', { ascending: true });
+
+      if (templateError) throw templateError;
+
+      return (templateTasks || []).map((task) => {
+        const parsed = splitTemplateTaskTitle(task.title);
+        return {
+          id: task.id,
+          instance_id: instanceId!,
+          template_task_id: task.id,
+          title: parsed.title,
+          instruction: parsed.instruction,
+          sort_order: task.sort_order,
+          photo_required: task.photo_requirement === 'mandatory',
+          note_required: (task as any).note_requirement === 'mandatory',
+          is_active: (task as any).is_active ?? true,
+        } satisfies AssignedChecklistTask;
+      });
+    },
+    enabled: !!instanceId && !!templateId,
   });
 }
 
@@ -555,14 +615,28 @@ export function useCreateAssignment() {
         warning_recipient_user_ids: recipientIds,
       };
 
-      const { error: firstInstanceError } = await supabase
+      const { data: firstInstance, error: firstInstanceError } = await supabase
         .from('checklist_instances')
-        .insert(firstInstancePayload);
+        .insert(firstInstancePayload)
+        .select('id')
+        .maybeSingle();
 
       if (firstInstanceError && firstInstanceError.code !== '23505') {
         console.error('First instance creation failed:', firstInstanceError);
         await supabase.from('checklist_assignments').delete().eq('id', createdAssignment.id);
         throw firstInstanceError;
+      }
+
+      if (firstInstance?.id) {
+        const { error: taskCopyError } = await (supabase as any).rpc('create_checklist_instance_tasks', {
+          _instance_id: firstInstance.id,
+        });
+        if (taskCopyError) {
+          console.error('Assigned checklist task creation failed:', taskCopyError);
+          await supabase.from('checklist_instances').delete().eq('id', firstInstance.id);
+          await supabase.from('checklist_assignments').delete().eq('id', createdAssignment.id);
+          throw taskCopyError;
+        }
       }
 
       await supabase
