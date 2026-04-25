@@ -717,12 +717,21 @@ export default function TemplateManager() {
         </div>
       </div>
 
+      <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v as TemplateStatusFilter); setExpandedId(null); }}>
+        <TabsList>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div>
       ) : !templates?.length ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <ClipboardList className="h-10 w-10 text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">No templates yet. Create your first checklist template.</p>
+          <p className="text-sm text-muted-foreground">
+            {statusFilter === 'archived' ? 'No archived templates.' : 'No templates yet. Create your first checklist template.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
