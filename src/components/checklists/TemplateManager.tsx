@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye, Archive, ArchiveRestore } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -29,11 +29,15 @@ import {
   useActiveUsersForAssignment,
   useCreateAssignment,
   useBranches,
+  useArchiveTemplate,
+  useRestoreTemplate,
+  type TemplateStatusFilter,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
   type NoteRequirement,
 } from '@/hooks/useChecklists';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseImportPreview, type ImportPreview } from '@/utils/checklistExcel';
