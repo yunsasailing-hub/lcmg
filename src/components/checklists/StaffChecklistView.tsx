@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN } from '@/lib/timezone';
 import { optimizeChecklistImage, ImageTooLargeError } from '@/lib/imageCompression';
@@ -175,6 +176,19 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   }, [tasks, completionMap, comments]);
 
   const canSubmit = isEditable;
+
+  // Visual readiness: same rules as handleSubmit (all tasks complete + required photos present).
+  // Note Required is intentionally NOT enforced yet.
+  const readyToSubmit = useMemo(() => {
+    if (!tasks || !tasks.length) return false;
+    for (const task of tasks) {
+      const taskKey = task.template_task_id ?? task.id;
+      const c = completionMap[taskKey];
+      if (!c?.is_completed) return false;
+      if (task.photo_required === true && !c.photo_url) return false;
+    }
+    return true;
+  }, [tasks, completionMap]);
 
   const handleToggle = (taskId: string, checked: boolean) => {
     upsert.mutate({
@@ -556,9 +570,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
 
             {isEditable && (
               <Button
-                className="hidden lg:flex w-full h-12 text-base"
+                className={cn(
+                  "hidden lg:flex w-full h-12 text-base transition-colors",
+                  !readyToSubmit && !submit.isPending &&
+                    "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
+                )}
                 size="lg"
-                disabled={!canSubmit || submit.isPending}
+                disabled={submit.isPending}
                 onClick={handleSubmit}
               >
                 {submit.isPending ? 'Submitting…' : 'Submit Checklist'}
@@ -579,9 +597,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         >
           <div className="mx-auto max-w-6xl">
             <Button
-              className="w-full h-14 text-base"
+              className={cn(
+                "w-full h-14 text-base transition-colors",
+                !readyToSubmit && !submit.isPending &&
+                  "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
+              )}
               size="lg"
-              disabled={!canSubmit || submit.isPending}
+              disabled={submit.isPending}
               onClick={handleSubmit}
             >
               {submit.isPending ? 'Submitting…' : 'Submit Checklist'}
