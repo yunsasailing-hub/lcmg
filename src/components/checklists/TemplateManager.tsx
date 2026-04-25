@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useTemplates,
   useCreateTemplate,
@@ -532,20 +533,39 @@ export default function TemplateManager() {
   const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string } | null>(null);
 
   const handleExport = async () => {
-    if (!isOwner) {
-      toast.error('Only Owners can export checklist templates.');
-      return;
-    }
-    if (!templates?.length) { toast.error('No templates to export'); return; }
     try {
+      console.log('[ChecklistExport] starting export');
+
+      // 1. Session check — no edge function involved.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        toast.error('Your session expired. Please sign in again.');
+        return;
+      }
+      console.log('[ChecklistExport] user/session checked');
+
+      // 2. Owner-only gate (uses local roles from useAuth, backed by has_role RPC).
+      if (!isOwner) {
+        toast.error('Only Owner can export checklist templates.');
+        return;
+      }
+      console.log('[ChecklistExport] owner permission passed');
+
+      if (!templates?.length) {
+        toast.error('No templates to export');
+        return;
+      }
+
       await exportTemplatesToXlsx(templates);
+      console.log('[ChecklistExport] export generated');
       toast.success('Checklist templates exported for review. Missing fields are left empty.');
-    } catch (err: any) {
-      const msg = err?.message || 'Export failed';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[ChecklistExport] failed:', msg);
       if (/session expired|jwt|not authenticated|unauthorized/i.test(msg)) {
         toast.error('Your session expired. Please sign in again.');
       } else {
-        toast.error(msg);
+        toast.error(msg || 'Export failed');
       }
     }
   };
