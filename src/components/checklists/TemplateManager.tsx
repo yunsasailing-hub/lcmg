@@ -438,10 +438,14 @@ export default function TemplateManager() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string } | null>(null);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!templates?.length) { toast.error('No templates to export'); return; }
-    exportTemplatesToXlsx(templates);
-    toast.success('Templates exported!');
+    try {
+      await exportTemplatesToXlsx(templates);
+      toast.success('Checklist templates exported for review. Missing fields are left empty.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Export failed');
+    }
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -490,7 +494,7 @@ export default function TemplateManager() {
         <h3 className="text-sm font-medium text-muted-foreground">Checklist Templates</h3>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-1" /> Export
+            <Download className="h-4 w-4 mr-1" /> Export Templates for Review
           </Button>
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-1" /> Import
