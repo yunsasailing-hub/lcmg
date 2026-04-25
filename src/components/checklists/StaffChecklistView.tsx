@@ -569,9 +569,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
 
             {isEditable && (
               <Button
-                className="hidden lg:flex w-full h-12 text-base"
+                className={cn(
+                  "hidden lg:flex w-full h-12 text-base transition-colors",
+                  !readyToSubmit && !submit.isPending &&
+                    "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
+                )}
                 size="lg"
-                disabled={!canSubmit || submit.isPending}
+                disabled={submit.isPending}
                 onClick={handleSubmit}
               >
                 {submit.isPending ? 'Submitting…' : 'Submit Checklist'}
@@ -592,9 +596,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         >
           <div className="mx-auto max-w-6xl">
             <Button
-              className="w-full h-14 text-base"
+              className={cn(
+                "w-full h-14 text-base transition-colors",
+                !readyToSubmit && !submit.isPending &&
+                  "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
+              )}
               size="lg"
-              disabled={!canSubmit || submit.isPending}
+              disabled={submit.isPending}
               onClick={handleSubmit}
             >
               {submit.isPending ? 'Submitting…' : 'Submit Checklist'}
