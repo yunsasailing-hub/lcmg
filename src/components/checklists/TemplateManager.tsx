@@ -572,14 +572,13 @@ export default function TemplateManager() {
   const { hasAnyRole } = useAuth();
   const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const isOwner = hasAnyRole(['owner']);
-  const [statusFilter, setStatusFilter] = useState<TemplateStatusFilter>('active');
-  const { data: templates, isLoading, refetch } = useTemplates(undefined, statusFilter);
+  // Owner sees all templates (active + inactive); other roles only see active.
+  const { data: templates, isLoading, refetch } = useTemplates(undefined, isOwner ? 'all' : 'active');
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
-  const archiveTemplate = useArchiveTemplate();
-  const restoreTemplate = useRestoreTemplate();
+  const setTemplateActive = useSetTemplateActive();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -673,21 +672,14 @@ export default function TemplateManager() {
     });
   };
 
-  const handleArchiveTemplate = (templateId: string) => {
-    archiveTemplate.mutate(templateId, {
-      onSuccess: () => {
-        toast.success('Template archived');
-        if (expandedId === templateId) setExpandedId(null);
+  const handleToggleActive = (templateId: string, isActive: boolean) => {
+    setTemplateActive.mutate(
+      { templateId, isActive },
+      {
+        onSuccess: () => toast.success(isActive ? 'Template set to Active' : 'Template set to Inactive'),
+        onError: (err: any) => toast.error(err?.message || 'Failed to update template status'),
       },
-      onError: (err: any) => toast.error(err?.message || 'Failed to archive template'),
-    });
-  };
-
-  const handleRestoreTemplate = (templateId: string) => {
-    restoreTemplate.mutate(templateId, {
-      onSuccess: () => toast.success('Template restored'),
-      onError: (err: any) => toast.error(err?.message || 'Failed to restore template'),
-    });
+    );
   };
 
   return (
