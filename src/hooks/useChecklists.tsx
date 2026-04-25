@@ -10,6 +10,7 @@ export type ChecklistType = Database['public']['Enums']['checklist_type'];
 export type PhotoRequirement = Database['public']['Enums']['photo_requirement'];
 export type ChecklistStatus = Database['public']['Enums']['checklist_status'];
 export type Department = Database['public']['Enums']['department'];
+export type NoteRequirement = 'none' | 'optional' | 'mandatory';
 
 export type TemplateTask = Tables<'checklist_template_tasks'>;
 export type ChecklistTemplate = Tables<'checklist_templates'>;
@@ -369,7 +370,13 @@ export function useCreateTemplate() {
   return useMutation({
     mutationFn: async ({ template, tasks }: {
       template: Omit<TablesInsert<'checklist_templates'>, 'created_by'>;
-      tasks: { title: string; sort_order: number; photo_requirement?: PhotoRequirement }[];
+      tasks: {
+        title: string;
+        sort_order: number;
+        photo_requirement?: PhotoRequirement;
+        note_requirement?: NoteRequirement;
+        is_active?: boolean;
+      }[];
     }) => {
       const { data: newTemplate, error: templateError } = await supabase
         .from('checklist_templates')
@@ -384,10 +391,12 @@ export function useCreateTemplate() {
           title: t.title,
           sort_order: t.sort_order,
           photo_requirement: t.photo_requirement || ('none' as PhotoRequirement),
+          note_requirement: (t.note_requirement || 'none') as NoteRequirement,
+          is_active: t.is_active ?? true,
         }));
         const { error: tasksError } = await supabase
           .from('checklist_template_tasks')
-          .insert(taskRows);
+          .insert(taskRows as any);
         if (tasksError) throw tasksError;
       }
 

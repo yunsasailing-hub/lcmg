@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ import {
   type PhotoRequirement,
   type ChecklistType,
   type Department,
+  type NoteRequirement,
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
@@ -94,10 +96,16 @@ function CreateTemplateDialog({ onCreated, existingTemplates, branches }: { onCr
   const [department, setDepartment] = useState<Department>('kitchen');
   const [dueTime, setDueTime] = useState(DEFAULT_DUE_TIMES['opening']);
   const [branchId, setBranchId] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<{ title: string; photo_requirement: PhotoRequirement }[]>([
-    { title: '', photo_requirement: 'none' },
+  const [isActive, setIsActive] = useState<boolean>(true);
+  const [tasks, setTasks] = useState<{
+    title: string;
+    instructions: string;
+    photo_requirement: PhotoRequirement;
+    note_requirement: NoteRequirement;
+    is_active: boolean;
+  }[]>([
+    { title: '', instructions: '', photo_requirement: 'none', note_requirement: 'none', is_active: true },
   ]);
-  const [warningRecipientUserIds, setWarningRecipientUserIds] = useState<string[]>([]);
 
   const create = useCreateTemplate();
 
@@ -109,9 +117,12 @@ function CreateTemplateDialog({ onCreated, existingTemplates, branches }: { onCr
     : '';
   const effectiveCode = codeManuallyEdited ? code : suggestedCode;
 
-  const addTask = () => setTasks(prev => [...prev, { title: '', photo_requirement: 'none' }]);
+  const addTask = () => setTasks(prev => [
+    ...prev,
+    { title: '', instructions: '', photo_requirement: 'none', note_requirement: 'none', is_active: true },
+  ]);
   const removeTask = (idx: number) => setTasks(prev => prev.filter((_, i) => i !== idx));
-  const updateTask = (idx: number, field: string, value: string) =>
+  const updateTask = (idx: number, field: string, value: string | boolean) =>
     setTasks(prev => prev.map((t, i) => i === idx ? { ...t, [field]: value } : t));
 
   const handleCreate = () => {
@@ -141,12 +152,16 @@ function CreateTemplateDialog({ onCreated, existingTemplates, branches }: { onCr
         department,
         branch_id: branchId,
         default_due_time: dueTime + ':00',
-        warning_recipient_user_ids: warningRecipientUserIds,
+        is_active: isActive,
       },
       tasks: validTasks.map((t, i) => ({
-        title: t.title.trim(),
+        title: t.instructions.trim()
+          ? `${t.title.trim()}\n${t.instructions.trim()}`
+          : t.title.trim(),
         sort_order: i,
         photo_requirement: t.photo_requirement,
+        note_requirement: t.note_requirement,
+        is_active: t.is_active,
       })),
     }, {
       onSuccess: () => {
@@ -174,8 +189,8 @@ function CreateTemplateDialog({ onCreated, existingTemplates, branches }: { onCr
     setDepartment('kitchen');
     setDueTime(DEFAULT_DUE_TIMES['opening']);
     setBranchId(null);
-    setTasks([{ title: '', photo_requirement: 'none' }]);
-    setWarningRecipientUserIds([]);
+    setIsActive(true);
+    setTasks([{ title: '', instructions: '', photo_requirement: 'none', note_requirement: 'none', is_active: true }]);
   };
 
   return (
@@ -256,10 +271,13 @@ function CreateTemplateDialog({ onCreated, existingTemplates, branches }: { onCr
             </p>
           </div>
 
-          <WarningRecipientsField
-            value={warningRecipientUserIds}
-            onChange={setWarningRecipientUserIds}
-          />
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div>
+              <Label className="text-sm">Active</Label>
+              <p className="text-xs text-muted-foreground">Inactive templates can't be assigned.</p>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
 
           {/* Tasks */}
           <div>
@@ -270,25 +288,55 @@ function CreateTemplateDialog({ onCreated, existingTemplates, branches }: { onCr
             <div className="space-y-2">
               {tasks.map((task, idx) => (
                 <div key={idx} className="flex items-start gap-2 rounded-md border bg-muted/30 p-2">
-                  <GripVertical className="h-4 w-4 text-muted-foreground mt-2.5 shrink-0" />
-                  <div className="flex-1 space-y-1.5">
+                  <div className="flex flex-col items-center pt-1.5 shrink-0">
+                    <span className="text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                    <GripVertical className="h-4 w-4 text-muted-foreground mt-1" />
+                  </div>
+                  <div className="flex-1 space-y-1.5 min-w-0">
                     <Input
                       value={task.title}
                       onChange={e => updateTask(idx, 'title', e.target.value)}
-                      placeholder={`Task ${idx + 1}`}
+                      placeholder={`Task ${idx + 1} title`}
                       className="h-8 text-sm"
                     />
-                    <Select value={task.photo_requirement} onValueChange={v => updateTask(idx, 'photo_requirement', v)}>
-                      <SelectTrigger className="h-7 text-xs w-36">
-                        <Camera className="h-3 w-3 mr-1" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No photo</SelectItem>
-                        <SelectItem value="optional">Optional</SelectItem>
-                        <SelectItem value="mandatory">Required</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Textarea
+                      value={task.instructions}
+                      onChange={e => updateTask(idx, 'instructions', e.target.value)}
+                      placeholder="Instructions / notes (optional)"
+                      rows={2}
+                      className="text-xs"
+                    />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Select value={task.photo_requirement} onValueChange={v => updateTask(idx, 'photo_requirement', v)}>
+                        <SelectTrigger className="h-7 text-xs w-36">
+                          <Camera className="h-3 w-3 mr-1" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Photo: No</SelectItem>
+                          <SelectItem value="optional">Photo: Optional</SelectItem>
+                          <SelectItem value="mandatory">Photo: Required</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={task.note_requirement} onValueChange={v => updateTask(idx, 'note_requirement', v)}>
+                        <SelectTrigger className="h-7 text-xs w-36">
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Note: No</SelectItem>
+                          <SelectItem value="optional">Note: Optional</SelectItem>
+                          <SelectItem value="mandatory">Note: Required</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
+                        <Switch
+                          checked={task.is_active}
+                          onCheckedChange={(v) => updateTask(idx, 'is_active', v)}
+                        />
+                        Active
+                      </label>
+                    </div>
                   </div>
                   {tasks.length > 1 && (
                     <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeTask(idx)}>

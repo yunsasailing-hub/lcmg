@@ -165,6 +165,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       const c = completionMap[task.id];
       if (!c?.is_completed) return false;
       if (task.photo_requirement === 'mandatory' && !c.photo_url) return false;
+      if ((task as any).note_requirement === 'mandatory' && !(c.comment && c.comment.trim())) return false;
       return true;
     });
   }, [tasks, completionMap, isEditable]);
