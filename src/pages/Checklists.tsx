@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import StaffChecklistView from '@/components/checklists/StaffChecklistView';
-import ManagerDashboard from '@/components/checklists/ManagerDashboard';
 import TemplateManager from '@/components/checklists/TemplateManager';
 import PendingChecklistsView from '@/components/checklists/PendingChecklistsView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,7 +24,6 @@ export default function Checklists() {
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="my-checklists">{t('checklists.tabs.myChecklists')}</TabsTrigger>
             <TabsTrigger value="templates">{t('checklists.tabs.templates')}</TabsTrigger>
-            <TabsTrigger value="dashboard">{t('checklists.tabs.dashboard')}</TabsTrigger>
           </TabsList>
           <TabsContent value="pending">
             <PendingChecklistsView />
@@ -35,9 +33,6 @@ export default function Checklists() {
           </TabsContent>
           <TabsContent value="templates">
             <TemplateManager />
-          </TabsContent>
-          <TabsContent value="dashboard">
-            <ManagerDashboard />
           </TabsContent>
         </Tabs>
       ) : (
