@@ -14,6 +14,257 @@ const validTypes = Constants.public.Enums.checklist_type as readonly string[];
 const validDepts = Constants.public.Enums.department as readonly string[];
 const validPhoto = Constants.public.Enums.photo_requirement as readonly string[];
 
+// ─── Import preview types & parser (reads the clean export format) ───
+
+export type ImportTaskPreview = {
+  task_no: number | null;
+  title: string;
+  instruction: string;
+  photo_required: boolean;
+  note_required: boolean;
+  row_number: number;
+};
+
+export type ImportTemplatePreview = {
+  code: string;
+  title: string;
+  branch_name: string;
+  branch_id: string | null;
+  department: Department | '';
+  checklist_type: ChecklistType | '';
+  default_due_time: string;
+  is_active: boolean;
+  tasks: ImportTaskPreview[];
+  action: 'create' | 'update';
+  errors: string[];
+};
+
+export type ImportPreview = {
+  templates: ImportTemplatePreview[];
+  totals: {
+    detected: number;
+    toCreate: number;
+    toUpdate: number;
+    totalTaskRows: number;
+    rowsWithMissingFields: number;
+    blockingErrors: number;
+  };
+  globalErrors: string[];
+};
+
+const TEMPLATE_CODE_REGEX = /^[A-Z0-9]{2,4}-[A-Z]{2,4}-\d{3}$/;
+
+const REQUIRED_HEADERS = [
+  'Template Code',
+  'Template Name',
+  'Branch',
+  'Department',
+  'Checklist Type',
+  'Default Due Time',
+  'Task No',
+  'Task Title',
+] as const;
+
+function asYesNo(v: any): boolean {
+  if (v === true) return true;
+  const s = String(v ?? '').trim().toLowerCase();
+  return s === 'yes' || s === 'y' || s === 'true' || s === '1';
+}
+
+function normalizeTime(v: any): string {
+  if (v == null || v === '') return '';
+  // Excel may return time as a fractional day number.
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    const totalMinutes = Math.round(v * 24 * 60);
+    const hh = String(Math.floor(totalMinutes / 60) % 24).padStart(2, '0');
+    const mm = String(totalMinutes % 60).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+  const s = String(v).trim();
+  // Accept "HH:MM" or "HH:MM:SS"
+  const m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+  return s;
+}
+
+export async function parseImportPreview(file: File): Promise<ImportPreview> {
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: 'array' });
+
+  // Use the first sheet (export uses "Templates Review", but accept any).
+  const sheetName = wb.SheetNames[0];
+  if (!sheetName) throw new Error('The file has no sheets.');
+  const sheet = wb.Sheets[sheetName];
+  const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+  const globalErrors: string[] = [];
+  if (!rows.length) {
+    return {
+      templates: [],
+      totals: { detected: 0, toCreate: 0, toUpdate: 0, totalTaskRows: 0, rowsWithMissingFields: 0, blockingErrors: 1 },
+      globalErrors: ['The import file is empty.'],
+    };
+  }
+
+  // Check headers exist on first row.
+  const headerKeys = Object.keys(rows[0]);
+  const missingHeaders = REQUIRED_HEADERS.filter((h) => !headerKeys.includes(h));
+  if (missingHeaders.length) {
+    globalErrors.push(`Missing required columns: ${missingHeaders.join(', ')}`);
+  }
+
+  // Load existing branches + templates to map names → ids and decide create/update.
+  const [{ data: branches }, { data: existingTemplates }] = await Promise.all([
+    supabase.from('branches').select('id, name'),
+    supabase.from('checklist_templates').select('id, code'),
+  ]);
+  const branchByName = new Map<string, string>();
+  (branches || []).forEach((b: any) => branchByName.set(String(b.name).trim().toLowerCase(), b.id));
+  const existingCodes = new Set(
+    (existingTemplates || []).map((t: any) => String(t.code || '').toUpperCase()).filter(Boolean),
+  );
+
+  // Group rows by Template Code.
+  const groups = new Map<string, { rows: { row: any; rowNumber: number }[] }>();
+  rows.forEach((row, i) => {
+    const code = String(row['Template Code'] ?? '').trim().toUpperCase();
+    if (!code) {
+      // Skip completely empty rows silently; otherwise flag.
+      const hasAnyValue = REQUIRED_HEADERS.some((h) => String(row[h] ?? '').trim() !== '');
+      if (hasAnyValue) {
+        globalErrors.push(`Row ${i + 2}: missing Template Code.`);
+      }
+      return;
+    }
+    if (!groups.has(code)) groups.set(code, { rows: [] });
+    groups.get(code)!.rows.push({ row, rowNumber: i + 2 });
+  });
+
+  const templates: ImportTemplatePreview[] = [];
+  let totalTaskRows = 0;
+  let rowsWithMissingFields = 0;
+
+  for (const [code, { rows: groupRows }] of groups) {
+    const errors: string[] = [];
+    if (!TEMPLATE_CODE_REGEX.test(code)) {
+      errors.push(`Invalid Template Code format "${code}". Expected BRANCH-DEPT-### (e.g. LCL-PIZ-001).`);
+    }
+
+    // Take template-level info from the first row, but verify all rows agree.
+    const first = groupRows[0].row;
+    const title = String(first['Template Name'] ?? '').trim();
+    const branchName = String(first['Branch'] ?? '').trim();
+    const department = String(first['Department'] ?? '').trim().toLowerCase();
+    const checklistType = String(first['Checklist Type'] ?? '').trim().toLowerCase();
+    const defaultDueTime = normalizeTime(first['Default Due Time']);
+    const isActive = first['Active'] === '' || first['Active'] == null
+      ? true
+      : asYesNo(first['Active']);
+
+    if (!title) errors.push('Missing Template Name.');
+    if (!branchName) errors.push('Missing Branch.');
+    if (!department) errors.push('Missing Department.');
+    else if (!validDepts.includes(department)) errors.push(`Invalid Department "${first['Department']}".`);
+    if (!checklistType) errors.push('Missing Checklist Type.');
+    else if (!validTypes.includes(checklistType)) errors.push(`Invalid Checklist Type "${first['Checklist Type']}".`);
+    if (!defaultDueTime) errors.push('Missing Default Due Time.');
+
+    const branchId = branchName ? branchByName.get(branchName.toLowerCase()) ?? null : null;
+    if (branchName && !branchId) errors.push(`Branch "${branchName}" not found in the system.`);
+
+    // Conflicting template-level info between rows of the same Template Code.
+    groupRows.slice(1).forEach(({ row, rowNumber }) => {
+      const checks: [string, string, string][] = [
+        ['Template Name', String(row['Template Name'] ?? '').trim(), title],
+        ['Branch', String(row['Branch'] ?? '').trim(), branchName],
+        ['Department', String(row['Department'] ?? '').trim().toLowerCase(), department],
+        ['Checklist Type', String(row['Checklist Type'] ?? '').trim().toLowerCase(), checklistType],
+        ['Default Due Time', normalizeTime(row['Default Due Time']), defaultDueTime],
+      ];
+      for (const [label, val, expected] of checks) {
+        if (val && val !== expected) {
+          errors.push(`Row ${rowNumber}: ${label} "${val}" conflicts with first row "${expected}" for code ${code}.`);
+        }
+      }
+    });
+
+    // Tasks
+    const seenTaskNos = new Set<number>();
+    const tasks: ImportTaskPreview[] = [];
+    for (const { row, rowNumber } of groupRows) {
+      const taskTitle = String(row['Task Title'] ?? '').trim();
+      const taskNoRaw = row['Task No'];
+      const taskNo = taskNoRaw === '' || taskNoRaw == null ? null : Number(taskNoRaw);
+      const instruction = String(row['Task Instruction / Notes'] ?? '').trim();
+      const photoRequired = asYesNo(row['Photo Required']);
+      const noteRequired = asYesNo(row['Note Required']);
+
+      // A row with no task title at all is treated as a template-only row (skip task).
+      if (!taskTitle && taskNo == null) continue;
+
+      let rowHasMissing = false;
+      if (!taskTitle) {
+        errors.push(`Row ${rowNumber}: missing Task Title.`);
+        rowHasMissing = true;
+      }
+      if (taskNo == null || Number.isNaN(taskNo)) {
+        errors.push(`Row ${rowNumber}: missing or invalid Task No.`);
+        rowHasMissing = true;
+      } else {
+        if (seenTaskNos.has(taskNo)) {
+          errors.push(`Row ${rowNumber}: duplicate Task No ${taskNo} within template ${code}.`);
+        }
+        seenTaskNos.add(taskNo);
+      }
+      if (rowHasMissing) rowsWithMissingFields += 1;
+
+      tasks.push({
+        task_no: taskNo == null || Number.isNaN(taskNo) ? null : taskNo,
+        title: taskTitle,
+        instruction,
+        photo_required: photoRequired,
+        note_required: noteRequired,
+        row_number: rowNumber,
+      });
+      totalTaskRows += 1;
+    }
+
+    if (!tasks.length) errors.push('No tasks found for this template.');
+
+    const action: 'create' | 'update' = existingCodes.has(code) ? 'update' : 'create';
+
+    templates.push({
+      code,
+      title,
+      branch_name: branchName,
+      branch_id: branchId,
+      department: (validDepts.includes(department) ? department : '') as Department | '',
+      checklist_type: (validTypes.includes(checklistType) ? checklistType : '') as ChecklistType | '',
+      default_due_time: defaultDueTime,
+      is_active: isActive,
+      tasks: tasks.sort((a, b) => (a.task_no ?? 0) - (b.task_no ?? 0)),
+      action,
+      errors,
+    });
+  }
+
+  const blockingErrors =
+    globalErrors.length + templates.reduce((acc, t) => acc + t.errors.length, 0);
+
+  return {
+    templates,
+    totals: {
+      detected: templates.length,
+      toCreate: templates.filter((t) => t.action === 'create' && t.errors.length === 0).length,
+      toUpdate: templates.filter((t) => t.action === 'update' && t.errors.length === 0).length,
+      totalTaskRows,
+      rowsWithMissingFields,
+      blockingErrors,
+    },
+    globalErrors,
+  };
+}
+
 export async function exportTemplatesToXlsx(templates: any[]) {
   // Safety: ensure we have a valid session before doing any privileged reads.
   const { data: sessionData } = await supabase.auth.getSession();
