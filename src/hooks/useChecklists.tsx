@@ -388,6 +388,33 @@ export function useDeleteInstance() {
   });
 }
 
+/**
+ * Owner/manager action: remove all orphan pending/late/escalated checklist
+ * instances (assignment missing or ended) plus their notifications, tasks
+ * and completions. Submitted, verified, and rejected (Done Archive) records
+ * are preserved.
+ */
+export function useCleanupOrphanPendingChecklists() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc('cleanup_orphan_pending_checklists' as any);
+      if (error) throw new Error(error.message || 'Cleanup failed');
+      const result = data as { ok: boolean; error?: string; message?: string; deleted_instances?: number; deleted_notifications?: number } | null;
+      if (!result || !result.ok) {
+        throw new Error(result?.message || 'Cleanup failed');
+      }
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+}
+
 export function useUpdateInstanceNotes() {
   const queryClient = useQueryClient();
 
