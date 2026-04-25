@@ -16,9 +16,7 @@ export default function Checklists() {
   return (
     <AppShell>
       <PageHeader title={t('nav.checklists')} description={t('checklists.pageSubtitle')} />
-      {isOwner ? (
-        <PendingChecklistsView />
-      ) : isManager ? (
+      {isOwner || isManager ? (
         <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
             <TabsTrigger value="pending">Pending</TabsTrigger>
