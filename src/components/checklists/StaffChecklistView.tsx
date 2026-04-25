@@ -286,9 +286,39 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   };
 
   const handleSubmit = () => {
-    if (!canSubmit) {
-      toast.error('Please complete all tasks and upload required photos.');
-      return;
+    if (!tasks) return;
+    // Per-task validation with explicit messages
+    for (const task of tasks) {
+      const c = completionMap[task.id];
+      if (!c?.is_completed) {
+        toast.error(`Please complete: ${task.title}`);
+        return;
+      }
+      if (task.photo_requirement === 'mandatory' && !c.photo_url) {
+        toast.error(`Please add the required photo for: ${task.title}`);
+        return;
+      }
+      if ((task as any).note_requirement === 'mandatory') {
+        const draft = comments[task.id]?.trim();
+        const saved = c.comment?.trim();
+        if (!saved && !draft) {
+          toast.error(`Please fill the required note for: ${task.title}`);
+          setExpandedComment(task.id);
+          return;
+        }
+      }
+    }
+    // Persist any pending draft notes for mandatory tasks before submit
+    for (const task of tasks) {
+      const draft = comments[task.id]?.trim();
+      if (draft && draft !== completionMap[task.id]?.comment) {
+        upsert.mutate({
+          instance_id: instanceId,
+          task_id: task.id,
+          is_completed: completionMap[task.id]?.is_completed ?? false,
+          comment: draft,
+        });
+      }
     }
     // Save notes before submitting
     if (notes.trim()) {
