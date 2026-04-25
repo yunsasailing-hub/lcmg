@@ -29,7 +29,7 @@ export default function WarningRecipientsField({
   helperText = 'Managers/Owners who receive escalation warnings if this checklist is overdue. If empty, falls back to branch managers, then owners.',
 }: Props) {
   const [open, setOpen] = useState(false);
-  const { data: users, isLoading } = useActiveUsersForAssignment();
+  const { data: users, isLoading } = useActiveUsersForAssignment({ enabled: open });
 
   const eligible = useMemo<ActiveUser[]>(() => {
     const list = (users || []).filter(u =>
