@@ -749,9 +749,14 @@ export default function TemplateManager() {
                       <div key={task.id || idx} className="flex items-center gap-2 text-sm group">
                         <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="flex-1 text-foreground">{task.title}</span>
-                        {task.photo_requirement !== 'none' && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            📸 {task.photo_requirement}
+                        {(task.photo_requirement === 'mandatory' || task.photo_requirement === true) && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            📸 Photo required
+                          </Badge>
+                        )}
+                        {(task.note_requirement === 'mandatory' || task.note_requirement === true) && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            📝 Note required
                           </Badge>
                         )}
                         <Button
