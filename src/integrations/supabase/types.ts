@@ -306,6 +306,7 @@ export type Database = {
         Row: {
           branch_id: string | null
           checklist_type: Database["public"]["Enums"]["checklist_type"]
+          code: string | null
           created_at: string
           created_by: string | null
           default_assigned_to: string | null
@@ -323,6 +324,7 @@ export type Database = {
         Insert: {
           branch_id?: string | null
           checklist_type: Database["public"]["Enums"]["checklist_type"]
+          code?: string | null
           created_at?: string
           created_by?: string | null
           default_assigned_to?: string | null
@@ -340,6 +342,7 @@ export type Database = {
         Update: {
           branch_id?: string | null
           checklist_type?: Database["public"]["Enums"]["checklist_type"]
+          code?: string | null
           created_at?: string
           created_by?: string | null
           default_assigned_to?: string | null

@@ -71,6 +71,7 @@ export async function exportTemplatesToXlsx(templates: any[]) {
     );
 
     const baseTpl = {
+      'Template Code': t.code || '',
       'Template Name': t.title || '',
       'Template Status': t.is_active ? 'Active' : 'Inactive',
       Branch: branchName,

@@ -45,11 +45,50 @@ const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
   closing: '22:30',
 };
 
+// ─── Template Code helpers ───
+
+const BRANCH_CODE_MAP: Record<string, string> = {
+  'la cala': 'LCL',
+  'la cala mare': 'LCM',
+  'bottega26': 'B26',
+  'bottega 26': 'B26',
+};
+
+const DEPARTMENT_CODE_MAP: Record<Department, string> = {
+  pizza: 'PIZ',
+  kitchen: 'KIT',
+  service: 'SER',
+  bar: 'BAR',
+  management: 'MGT',
+  office: 'OFF',
+  bakery: 'BAK',
+};
+
+const TEMPLATE_CODE_REGEX = /^[A-Z0-9]{2,4}-[A-Z]{2,4}-\d{3}$/;
+
+function suggestTemplatePrefix(branchName: string | null | undefined, department: Department): string {
+  const b = BRANCH_CODE_MAP[(branchName || '').trim().toLowerCase()] || (branchName?.slice(0, 3).toUpperCase() ?? 'XXX');
+  const d = DEPARTMENT_CODE_MAP[department] || 'XXX';
+  return `${b}-${d}-`;
+}
+
+/** Returns the next progressive number for a given prefix (LCL-PIZ-) → "001". */
+function nextProgressive(prefix: string, existingCodes: (string | null | undefined)[]): string {
+  const used = existingCodes
+    .filter((c): c is string => !!c && c.toUpperCase().startsWith(prefix))
+    .map((c) => parseInt(c.slice(prefix.length), 10))
+    .filter((n) => !Number.isNaN(n));
+  const next = (used.length ? Math.max(...used) : 0) + 1;
+  return String(next).padStart(3, '0');
+}
+
 // ─── Create Template Dialog ───
 
-function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
+function CreateTemplateDialog({ onCreated, existingTemplates, branches }: { onCreated: () => void; existingTemplates: any[]; branches: { id: string; name: string }[] }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [code, setCode] = useState('');
+  const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
   const [type, setType] = useState<ChecklistType>('opening');
   const [department, setDepartment] = useState<Department>('kitchen');
   const [dueTime, setDueTime] = useState(DEFAULT_DUE_TIMES['opening']);
@@ -61,6 +100,14 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
   const create = useCreateTemplate();
 
+  // Auto-suggest code from branch+department until user manually edits the code field.
+  const branchName = branches.find((b) => b.id === branchId)?.name;
+  const suggestedPrefix = suggestTemplatePrefix(branchName, department);
+  const suggestedCode = branchId
+    ? `${suggestedPrefix}${nextProgressive(suggestedPrefix, existingTemplates.map((t: any) => t.code))}`
+    : '';
+  const effectiveCode = codeManuallyEdited ? code : suggestedCode;
+
   const addTask = () => setTasks(prev => [...prev, { title: '', photo_requirement: 'none' }]);
   const removeTask = (idx: number) => setTasks(prev => prev.filter((_, i) => i !== idx));
   const updateTask = (idx: number, field: string, value: string) =>
@@ -68,6 +115,19 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
 
   const handleCreate = () => {
     if (!title.trim()) { toast.error('Template title is required'); return; }
+    const codeTrim = effectiveCode.trim().toUpperCase();
+    if (!codeTrim) { toast.error('Template Code is required'); return; }
+    if (!TEMPLATE_CODE_REGEX.test(codeTrim)) {
+      toast.error('Template Code must look like XXX-XXX-001');
+      return;
+    }
+    const duplicate = existingTemplates.some(
+      (t: any) => (t.code || '').toUpperCase() === codeTrim,
+    );
+    if (duplicate) {
+      toast.error('Template Code already exists. Please use a different code.');
+      return;
+    }
     if (!branchId) { toast.error('Branch is required'); return; }
     const validTasks = tasks.filter(t => t.title.trim());
     if (!validTasks.length) { toast.error('Add at least one task'); return; }
@@ -75,6 +135,7 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
     create.mutate({
       template: {
         title: title.trim(),
+        code: codeTrim,
         checklist_type: type,
         department,
         branch_id: branchId,
@@ -93,12 +154,21 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
         resetForm();
         onCreated();
       },
-      onError: () => toast.error('Failed to create template'),
+      onError: (err: any) => {
+        const msg = err?.message || '';
+        if (msg.includes('checklist_templates_code_unique') || msg.toLowerCase().includes('duplicate')) {
+          toast.error('Template Code already exists. Please use a different code.');
+        } else {
+          toast.error('Failed to create template');
+        }
+      },
     });
   };
 
   const resetForm = () => {
     setTitle('');
+    setCode('');
+    setCodeManuallyEdited(false);
     setType('opening');
     setDepartment('kitchen');
     setDueTime(DEFAULT_DUE_TIMES['opening']);
@@ -122,6 +192,28 @@ function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
           <div>
             <Label>Title</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Kitchen Opening" />
+          </div>
+
+          <div>
+            <Label>Template Code *</Label>
+            <Input
+              value={effectiveCode}
+              onChange={(e) => { setCode(e.target.value.toUpperCase()); setCodeManuallyEdited(true); }}
+              placeholder="e.g. LCL-PIZ-001"
+              className="font-mono"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Format: BRANCH-DEPT-### (e.g. LCL-PIZ-001). Auto-suggested from branch &amp; department.
+              {codeManuallyEdited && (
+                <button
+                  type="button"
+                  className="ml-2 underline"
+                  onClick={() => { setCodeManuallyEdited(false); setCode(''); }}
+                >
+                  Reset to suggested
+                </button>
+              )}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -500,7 +592,11 @@ export default function TemplateManager() {
             <Upload className="h-4 w-4 mr-1" /> Import
           </Button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
-          <CreateTemplateDialog onCreated={() => refetch()} />
+          <CreateTemplateDialog
+            onCreated={() => refetch()}
+            existingTemplates={templates ?? []}
+            branches={branches ?? []}
+          />
         </div>
       </div>
 
@@ -531,7 +627,14 @@ export default function TemplateManager() {
                     <div className="flex items-start gap-2 flex-1 min-w-0">
                       {isExpanded ? <ChevronUp className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{tpl.title}</p>
+                        <p className="font-medium text-foreground truncate">
+                          {(tpl as any).code && (
+                            <span className="font-mono text-xs text-muted-foreground mr-2">
+                              {(tpl as any).code}
+                            </span>
+                          )}
+                          {tpl.title}
+                        </p>
                         <p className="text-xs text-muted-foreground capitalize mt-0.5">
                           {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
                           {aCount > 0 && ` · ${aCount} assignment${aCount !== 1 ? 's' : ''}`}
