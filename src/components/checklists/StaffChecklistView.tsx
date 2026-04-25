@@ -330,6 +330,14 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         toast.error(`Please add the required photo for: ${task.title}`);
         return;
       }
+      const noteRequired = task.note_required === true;
+      if (noteRequired) {
+        const noteText = (c?.comment ?? '').trim() || (comments[taskKey] ?? '').trim();
+        if (!noteText) {
+          toast.error(`Please fill the required note for: ${task.title}`);
+          return;
+        }
+      }
     }
     // Persist any pending draft notes for mandatory tasks before submit
     for (const task of tasks) {
