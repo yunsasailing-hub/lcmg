@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye, Archive, ArchiveRestore } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -29,11 +29,15 @@ import {
   useActiveUsersForAssignment,
   useCreateAssignment,
   useBranches,
+  useArchiveTemplate,
+  useRestoreTemplate,
+  type TemplateStatusFilter,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
   type NoteRequirement,
 } from '@/hooks/useChecklists';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
 import { exportTemplatesToXlsx, parseImportPreview, type ImportPreview } from '@/utils/checklistExcel';
@@ -571,11 +575,14 @@ export default function TemplateManager() {
   const { hasAnyRole } = useAuth();
   const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const isOwner = hasAnyRole(['owner']);
-  const { data: templates, isLoading, refetch } = useTemplates();
+  const [statusFilter, setStatusFilter] = useState<TemplateStatusFilter>('active');
+  const { data: templates, isLoading, refetch } = useTemplates(undefined, statusFilter);
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
+  const archiveTemplate = useArchiveTemplate();
+  const restoreTemplate = useRestoreTemplate();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -669,6 +676,23 @@ export default function TemplateManager() {
     });
   };
 
+  const handleArchiveTemplate = (templateId: string) => {
+    archiveTemplate.mutate(templateId, {
+      onSuccess: () => {
+        toast.success('Template archived');
+        if (expandedId === templateId) setExpandedId(null);
+      },
+      onError: (err: any) => toast.error(err?.message || 'Failed to archive template'),
+    });
+  };
+
+  const handleRestoreTemplate = (templateId: string) => {
+    restoreTemplate.mutate(templateId, {
+      onSuccess: () => toast.success('Template restored'),
+      onError: (err: any) => toast.error(err?.message || 'Failed to restore template'),
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -693,12 +717,21 @@ export default function TemplateManager() {
         </div>
       </div>
 
+      <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v as TemplateStatusFilter); setExpandedId(null); }}>
+        <TabsList>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="archived">Archived</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div>
       ) : !templates?.length ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <ClipboardList className="h-10 w-10 text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">No templates yet. Create your first checklist template.</p>
+          <p className="text-sm text-muted-foreground">
+            {statusFilter === 'archived' ? 'No archived templates.' : 'No templates yet. Create your first checklist template.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -747,12 +780,15 @@ export default function TemplateManager() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
+                      {statusFilter === 'archived' && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 normal-case">Archived</Badge>
+                      )}
                       {aCount > 0 && (
                         <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title }); }}>
                           <Eye className="h-3.5 w-3.5 mr-1" /> {aCount} Assignment{aCount !== 1 ? 's' : ''}
                         </Button>
                       )}
-                      <AssignDialog template={tpl} />
+                      {statusFilter === 'active' && <AssignDialog template={tpl} />}
                     </div>
                   </div>
                 </button>
@@ -787,6 +823,45 @@ export default function TemplateManager() {
 
                     {/* Delete template button */}
                     <div className="pt-2 border-t mt-2">
+                      {isOwner && statusFilter === 'active' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="w-full text-foreground hover:bg-accent">
+                              <Archive className="h-3.5 w-3.5 mr-1" /> Archive Template
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Archive "{tpl.title}"?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Archived templates are hidden from the active list and from new assignment selection.
+                                Existing assignments, submitted checklists and history are preserved. You can restore the template at any time.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleArchiveTemplate(tpl.id)}>
+                                Archive
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                      {isOwner && statusFilter === 'archived' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-foreground hover:bg-accent"
+                          onClick={() => handleRestoreTemplate(tpl.id)}
+                          disabled={restoreTemplate.isPending}
+                        >
+                          <ArchiveRestore className="h-3.5 w-3.5 mr-1" /> Restore Template
+                        </Button>
+                      )}
+                    </div>
+
+                    {statusFilter === 'active' && (
+                      <div className="pt-2 border-t mt-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full">
@@ -811,7 +886,8 @@ export default function TemplateManager() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

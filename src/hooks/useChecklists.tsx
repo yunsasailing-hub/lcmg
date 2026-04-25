@@ -408,17 +408,60 @@ export function useUpdateInstanceNotes() {
   });
 }
 
-export function useTemplates(branchId?: string) {
+export type TemplateStatusFilter = 'active' | 'archived' | 'all';
+
+export function useTemplates(branchId?: string, status: TemplateStatusFilter = 'active') {
   return useQuery({
-    queryKey: ['templates', branchId],
+    queryKey: ['templates', branchId, status],
     queryFn: async () => {
       let query = supabase
         .from('checklist_templates')
         .select('*, tasks:checklist_template_tasks(*)');
       if (branchId) query = query.eq('branch_id', branchId);
+      if (status === 'active') query = query.eq('is_active', true);
+      else if (status === 'archived') query = query.eq('is_active', false);
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export function useArchiveTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      const { data, error } = await supabase
+        .from('checklist_templates')
+        .update({ is_active: false })
+        .eq('id', templateId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+    },
+  });
+}
+
+export function useRestoreTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      const { data, error } = await supabase
+        .from('checklist_templates')
+        .update({ is_active: true })
+        .eq('id', templateId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
     },
   });
 }
