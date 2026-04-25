@@ -22,6 +22,7 @@ import {
   useTaskCompletions,
   type ChecklistStatus,
 } from '@/hooks/useChecklists';
+import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
 
 const DONE_STATUSES: ChecklistStatus[] = ['completed', 'verified'];
 
@@ -67,10 +68,16 @@ function ArchiveRow({
       <div className="flex items-start gap-3 min-w-0">
         <CircleCheck className="h-5 w-5 shrink-0 mt-0.5 text-emerald-600" />
         <div className="flex-1 min-w-0">
-          {tpl?.code && (
-            <p className="font-mono text-xs text-muted-foreground mb-1">{tpl.code}</p>
-          )}
+          <div className="mb-1.5">
+            <TemplateCodeBadge code={tpl?.code} />
+          </div>
           <p className="font-heading font-semibold text-base text-foreground leading-snug break-words line-clamp-2">
+            {tpl?.code ? (
+              <>
+                <span className="font-mono text-muted-foreground">{tpl.code}</span>
+                <span className="text-muted-foreground"> · </span>
+              </>
+            ) : null}
             {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
           </p>
         </div>
@@ -132,10 +139,17 @@ function ArchiveDetailDialog({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading">
+            {tpl?.code ? (
+              <>
+                <span className="font-mono text-muted-foreground">{tpl.code}</span>
+                <span className="text-muted-foreground"> · </span>
+              </>
+            ) : null}
             {tpl?.title ?? 'Checklist'}
           </DialogTitle>
           <DialogDescription asChild>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <TemplateCodeBadge code={tpl?.code} />
               <span className="capitalize">{instance?.checklist_type}</span>
               <span>·</span>
               <span className="capitalize">{instance?.department}</span>
