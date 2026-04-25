@@ -165,10 +165,14 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       const c = completionMap[task.id];
       if (!c?.is_completed) return false;
       if (task.photo_requirement === 'mandatory' && !c.photo_url) return false;
-      if ((task as any).note_requirement === 'mandatory' && !(c.comment && c.comment.trim())) return false;
+      if ((task as any).note_requirement === 'mandatory') {
+        const saved = c.comment?.trim();
+        const draft = comments[task.id]?.trim();
+        if (!saved && !draft) return false;
+      }
       return true;
     });
-  }, [tasks, completionMap, isEditable]);
+  }, [tasks, completionMap, isEditable, comments]);
 
   const handleToggle = (taskId: string, checked: boolean) => {
     upsert.mutate({
@@ -399,23 +403,33 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                 const done = !!c?.is_completed;
                 const needsPhoto = task.photo_requirement === 'mandatory' && !c?.photo_url;
                 const photoReq = task.photo_requirement as PhotoRequirement;
+                const noteReq = (task as any).note_requirement as 'none' | 'optional' | 'mandatory' | undefined;
+                const needsNote = noteReq === 'mandatory' && !(c?.comment?.trim() || comments[task.id]?.trim());
 
                 return (
                   <div
                     key={task.id}
-                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${needsPhoto && done ? 'border-destructive/50' : ''}`}
+                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${(needsPhoto || needsNote) && done ? 'border-destructive/50' : ''}`}
                   >
                     <div className="flex items-start gap-3 md:gap-4">
                       <div className="flex-1 min-w-0">
                         <p className={`text-base md:text-lg font-medium leading-snug ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                           {task.title}
                         </p>
-                        {photoReq === 'mandatory' && (
-                          <p className="text-sm text-destructive mt-1">📸 Photo required</p>
-                        )}
-                        {photoReq === 'optional' && (
-                          <p className="text-sm text-muted-foreground mt-1">📷 Photo optional</p>
-                        )}
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {photoReq === 'mandatory' && (
+                            <Badge variant="destructive" className="text-xs">📸 Photo required</Badge>
+                          )}
+                          {photoReq === 'optional' && (
+                            <Badge variant="secondary" className="text-xs">📷 Photo optional</Badge>
+                          )}
+                          {noteReq === 'mandatory' && (
+                            <Badge variant="destructive" className="text-xs">📝 Note required</Badge>
+                          )}
+                          {noteReq === 'optional' && (
+                            <Badge variant="secondary" className="text-xs">📝 Note optional</Badge>
+                          )}
+                        </div>
                       </div>
                       {/* Large tap target wrapping the checkbox */}
                       <button
