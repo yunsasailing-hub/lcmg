@@ -167,7 +167,7 @@ export function useAllChecklists(filters?: ChecklistFilters) {
     queryFn: async () => {
       let query = supabase
         .from('checklist_instances')
-        .select('*, template:checklist_templates(title, department, checklist_type), branch:branches(id, name)')
+        .select('*, template:checklist_templates(title, department, checklist_type, branch_id, branch:branches(id, name)), assignment:checklist_assignments(branch_id, branch:branches(id, name)), branch:branches(id, name)')
         .order('scheduled_date', { ascending: false });
 
       if (filters?.date) query = query.eq('scheduled_date', filters.date);
@@ -181,21 +181,52 @@ export function useAllChecklists(filters?: ChecklistFilters) {
 
       // Manually fetch assignee profiles for instances with assigned_to
       const assignedUserIds = [...new Set(data?.filter(d => d.assigned_to).map(d => d.assigned_to) || [])];
-      let profilesMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
+      let profilesMap: Record<string, { full_name: string | null; avatar_url: string | null; branch_id: string | null }> = {};
       if (assignedUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('user_id, full_name, avatar_url')
+          .select('user_id, full_name, avatar_url, branch_id')
           .in('user_id', assignedUserIds as string[]);
         if (profiles) {
-          profilesMap = Object.fromEntries(profiles.map(p => [p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url }]));
+          profilesMap = Object.fromEntries(profiles.map(p => [p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url, branch_id: p.branch_id }]));
         }
       }
 
-      return (data || []).map(item => ({
-        ...item,
-        assignee: item.assigned_to ? (profilesMap[item.assigned_to] || null) : null,
-      }));
+      // Collect branch ids that need name lookup (from assignee profiles fallback)
+      const profileBranchIds = [
+        ...new Set(
+          Object.values(profilesMap)
+            .map(p => p.branch_id)
+            .filter((b): b is string => !!b),
+        ),
+      ];
+      let branchNameMap: Record<string, { id: string; name: string }> = {};
+      if (profileBranchIds.length > 0) {
+        const { data: branches } = await supabase
+          .from('branches')
+          .select('id, name')
+          .in('id', profileBranchIds);
+        if (branches) {
+          branchNameMap = Object.fromEntries(branches.map(b => [b.id, b]));
+        }
+      }
+
+      return (data || []).map(item => {
+        const assignee = item.assigned_to ? (profilesMap[item.assigned_to] || null) : null;
+        // Resolve branch with fallback chain:
+        //   instance → assignment → template → assignee profile
+        const resolvedBranch =
+          (item as any).branch
+          ?? (item as any).assignment?.branch
+          ?? (item as any).template?.branch
+          ?? (assignee?.branch_id ? branchNameMap[assignee.branch_id] : null)
+          ?? null;
+        return {
+          ...item,
+          assignee,
+          resolved_branch: resolvedBranch,
+        };
+      });
     },
   });
 }
