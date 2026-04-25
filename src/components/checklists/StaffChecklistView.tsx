@@ -177,8 +177,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
 
   const canSubmit = isEditable;
 
-  // Visual readiness: same rules as handleSubmit (all tasks complete + required photos present).
-  // Note Required is intentionally NOT enforced yet.
+  // Visual readiness: all tasks complete + required photos present + required notes present.
   const readyToSubmit = useMemo(() => {
     if (!tasks || !tasks.length) return false;
     for (const task of tasks) {
@@ -186,9 +185,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       const c = completionMap[taskKey];
       if (!c?.is_completed) return false;
       if (task.photo_required === true && !c.photo_url) return false;
+      if (task.note_required === true) {
+        const noteText = (c?.comment ?? '').trim() || (comments[taskKey] ?? '').trim();
+        if (!noteText) return false;
+      }
     }
     return true;
-  }, [tasks, completionMap]);
+  }, [tasks, completionMap, comments]);
 
   const handleToggle = (taskId: string, checked: boolean) => {
     upsert.mutate({
@@ -327,6 +330,14 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         toast.error(`Please add the required photo for: ${task.title}`);
         return;
       }
+      const noteRequired = task.note_required === true;
+      if (noteRequired) {
+        const noteText = (c?.comment ?? '').trim() || (comments[taskKey] ?? '').trim();
+        if (!noteText) {
+          toast.error(`Please fill the required note for: ${task.title}`);
+          return;
+        }
+      }
     }
     // Persist any pending draft notes for mandatory tasks before submit
     for (const task of tasks) {
@@ -422,11 +433,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                 const photoRequired = task.photo_required === true;
                 const noteRequired = task.note_required === true;
                 const needsPhoto = photoRequired && !c?.photo_url;
+                const currentNote = (c?.comment ?? '').trim() || (comments[taskKey] ?? '').trim();
+                const needsNote = noteRequired && !currentNote;
 
                 return (
                   <div
                     key={task.id}
-                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${needsPhoto && done ? 'border-destructive/50' : ''}`}
+                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${(needsPhoto || needsNote) && done ? 'border-destructive/50' : ''}`}
                   >
                     <div className="flex items-start gap-3 md:gap-4">
                       <div className="flex-1 min-w-0">
@@ -437,7 +450,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                           {photoRequired && (
                             <Badge variant="destructive" className="text-xs">📸 Photo required</Badge>
                           )}
-                          {noteRequired && showOwnerDebug && (
+                          {noteRequired && (
                             <Badge variant="destructive" className="text-xs">📝 Note required</Badge>
                           )}
                         </div>
