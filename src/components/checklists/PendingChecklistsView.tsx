@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Circle, AlertTriangle, Clock, CircleCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN, todayVN } from '@/lib/timezone';
 import { useAllChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
@@ -31,24 +32,20 @@ function ChecklistRow({ instance }: { instance: any }) {
       : Circle;
 
   return (
-    <div className="w-full flex items-center gap-3 rounded-xl border bg-card p-4 sm:p-5 min-h-[72px]">
+    <div className="w-full flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5">
       <StatusIcon
-        className={`h-6 w-6 shrink-0 ${
+        className={`h-5 w-5 shrink-0 ${
           instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive'
             : instance.status === 'late' ? 'text-warning'
             : 'text-muted-foreground'
         }`}
       />
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-base text-foreground truncate">
+        <p className="font-medium text-sm text-foreground truncate">
           {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
         </p>
-        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mt-0.5 flex-wrap">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 flex-wrap">
           <span className="capitalize">{instance.checklist_type}</span>
-          <span>·</span>
-          <span className="capitalize">{instance.department}</span>
-          <span>·</span>
-          <span className="truncate">{instance.branch?.name ?? 'Unknown / Legacy'}</span>
           {instance.assignee?.full_name && (
             <>
               <span>·</span>
@@ -71,22 +68,108 @@ function ChecklistRow({ instance }: { instance: any }) {
   );
 }
 
-function ChecklistList({ items, emptyText }: { items: any[]; emptyText: string }) {
-  if (!items.length) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground mb-4">
-          <CircleCheck className="h-7 w-7" />
-        </div>
-        <h3 className="text-lg font-heading font-semibold text-foreground">All caught up</h3>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">{emptyText}</p>
-      </div>
-    );
-  }
+function EmptyState({ text }: { text: string }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {items.map(it => <ChecklistRow key={it.id} instance={it} />)}
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground mb-4">
+        <CircleCheck className="h-7 w-7" />
+      </div>
+      <h3 className="text-lg font-heading font-semibold text-foreground">All caught up</h3>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{text}</p>
     </div>
+  );
+}
+
+function GroupedChecklists({
+  items,
+  storageKey,
+  emptyText,
+}: {
+  items: any[];
+  storageKey: string;
+  emptyText: string;
+}) {
+  // Session-persisted accordion state
+  const [deptOpen, setDeptOpen] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(sessionStorage.getItem(`${storageKey}:dept`) ?? '[]'); } catch { return []; }
+  });
+  const [branchOpen, setBranchOpen] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(sessionStorage.getItem(`${storageKey}:branch`) ?? '[]'); } catch { return []; }
+  });
+
+  const persistDept = (v: string[]) => {
+    setDeptOpen(v);
+    try { sessionStorage.setItem(`${storageKey}:dept`, JSON.stringify(v)); } catch {}
+  };
+  const persistBranch = (v: string[]) => {
+    setBranchOpen(v);
+    try { sessionStorage.setItem(`${storageKey}:branch`, JSON.stringify(v)); } catch {}
+  };
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, Map<string, any[]>>();
+    for (const it of items) {
+      const dept = it.department ?? 'unknown';
+      const branchName = it.branch?.name ?? 'Unknown / Legacy';
+      if (!map.has(dept)) map.set(dept, new Map());
+      const bm = map.get(dept)!;
+      if (!bm.has(branchName)) bm.set(branchName, []);
+      bm.get(branchName)!.push(it);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([dept, branches]) => ({
+        dept,
+        total: Array.from(branches.values()).reduce((s, arr) => s + arr.length, 0),
+        branches: Array.from(branches.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([branch, list]) => ({ branch, list })),
+      }));
+  }, [items]);
+
+  if (!items.length) return <EmptyState text={emptyText} />;
+
+  return (
+    <Accordion type="multiple" value={deptOpen} onValueChange={persistDept} className="space-y-2">
+      {grouped.map(({ dept, total, branches }) => (
+        <AccordionItem
+          key={dept}
+          value={dept}
+          className="border rounded-lg bg-card overflow-hidden"
+        >
+          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/40">
+            <div className="flex items-center gap-2 flex-1">
+              <span className="font-heading font-semibold capitalize text-foreground">{dept}</span>
+              <Badge variant="secondary" className="ml-1">{total}</Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-3 pb-3 pt-0">
+            <Accordion type="multiple" value={branchOpen} onValueChange={persistBranch} className="space-y-1.5">
+              {branches.map(({ branch, list }) => {
+                const key = `${dept}::${branch}`;
+                return (
+                  <AccordionItem key={key} value={key} className="border rounded-md bg-background/50 overflow-hidden">
+                    <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/40">
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-sm font-medium text-foreground">{branch}</span>
+                        <Badge variant="outline" className="ml-1">{list.length}</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-2 pb-2 pt-0">
+                      <div className="flex flex-col gap-1.5">
+                        {list.map((it) => <ChecklistRow key={it.id} instance={it} />)}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          </AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
   );
 }
 
@@ -132,7 +215,11 @@ export default function PendingChecklistsView() {
   if (isOwner) {
     return (
       <div className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
-        <ChecklistList items={allPending} emptyText="No open checklists across all branches." />
+        <GroupedChecklists
+          items={allPending}
+          storageKey="pending:owner:all"
+          emptyText="No open checklists across all branches."
+        />
       </div>
     );
   }
@@ -142,17 +229,17 @@ export default function PendingChecklistsView() {
     <Tabs defaultValue="assigned" className="space-y-4">
       <TabsList>
         <TabsTrigger value="assigned">Assigned ({managerScope.length})</TabsTrigger>
-        <TabsTrigger value="mine">Mine ({myAssigned.length})</TabsTrigger>
+        <TabsTrigger value="mine">Pending ({myAssigned.length})</TabsTrigger>
         <TabsTrigger value="late">Late ({lateItems.length})</TabsTrigger>
       </TabsList>
       <TabsContent value="assigned" className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
-        <ChecklistList items={managerScope} emptyText="No pending checklists in your scope." />
+        <GroupedChecklists items={managerScope} storageKey="pending:mgr:assigned" emptyText="No pending checklists in your scope." />
       </TabsContent>
       <TabsContent value="mine" className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
-        <ChecklistList items={myAssigned} emptyText="Nothing assigned to you right now." />
+        <GroupedChecklists items={myAssigned} storageKey="pending:mgr:mine" emptyText="Nothing assigned to you right now." />
       </TabsContent>
       <TabsContent value="late" className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
-        <ChecklistList items={lateItems} emptyText="No late checklists in your scope." />
+        <GroupedChecklists items={lateItems} storageKey="pending:mgr:late" emptyText="No late checklists in your scope." />
       </TabsContent>
     </Tabs>
   );
