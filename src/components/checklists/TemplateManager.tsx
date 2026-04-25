@@ -780,12 +780,15 @@ export default function TemplateManager() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
+                      {statusFilter === 'archived' && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 normal-case">Archived</Badge>
+                      )}
                       {aCount > 0 && (
                         <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title }); }}>
                           <Eye className="h-3.5 w-3.5 mr-1" /> {aCount} Assignment{aCount !== 1 ? 's' : ''}
                         </Button>
                       )}
-                      <AssignDialog template={tpl} />
+                      {statusFilter === 'active' && <AssignDialog template={tpl} />}
                     </div>
                   </div>
                 </button>
@@ -820,6 +823,45 @@ export default function TemplateManager() {
 
                     {/* Delete template button */}
                     <div className="pt-2 border-t mt-2">
+                      {isOwner && statusFilter === 'active' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="w-full text-foreground hover:bg-accent">
+                              <Archive className="h-3.5 w-3.5 mr-1" /> Archive Template
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Archive "{tpl.title}"?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Archived templates are hidden from the active list and from new assignment selection.
+                                Existing assignments, submitted checklists and history are preserved. You can restore the template at any time.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleArchiveTemplate(tpl.id)}>
+                                Archive
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                      {isOwner && statusFilter === 'archived' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-foreground hover:bg-accent"
+                          onClick={() => handleRestoreTemplate(tpl.id)}
+                          disabled={restoreTemplate.isPending}
+                        >
+                          <ArchiveRestore className="h-3.5 w-3.5 mr-1" /> Restore Template
+                        </Button>
+                      )}
+                    </div>
+
+                    {statusFilter === 'active' && (
+                      <div className="pt-2 border-t mt-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full">
@@ -844,7 +886,8 @@ export default function TemplateManager() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
