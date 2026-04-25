@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -159,6 +159,21 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
     return map;
   }, [completions]);
 
+  useEffect(() => {
+    if (!tasks) return;
+    console.log('[NoteRequiredDebug] checklist detail tasks =', tasks.map(task => {
+      const taskKey = task.template_task_id ?? task.id;
+      const c = completionMap[taskKey];
+      return {
+        title: task.title,
+        photo_required: task.photo_required,
+        note_required: task.note_required,
+        comment_value: c?.comment ?? comments[taskKey] ?? '',
+        photo_count: c?.photo_url ? 1 : 0,
+      };
+    }));
+  }, [tasks, completionMap, comments]);
+
   const canSubmit = isEditable;
 
   const handleToggle = (taskId: string, checked: boolean) => {
@@ -294,19 +309,9 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         return;
       }
       const photoRequired = task.photo_required === true;
-      const noteRequired = task.note_required === true;
       if (photoRequired && !c.photo_url) {
         toast.error(`Please add the required photo for: ${task.title}`);
         return;
-      }
-      if (noteRequired) {
-        const draft = comments[taskKey]?.trim();
-        const saved = c.comment?.trim();
-        if (!saved && !draft) {
-          toast.error(`Please fill the required note for: ${task.title}`);
-          setExpandedComment(taskKey);
-          return;
-        }
       }
     }
     // Persist any pending draft notes for mandatory tasks before submit
