@@ -4,6 +4,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import StaffChecklistView from '@/components/checklists/StaffChecklistView';
 import TemplateManager from '@/components/checklists/TemplateManager';
 import PendingChecklistsView from '@/components/checklists/PendingChecklistsView';
+import DoneArchiveView from '@/components/checklists/DoneArchiveView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -21,7 +22,10 @@ export default function Checklists() {
           <TabsList>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="my-checklists">{t('checklists.tabs.myChecklists')}</TabsTrigger>
-            <TabsTrigger value="templates">{t('checklists.tabs.templates')}</TabsTrigger>
+            {isOwner && (
+              <TabsTrigger value="templates">{t('checklists.tabs.templates')}</TabsTrigger>
+            )}
+            <TabsTrigger value="archive">Done Archive</TabsTrigger>
           </TabsList>
           <TabsContent value="pending">
             <PendingChecklistsView />
@@ -29,8 +33,13 @@ export default function Checklists() {
           <TabsContent value="my-checklists">
             <StaffChecklistView />
           </TabsContent>
-          <TabsContent value="templates">
-            <TemplateManager />
+          {isOwner && (
+            <TabsContent value="templates">
+              <TemplateManager />
+            </TabsContent>
+          )}
+          <TabsContent value="archive">
+            <DoneArchiveView />
           </TabsContent>
         </Tabs>
       ) : (
