@@ -44,7 +44,8 @@ function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: bool
       : Circle;
   const isLate = instance.status === 'late' || instance.status === 'escalated';
   const overdueText = isLate ? formatOverdue(instance.due_datetime) : null;
-  const branchLabel = instance.branch?.name
+  const branchLabel = instance.resolved_branch?.name
+    ?? instance.branch?.name
     ?? (ownerView ? 'Unassigned — Needs Review' : 'Unknown / Legacy');
 
   return (
@@ -127,7 +128,8 @@ function GroupedChecklists({
     const map = new Map<string, Map<string, any[]>>();
     for (const it of items) {
       const dept = it.department ?? 'unknown';
-      const branchName = it.branch?.name
+      const branchName = it.resolved_branch?.name
+        ?? it.branch?.name
         ?? (ownerView ? 'Unassigned — Needs Review' : 'Unknown / Legacy');
       if (!map.has(dept)) map.set(dept, new Map());
       const bm = map.get(dept)!;
