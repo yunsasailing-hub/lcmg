@@ -828,6 +828,16 @@ export default function TemplateManager() {
           onOpenChange={(open) => { if (!open) setAssignmentManagerTemplate(null); }}
         />
       )}
+
+      <ImportTemplatesPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        preview={importPreview}
+        onImported={() => {
+          setImportPreview(null);
+          refetch();
+        }}
+      />
     </div>
   );
 }
