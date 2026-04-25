@@ -6,6 +6,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN, todayVN } from '@/lib/timezone';
 import { useAllChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
+import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
 
 const PENDING_STATUSES: ChecklistStatus[] = ['pending', 'late', 'escalated'];
 
@@ -59,10 +60,16 @@ function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: bool
           }`}
         />
         <div className="flex-1 min-w-0">
-          {tpl?.code && (
-            <p className="font-mono text-xs text-muted-foreground mb-1">{tpl.code}</p>
-          )}
+          <div className="mb-1.5">
+            <TemplateCodeBadge code={tpl?.code} />
+          </div>
           <p className="font-heading font-semibold text-base sm:text-lg text-foreground leading-snug break-words line-clamp-2">
+            {tpl?.code ? (
+              <>
+                <span className="font-mono text-muted-foreground">{tpl.code}</span>
+                <span className="text-muted-foreground"> · </span>
+              </>
+            ) : null}
             {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
           </p>
         </div>

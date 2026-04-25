@@ -17,6 +17,7 @@ import {
   useDeleteAssignment,
   type AssignmentWithProfile,
 } from '@/hooks/useAssignments';
+import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -194,11 +195,12 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithProfile }) {
 interface AssignmentManagerProps {
   templateId: string;
   templateTitle: string;
+  templateCode?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function AssignmentManager({ templateId, templateTitle, open, onOpenChange }: AssignmentManagerProps) {
+export default function AssignmentManager({ templateId, templateTitle, templateCode, open, onOpenChange }: AssignmentManagerProps) {
   const { data: assignments, isLoading } = useAssignmentsByTemplate(open ? templateId : undefined);
 
   const activeCount = assignments?.filter(a => a.status === 'active').length || 0;
@@ -208,9 +210,17 @@ export default function AssignmentManager({ templateId, templateTitle, open, onO
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Assignments – {templateTitle}</DialogTitle>
-          <DialogDescription>
-            {activeCount} active{pausedCount > 0 ? `, ${pausedCount} paused` : ''} assignment{(activeCount + pausedCount) !== 1 ? 's' : ''}
+          <DialogTitle>
+            Assignments – {templateCode ? <span className="font-mono">{templateCode}</span> : null}
+            {templateCode ? ' · ' : ''}{templateTitle}
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="flex flex-col gap-1.5">
+              <TemplateCodeBadge code={templateCode} className="self-start" />
+              <span>
+                {activeCount} active{pausedCount > 0 ? `, ${pausedCount} paused` : ''} assignment{(activeCount + pausedCount) !== 1 ? 's' : ''}
+              </span>
+            </div>
           </DialogDescription>
         </DialogHeader>
 
