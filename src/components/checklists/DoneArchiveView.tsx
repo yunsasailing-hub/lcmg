@@ -62,41 +62,42 @@ function ArchiveRow({
     <button
       type="button"
       onClick={() => onOpen(instance)}
-      className="w-full text-left flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 hover:bg-muted/40 transition-colors"
+      className="w-full text-left flex flex-col gap-3 rounded-lg border bg-card p-4 sm:p-5 hover:bg-muted/40 transition-colors"
     >
-      <CircleCheck className="h-5 w-5 shrink-0 text-emerald-600" />
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-foreground truncate">
-          {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
-        </p>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 flex-wrap">
-          <span className="capitalize">{instance.checklist_type}</span>
-          <span>·</span>
-          <span className="flex items-center gap-0.5">
-            <MapPin className="h-3 w-3" />
-            {branchLabel}
-          </span>
-          {instance.assignee?.full_name && (
-            <>
-              <span>·</span>
-              <span className="flex items-center gap-0.5 truncate">
-                <UserIcon className="h-3 w-3" />
-                {instance.assignee.full_name}
-              </span>
-            </>
+      <div className="flex items-start gap-3 min-w-0">
+        <CircleCheck className="h-5 w-5 shrink-0 mt-0.5 text-emerald-600" />
+        <div className="flex-1 min-w-0">
+          {tpl?.code && (
+            <p className="font-mono text-xs text-muted-foreground mb-1">{tpl.code}</p>
           )}
-          {completedAt && (
-            <>
-              <span>·</span>
-              <span className="flex items-center gap-0.5">
-                <Calendar className="h-3 w-3" />
-                {formatVNDateTime(completedAt)}
-              </span>
-            </>
-          )}
+          <p className="font-heading font-semibold text-base text-foreground leading-snug break-words line-clamp-2">
+            {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
+          </p>
         </div>
+        <Badge className={`${cfg.className} shrink-0`}>{cfg.label}</Badge>
       </div>
-      <Badge className={cfg.className}>{cfg.label}</Badge>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-8">
+        <div className="flex gap-1.5">
+          <dt className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />Branch:</dt>
+          <dd className="font-medium truncate">{branchLabel}</dd>
+        </div>
+        <div className="flex gap-1.5">
+          <dt className="text-muted-foreground">Type:</dt>
+          <dd className="font-medium capitalize">{instance.checklist_type}</dd>
+        </div>
+        {instance.assignee?.full_name && (
+          <div className="flex gap-1.5">
+            <dt className="text-muted-foreground flex items-center gap-1"><UserIcon className="h-3 w-3" />By:</dt>
+            <dd className="font-medium truncate">{instance.assignee.full_name}</dd>
+          </div>
+        )}
+        {completedAt && (
+          <div className="flex gap-1.5">
+            <dt className="text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" />Done:</dt>
+            <dd className="font-medium">{formatVNDateTime(completedAt)}</dd>
+          </div>
+        )}
+      </dl>
     </button>
   );
 }

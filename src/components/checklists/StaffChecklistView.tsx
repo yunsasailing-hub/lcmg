@@ -72,43 +72,54 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="flex flex-col gap-3">
       {checklists.map(instance => {
         const tpl = instance.template as any;
         const cfg = statusConfig[instance.status as ChecklistStatus];
         const StatusIcon = instance.status === 'pending' ? Circle
           : instance.status === 'rejected' ? AlertTriangle
           : CircleCheck;
+        const branchName = (instance as any).branch?.name ?? 'Unknown / Legacy';
+        const dueText = (instance as any).due_datetime ? formatDueTime((instance as any).due_datetime) : null;
 
         return (
           <button
             key={instance.id}
             onClick={() => onSelect(instance.id, instance.template_id)}
-            className="w-full flex items-center gap-3 rounded-xl border bg-card p-4 sm:p-5 text-left transition-colors hover:bg-accent active:bg-accent min-h-[72px]"
+            className="w-full flex flex-col gap-3 rounded-xl border bg-card p-4 sm:p-5 text-left transition-colors hover:bg-accent active:bg-accent"
           >
-            <StatusIcon className={`h-6 w-6 shrink-0 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-base text-foreground truncate">{tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}</p>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mt-0.5">
-                <span className="capitalize">{instance.checklist_type}</span>
-                <span>·</span>
-                <span className="capitalize">{instance.department}</span>
-                <span>·</span>
-                <span className="truncate">
-                  {(instance as any).branch?.name ?? 'Unknown / Legacy'}
-                </span>
-                {(instance as any).due_datetime && (
-                  <>
-                    <span>·</span>
-                    <span className="flex items-center gap-0.5">
-                      <Clock className="h-3 w-3" />
-                      Due {formatDueTime((instance as any).due_datetime)}
-                    </span>
-                  </>
+            <div className="flex items-start gap-3 min-w-0">
+              <StatusIcon className={`h-6 w-6 shrink-0 mt-0.5 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
+              <div className="flex-1 min-w-0">
+                {tpl?.code && (
+                  <p className="font-mono text-xs text-muted-foreground mb-1">{tpl.code}</p>
                 )}
+                <p className="font-heading font-semibold text-base sm:text-lg text-foreground leading-snug break-words line-clamp-2">
+                  {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
+                </p>
               </div>
+              <Badge variant={cfg.variant} className={`${cfg.className} shrink-0`}>{cfg.label}</Badge>
             </div>
-            <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-9">
+              <div className="flex gap-1.5">
+                <dt className="text-muted-foreground">Branch:</dt>
+                <dd className="font-medium truncate">{branchName}</dd>
+              </div>
+              <div className="flex gap-1.5">
+                <dt className="text-muted-foreground">Department:</dt>
+                <dd className="font-medium capitalize">{instance.department}</dd>
+              </div>
+              <div className="flex gap-1.5">
+                <dt className="text-muted-foreground">Type:</dt>
+                <dd className="font-medium capitalize">{instance.checklist_type}</dd>
+              </div>
+              {dueText && (
+                <div className="flex gap-1.5">
+                  <dt className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />Due:</dt>
+                  <dd className="font-medium">{dueText}</dd>
+                </div>
+              )}
+            </dl>
           </button>
         );
       })}

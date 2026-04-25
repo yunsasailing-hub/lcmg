@@ -714,7 +714,7 @@ export default function TemplateManager() {
           <p className="text-sm text-muted-foreground">No templates yet. Create your first checklist template.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {templates.map(tpl => {
             const tasks = (tpl as any).tasks || [];
             const taskCount = tasks.length;
@@ -728,66 +728,88 @@ export default function TemplateManager() {
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : tpl.id)}
-                  className="w-full p-4 text-left hover:bg-accent/50 transition-colors"
+                  className="w-full p-4 sm:p-5 text-left hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2 flex-1 min-w-0">
-                      {isExpanded ? <ChevronUp className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />}
+                  <div className="flex flex-col gap-3">
+                    {/* Row 1: title + chevron */}
+                    <div className="flex items-start gap-2 min-w-0">
+                      {isExpanded ? <ChevronUp className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">
-                          {(tpl as any).code && (
-                            <span className="font-mono text-xs text-muted-foreground mr-2">
-                              {(tpl as any).code}
-                            </span>
-                          )}
+                        {(tpl as any).code && (
+                          <p className="font-mono text-xs text-muted-foreground mb-1">
+                            {(tpl as any).code}
+                          </p>
+                        )}
+                        <p className="font-heading font-semibold text-base sm:text-lg text-foreground leading-snug break-words line-clamp-2">
                           {tpl.title}
                         </p>
-                        <p className="text-xs text-muted-foreground capitalize mt-0.5">
-                          {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
-                          {aCount > 0 && ` · ${aCount} assignment${aCount !== 1 ? 's' : ''}`}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          {branchMissing ? (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 normal-case">
-                              Branch missing — recreate or duplicate with branch
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 normal-case">
-                              Branch: {branchName ?? 'Unknown'}
-                            </Badge>
-                          )}
-                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant="outline" className="capitalize text-xs">{tpl.checklist_type}</Badge>
+
+                    {/* Row 2: details on separate lines */}
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-7">
+                      <div className="flex gap-1.5">
+                        <dt className="text-muted-foreground">Branch:</dt>
+                        <dd className={cn('font-medium', branchMissing && 'text-destructive')}>
+                          {branchMissing ? 'Missing — recreate template' : (branchName ?? 'Unknown')}
+                        </dd>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <dt className="text-muted-foreground">Department:</dt>
+                        <dd className="font-medium capitalize">{tpl.department}</dd>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <dt className="text-muted-foreground">Type:</dt>
+                        <dd className="font-medium capitalize">{tpl.checklist_type}</dd>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <dt className="text-muted-foreground">Due time:</dt>
+                        <dd className="font-medium">{(tpl as any).default_due_time?.slice(0, 5) ?? '—'}</dd>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <dt className="text-muted-foreground">Tasks:</dt>
+                        <dd className="font-medium">{taskCount}</dd>
+                      </div>
+                      {aCount > 0 && (
+                        <div className="flex gap-1.5">
+                          <dt className="text-muted-foreground">Assignments:</dt>
+                          <dd className="font-medium">{aCount}</dd>
+                        </div>
+                      )}
+                    </dl>
+
+                    {/* Row 3: status + actions */}
+                    <div
+                      className="flex flex-wrap items-center gap-2 pl-7"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      role="presentation"
+                    >
                       <Badge
                         variant={isTplActive ? 'default' : 'secondary'}
-                        className="text-[10px] px-1.5 py-0 normal-case"
+                        className="text-xs"
                       >
                         {isTplActive ? 'Active' : 'Inactive'}
                       </Badge>
                       {isOwner && (
-                        <div
-                          className="flex items-center gap-1.5"
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
-                          role="presentation"
-                        >
+                        <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Switch
                             checked={isTplActive}
                             disabled={setTemplateActive.isPending}
                             onCheckedChange={(v) => handleToggleActive(tpl.id, v)}
                             aria-label={isTplActive ? 'Set template inactive' : 'Set template active'}
                           />
-                        </div>
+                          ON / OFF
+                        </label>
                       )}
-                      {aCount > 0 && (
-                        <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title }); }}>
-                          <Eye className="h-3.5 w-3.5 mr-1" /> {aCount} Assignment{aCount !== 1 ? 's' : ''}
-                        </Button>
-                      )}
-                      {isTplActive && <AssignDialog template={tpl} />}
+                      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                        {aCount > 0 && (
+                          <Button variant="outline" size="sm" onClick={() => setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title })}>
+                            <Eye className="h-3.5 w-3.5 mr-1" /> View Assignments
+                          </Button>
+                        )}
+                        {isTplActive && <AssignDialog template={tpl} />}
+                      </div>
                     </div>
                   </div>
                 </button>
