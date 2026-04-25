@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import StaffChecklistView from '@/components/checklists/StaffChecklistView';
-import ManagerDashboard from '@/components/checklists/ManagerDashboard';
 import TemplateManager from '@/components/checklists/TemplateManager';
 import PendingChecklistsView from '@/components/checklists/PendingChecklistsView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
