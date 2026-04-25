@@ -36,11 +36,12 @@ import {
 } from '@/hooks/useChecklists';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
-import { exportTemplatesToXlsx, parseTemplatesFromXlsx } from '@/utils/checklistExcel';
+import { exportTemplatesToXlsx, parseImportPreview, type ImportPreview } from '@/utils/checklistExcel';
 import { useAssignmentCountByTemplate } from '@/hooks/useAssignments';
 import AssignmentManager from '@/components/checklists/AssignmentManager';
 import WarningRecipientsField from '@/components/checklists/WarningRecipientsField';
 import BranchSelect from '@/components/checklists/BranchSelect';
+import ImportTemplatesPreviewDialog from '@/components/checklists/ImportTemplatesPreviewDialog';
 
 const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
   opening: '10:00',
@@ -579,6 +580,9 @@ export default function TemplateManager() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string } | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [parsing, setParsing] = useState(false);
 
   const handleExport = async () => {
     try {
@@ -621,20 +625,27 @@ export default function TemplateManager() {
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const parsed = await parseTemplatesFromXlsx(file);
-      for (const tpl of parsed) {
-        await createTemplate.mutateAsync({
-          template: { title: tpl.title, checklist_type: tpl.checklist_type, department: tpl.department, branch_id: null, default_due_time: DEFAULT_DUE_TIMES[tpl.checklist_type] + ':00' },
-          tasks: tpl.tasks,
-        });
-      }
-      toast.success(`${parsed.length} template(s) imported!`);
-      refetch();
-    } catch (err: any) {
-      toast.error(err.message || 'Import failed');
+    if (!isOwner) {
+      toast.error('Only Owner can import checklist templates.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
     }
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setParsing(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        toast.error('Your session expired. Please sign in again.');
+        return;
+      }
+      const preview = await parseImportPreview(file);
+      setImportPreview(preview);
+      setPreviewOpen(true);
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not read import file');
+    } finally {
+      setParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleDeleteTemplate = (templateId: string) => {
@@ -668,9 +679,11 @@ export default function TemplateManager() {
               <Download className="h-4 w-4 mr-1" /> Export Templates for Review
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-1" /> Import
-          </Button>
+          {isOwner && (
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={parsing}>
+              <Upload className="h-4 w-4 mr-1" /> {parsing ? 'Reading…' : 'Import'}
+            </Button>
+          )}
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
           <CreateTemplateDialog
             onCreated={() => refetch()}
@@ -815,6 +828,16 @@ export default function TemplateManager() {
           onOpenChange={(open) => { if (!open) setAssignmentManagerTemplate(null); }}
         />
       )}
+
+      <ImportTemplatesPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        preview={importPreview}
+        onImported={() => {
+          setImportPreview(null);
+          refetch();
+        }}
+      />
     </div>
   );
 }
