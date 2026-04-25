@@ -177,8 +177,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
 
   const canSubmit = isEditable;
 
-  // Visual readiness: same rules as handleSubmit (all tasks complete + required photos present).
-  // Note Required is intentionally NOT enforced yet.
+  // Visual readiness: all tasks complete + required photos present + required notes present.
   const readyToSubmit = useMemo(() => {
     if (!tasks || !tasks.length) return false;
     for (const task of tasks) {
@@ -186,9 +185,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       const c = completionMap[taskKey];
       if (!c?.is_completed) return false;
       if (task.photo_required === true && !c.photo_url) return false;
+      if (task.note_required === true) {
+        const noteText = (c?.comment ?? '').trim() || (comments[taskKey] ?? '').trim();
+        if (!noteText) return false;
+      }
     }
     return true;
-  }, [tasks, completionMap]);
+  }, [tasks, completionMap, comments]);
 
   const handleToggle = (taskId: string, checked: boolean) => {
     upsert.mutate({
