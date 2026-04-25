@@ -592,7 +592,11 @@ export default function TemplateManager() {
             <Upload className="h-4 w-4 mr-1" /> Import
           </Button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
-          <CreateTemplateDialog onCreated={() => refetch()} />
+          <CreateTemplateDialog
+            onCreated={() => refetch()}
+            existingTemplates={templates ?? []}
+            branches={branches ?? []}
+          />
         </div>
       </div>
 
