@@ -59,7 +59,13 @@ export async function exportTemplatesToXlsx(templates: any[]) {
 
     // Build one row per task with all template info repeated.
     const buildRow = (task: any | null, taskNo: number | '') => {
-      const taskTitle = task?.title || '';
+      // Template tasks store title as "title\ninstruction" combined.
+      // Split safely so the export shows the real title and instruction separately.
+      const rawTitle = typeof task?.title === 'string' ? task.title : '';
+      const [splitTitle, ...instructionParts] = rawTitle.split('\n');
+      const taskTitle = (splitTitle || rawTitle).trim();
+      const splitInstruction = instructionParts.join('\n').trim();
+
       const photoReq =
         task?.photo_requirement === 'mandatory' || task?.photo_requirement === true
           ? 'YES'
@@ -68,8 +74,10 @@ export async function exportTemplatesToXlsx(templates: any[]) {
         task?.note_requirement === 'mandatory' || task?.note_requirement === true
           ? 'YES'
           : 'NO';
-      const taskInstruction =
-        typeof task?.instruction === 'string' ? task.instruction : '';
+      // Only accept real string instruction fields. Never coerce numbers/ids.
+      const explicitInstruction =
+        typeof task?.instruction === 'string' ? task.instruction.trim() : '';
+      const taskInstruction = explicitInstruction || splitInstruction || '';
 
       const needsReview =
         !t.code ||
