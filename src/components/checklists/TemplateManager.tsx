@@ -43,6 +43,7 @@ import AssignmentManager from '@/components/checklists/AssignmentManager';
 import WarningRecipientsField from '@/components/checklists/WarningRecipientsField';
 import BranchSelect from '@/components/checklists/BranchSelect';
 import ImportTemplatesPreviewDialog from '@/components/checklists/ImportTemplatesPreviewDialog';
+import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
 
 const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
   opening: '10:00',
@@ -735,12 +736,16 @@ export default function TemplateManager() {
                     <div className="flex items-start gap-2 min-w-0">
                       {isExpanded ? <ChevronUp className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        {(tpl as any).code && (
-                          <p className="font-mono text-xs text-muted-foreground mb-1">
-                            {(tpl as any).code}
-                          </p>
-                        )}
+                        <div className="mb-1.5">
+                          <TemplateCodeBadge code={(tpl as any).code} />
+                        </div>
                         <p className="font-heading font-semibold text-base sm:text-lg text-foreground leading-snug break-words line-clamp-2">
+                          {(tpl as any).code ? (
+                            <>
+                              <span className="font-mono text-muted-foreground">{(tpl as any).code}</span>
+                              <span className="text-muted-foreground"> · </span>
+                            </>
+                          ) : null}
                           {tpl.title}
                         </p>
                       </div>
@@ -881,6 +886,7 @@ export default function TemplateManager() {
         <AssignmentManager
           templateId={assignmentManagerTemplate.id}
           templateTitle={assignmentManagerTemplate.title}
+          templateCode={assignmentManagerTemplate.code}
           open={!!assignmentManagerTemplate}
           onOpenChange={(open) => { if (!open) setAssignmentManagerTemplate(null); }}
         />
