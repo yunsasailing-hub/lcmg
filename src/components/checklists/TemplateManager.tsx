@@ -373,7 +373,7 @@ function AssignDialog({ template }: { template: any }) {
     Array.isArray(template?.warning_recipient_user_ids) ? template.warning_recipient_user_ids : []
   );
 
-  const { data: users, isLoading: usersLoading, isError: usersError } = useActiveUsersForAssignment();
+  const { data: users, isLoading: usersLoading, isError: usersError } = useActiveUsersForAssignment({ enabled: open });
   const { data: branches } = useBranches();
   const createAssignment = useCreateAssignment();
 

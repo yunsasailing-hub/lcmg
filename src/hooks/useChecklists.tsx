@@ -530,7 +530,8 @@ export interface ActiveUser {
   roles: string[];
 }
 
-export function useActiveUsersForAssignment() {
+export function useActiveUsersForAssignment(options: { enabled?: boolean } = {}) {
+  const { enabled = true } = options;
   return useQuery<ActiveUser[]>({
     queryKey: ['active-users-assignment'],
     queryFn: async () => {
@@ -538,6 +539,7 @@ export function useActiveUsersForAssignment() {
       return result.users || [];
     },
     retry: 1,
+    enabled,
   });
 }
 
