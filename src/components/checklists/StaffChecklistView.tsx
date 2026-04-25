@@ -29,6 +29,7 @@ import {
   uploadChecklistPhoto,
   type ChecklistStatus,
 } from '@/hooks/useChecklists';
+import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
 
 // ─── Status helpers ───
 
@@ -91,10 +92,16 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
             <div className="flex items-start gap-3 min-w-0">
               <StatusIcon className={`h-6 w-6 shrink-0 mt-0.5 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
               <div className="flex-1 min-w-0">
-                {tpl?.code && (
-                  <p className="font-mono text-xs text-muted-foreground mb-1">{tpl.code}</p>
-                )}
+                <div className="mb-1.5">
+                  <TemplateCodeBadge code={tpl?.code} />
+                </div>
                 <p className="font-heading font-semibold text-base sm:text-lg text-foreground leading-snug break-words line-clamp-2">
+                  {tpl?.code ? (
+                    <>
+                      <span className="font-mono text-muted-foreground">{tpl.code}</span>
+                      <span className="text-muted-foreground"> · </span>
+                    </>
+                  ) : null}
                   {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
                 </p>
               </div>
@@ -386,13 +393,20 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg md:text-xl font-heading font-semibold truncate">
+              <h2 className="text-lg md:text-xl font-heading font-semibold break-words">
+                {tpl?.code ? (
+                  <>
+                    <span className="font-mono text-muted-foreground">{tpl.code}</span>
+                    <span className="text-muted-foreground"> · </span>
+                  </>
+                ) : null}
                 {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
               </h2>
               {instance && (() => {
                 const cfg = statusConfig[instance.status as ChecklistStatus];
                 return <Badge variant={cfg.variant} className={cfg.className}>{cfg.label}</Badge>;
               })()}
+              <TemplateCodeBadge code={tpl?.code} />
             </div>
             <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground mt-0.5">
               <span className="capitalize">{instance?.checklist_type} · {instance?.department}</span>
