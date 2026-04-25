@@ -271,6 +271,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_active: boolean
+          note_requirement: Database["public"]["Enums"]["note_requirement"]
           photo_requirement: Database["public"]["Enums"]["photo_requirement"]
           sort_order: number
           template_id: string
@@ -279,6 +281,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_active?: boolean
+          note_requirement?: Database["public"]["Enums"]["note_requirement"]
           photo_requirement?: Database["public"]["Enums"]["photo_requirement"]
           sort_order?: number
           template_id: string
@@ -287,6 +291,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean
+          note_requirement?: Database["public"]["Enums"]["note_requirement"]
           photo_requirement?: Database["public"]["Enums"]["photo_requirement"]
           sort_order?: number
           template_id?: string
@@ -1530,6 +1536,7 @@ export type Database = {
         | "office"
         | "bakery"
       ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
+      note_requirement: "none" | "optional" | "mandatory"
       notification_priority: "normal" | "high" | "critical"
       notification_status: "unread" | "read" | "archived"
       notification_type: "notice" | "warning" | "escalation"
@@ -1706,6 +1713,7 @@ export const Constants = {
         "bakery",
       ],
       ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
+      note_requirement: ["none", "optional", "mandatory"],
       notification_priority: ["normal", "high", "critical"],
       notification_status: ["unread", "read", "archived"],
       notification_type: ["notice", "warning", "escalation"],
