@@ -740,7 +740,13 @@ export default function TemplateManager() {
             const isTplActive = (tpl as any).is_active !== false;
 
             return (
-              <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
+              <div
+                key={tpl.id}
+                className={cn(
+                  'rounded-lg border bg-card overflow-hidden transition-opacity',
+                  !isTplActive && 'opacity-60',
+                )}
+              >
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : tpl.id)}
                   className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-left hover:bg-accent/50 transition-colors"
