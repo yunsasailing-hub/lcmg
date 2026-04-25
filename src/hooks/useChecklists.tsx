@@ -581,6 +581,18 @@ export function useCreateAssignment() {
         throw templateError ?? new Error('Template not found');
       }
 
+      const { data: templateTasksForDebug, error: templateTasksDebugError } = await supabase
+        .from('checklist_template_tasks')
+        .select('id, title, sort_order, photo_requirement, note_requirement, is_active')
+        .eq('template_id', assignment.template_id)
+        .order('sort_order', { ascending: true });
+
+      if (templateTasksDebugError) {
+        console.error('[NoteRequiredDebug] template tasks fetch failed =', templateTasksDebugError);
+      } else {
+        console.log('[NoteRequiredDebug] template tasks =', templateTasksForDebug);
+      }
+
       const { data: createdAssignment, error: assignmentError } = await supabase
         .from('checklist_assignments')
         .insert(normalizedAssignment)
@@ -636,6 +648,18 @@ export function useCreateAssignment() {
           await supabase.from('checklist_instances').delete().eq('id', firstInstance.id);
           await supabase.from('checklist_assignments').delete().eq('id', createdAssignment.id);
           throw taskCopyError;
+        }
+
+        const { data: assignedTasksForDebug, error: assignedTasksDebugError } = await (supabase as any)
+          .from('checklist_instance_tasks')
+          .select('id, template_task_id, title, sort_order, photo_required, note_required, is_active')
+          .eq('instance_id', firstInstance.id)
+          .order('sort_order', { ascending: true });
+
+        if (assignedTasksDebugError) {
+          console.error('[NoteRequiredDebug] assigned tasks fetch failed =', assignedTasksDebugError);
+        } else {
+          console.log('[NoteRequiredDebug] assigned tasks created =', assignedTasksForDebug);
         }
       }
 

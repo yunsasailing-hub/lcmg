@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -159,6 +159,21 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
     return map;
   }, [completions]);
 
+  useEffect(() => {
+    if (!tasks) return;
+    console.log('[NoteRequiredDebug] checklist detail tasks =', tasks.map(task => {
+      const taskKey = task.template_task_id ?? task.id;
+      const c = completionMap[taskKey];
+      return {
+        title: task.title,
+        photo_required: task.photo_required,
+        note_required: task.note_required,
+        comment_value: c?.comment ?? comments[taskKey] ?? '',
+        photo_count: c?.photo_url ? 1 : 0,
+      };
+    }));
+  }, [tasks, completionMap, comments]);
+
   const canSubmit = isEditable;
 
   const handleToggle = (taskId: string, checked: boolean) => {
@@ -294,19 +309,9 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         return;
       }
       const photoRequired = task.photo_required === true;
-      const noteRequired = task.note_required === true;
       if (photoRequired && !c.photo_url) {
         toast.error(`Please add the required photo for: ${task.title}`);
         return;
-      }
-      if (noteRequired) {
-        const draft = comments[taskKey]?.trim();
-        const saved = c.comment?.trim();
-        if (!saved && !draft) {
-          toast.error(`Please fill the required note for: ${task.title}`);
-          setExpandedComment(taskKey);
-          return;
-        }
       }
     }
     // Persist any pending draft notes for mandatory tasks before submit
@@ -331,7 +336,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         toast.success('Checklist submitted!');
         onBack();
       },
-      onError: () => toast.error('Failed to submit checklist'),
+      onError: (err: any) => toast.error(err?.message || 'Failed to submit checklist'),
     });
   };
 
@@ -403,12 +408,11 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                 const photoRequired = task.photo_required === true;
                 const noteRequired = task.note_required === true;
                 const needsPhoto = photoRequired && !c?.photo_url;
-                const needsNote = noteRequired && !(c?.comment?.trim() || comments[taskKey]?.trim());
 
                 return (
                   <div
                     key={task.id}
-                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${(needsPhoto || needsNote) && done ? 'border-destructive/50' : ''}`}
+                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${needsPhoto && done ? 'border-destructive/50' : ''}`}
                   >
                     <div className="flex items-start gap-3 md:gap-4">
                       <div className="flex-1 min-w-0">
@@ -419,7 +423,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                           {photoRequired && (
                             <Badge variant="destructive" className="text-xs">📸 Photo required</Badge>
                           )}
-                          {noteRequired && (
+                          {noteRequired && showOwnerDebug && (
                             <Badge variant="destructive" className="text-xs">📝 Note required</Badge>
                           )}
                         </div>
