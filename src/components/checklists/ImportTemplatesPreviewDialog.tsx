@@ -103,9 +103,9 @@ export default function ImportTemplatesPreviewDialog({ open, onOpenChange, previ
 function Stat({ label, value, tone = 'muted' }: { label: string; value: number; tone?: 'muted' | 'success' | 'info' | 'warn' | 'error' }) {
   const cls = {
     muted: 'bg-muted/40 text-foreground',
-    success: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-    info: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
-    warn: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    success: 'bg-primary/10 text-primary',
+    info: 'bg-secondary/40 text-foreground',
+    warn: 'bg-accent/40 text-accent-foreground',
     error: 'bg-destructive/10 text-destructive',
   }[tone];
   return (
@@ -139,7 +139,7 @@ function TemplateRow({ tpl }: { tpl: ImportTemplatePreview }) {
           {hasErrors ? (
             <Badge variant="destructive" className="text-[10px]"><AlertTriangle className="h-3 w-3 mr-1" /> Blocked</Badge>
           ) : (
-            <Badge className="text-[10px] bg-emerald-600 hover:bg-emerald-600"><CheckCircle2 className="h-3 w-3 mr-1" /> Ready</Badge>
+            <Badge className="text-[10px]"><CheckCircle2 className="h-3 w-3 mr-1" /> Ready</Badge>
           )}
         </div>
       </div>
