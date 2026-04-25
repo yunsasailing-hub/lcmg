@@ -427,13 +427,13 @@ export function useTemplates(branchId?: string, status: TemplateStatusFilter = '
   });
 }
 
-export function useArchiveTemplate() {
+export function useSetTemplateActive() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (templateId: string) => {
+    mutationFn: async ({ templateId, isActive }: { templateId: string; isActive: boolean }) => {
       const { data, error } = await supabase
         .from('checklist_templates')
-        .update({ is_active: false })
+        .update({ is_active: isActive })
         .eq('id', templateId)
         .select()
         .single();
@@ -443,25 +443,6 @@ export function useArchiveTemplate() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
-    },
-  });
-}
-
-export function useRestoreTemplate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (templateId: string) => {
-      const { data, error } = await supabase
-        .from('checklist_templates')
-        .update({ is_active: true })
-        .eq('id', templateId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
     },
   });
 }
