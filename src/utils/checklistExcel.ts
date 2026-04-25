@@ -15,6 +15,12 @@ const validDepts = Constants.public.Enums.department as readonly string[];
 const validPhoto = Constants.public.Enums.photo_requirement as readonly string[];
 
 export async function exportTemplatesToXlsx(templates: any[]) {
+  // Safety: ensure we have a valid session before doing any privileged reads.
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData?.session?.access_token) {
+    throw new Error('Your session expired. Please sign in again.');
+  }
+
   // Fetch lookups for branches + users so we can show names instead of UUIDs.
   const [branchesRes, profilesRes] = await Promise.all([
     supabase.from('branches').select('id, name'),
@@ -27,7 +33,6 @@ export async function exportTemplatesToXlsx(templates: any[]) {
     userMap.set(p.user_id, p.full_name || p.email || p.user_id),
   );
 
-  const fmtDate = (v: any) => (v ? new Date(v).toISOString().replace('T', ' ').slice(0, 19) : '');
   const lookupUsers = (ids: any) =>
     Array.isArray(ids) && ids.length
       ? ids.map((id: string) => userMap.get(id) || id).join(', ')
@@ -36,7 +41,8 @@ export async function exportTemplatesToXlsx(templates: any[]) {
   type Row = Record<string, any>;
   const rows: Row[] = [];
 
-  // Sort templates: Branch → Department → Template Name. Empty branch/dept go to bottom.
+  // Sort templates: Branch → Department → Template Code → Task No.
+  // Rows missing Branch / Department / Code go to the bottom.
   const sorted = [...templates].sort((a, b) => {
     const ab = branchMap.get(a.branch_id) || '';
     const bb = branchMap.get(b.branch_id) || '';
@@ -48,6 +54,11 @@ export async function exportTemplatesToXlsx(templates: any[]) {
     if (!ad && bd) return 1;
     if (ad && !bd) return -1;
     if (ad !== bd) return ad.localeCompare(bd);
+    const ac = a.code || '';
+    const bc = b.code || '';
+    if (!ac && bc) return 1;
+    if (ac && !bc) return -1;
+    if (ac !== bc) return ac.localeCompare(bc);
     return (a.title || '').localeCompare(b.title || '');
   });
 
@@ -56,71 +67,80 @@ export async function exportTemplatesToXlsx(templates: any[]) {
     const assignedStaff = t.default_assigned_to ? userMap.get(t.default_assigned_to) || '' : '';
     const warningRecipients = lookupUsers(t.warning_recipient_user_ids);
 
-    const requiredMissing =
-      !branchName ||
-      !t.department ||
-      !t.frequency ||
-      !t.default_due_time ||
-      !t.checklist_type ||
-      !assignedStaff ||
-      !warningRecipients;
-    const legacy = requiredMissing ? 'YES' : 'NO';
-
     const tasks = ((t.tasks as any[]) || []).slice().sort(
       (x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0),
     );
 
-    const baseTpl = {
-      'Template Code': t.code || '',
-      'Template Name': t.title || '',
-      'Template Status': t.is_active ? 'Active' : 'Inactive',
-      Branch: branchName,
-      Department: t.department || '',
-      Frequency: t.frequency || '',
-      'Due Time': t.default_due_time || '',
-      'Checklist Type': t.checklist_type || '',
-      'Assigned Staff': assignedStaff,
-      'Responsible Manager / Warning Recipient': warningRecipients,
-      'Owner Visibility': 'YES',
-      'Manager Visibility': 'YES',
-      'Created At': fmtDate(t.created_at),
-      'Updated At': fmtDate(t.updated_at),
-      'Legacy / Needs Review': legacy,
+    // Build one row per task with all template info repeated.
+    const buildRow = (task: any | null, taskNo: number | '') => {
+      const taskTitle = task?.title || '';
+      const photoReq =
+        task?.photo_requirement === 'mandatory'
+          ? 'YES'
+          : task?.photo_requirement === 'optional'
+          ? 'OPTIONAL'
+          : task?.photo_requirement === 'none'
+          ? 'NO'
+          : '';
+
+      const needsReview =
+        !t.code ||
+        !branchName ||
+        !t.department ||
+        !t.title ||
+        !t.frequency ||
+        !t.default_due_time ||
+        !taskTitle
+          ? 'YES'
+          : 'NO';
+
+      return {
+        'Template Code': t.code || '',
+        'Template Name': t.title || '',
+        Branch: branchName,
+        Department: t.department || '',
+        'Checklist Type': t.checklist_type || '',
+        Frequency: t.frequency || '',
+        'Due Time': t.default_due_time || '',
+        'Assigned Staff': assignedStaff,
+        'Warning Recipient / Manager': warningRecipients,
+        'Task No': taskNo,
+        'Task Title': taskTitle,
+        'Task Instruction / Notes': task?.instruction || task?.notes || '',
+        'Photo Required': photoReq,
+        Active: t.is_active ? 'YES' : 'NO',
+        'Needs Review': needsReview,
+      };
     };
 
     if (!tasks.length) {
-      rows.push({
-        ...baseTpl,
-        'Task No': '',
-        'Task Title': '',
-        'Task Instruction / Notes': '',
-        'Photo Required': '',
-        'Active / Inactive': '',
-      });
+      rows.push(buildRow(null, ''));
       return;
     }
-
-    tasks.forEach((task: any, idx: number) => {
-      rows.push({
-        ...baseTpl,
-        'Task No': idx + 1,
-        'Task Title': task.title || '',
-        'Task Instruction / Notes': task.instruction || task.notes || '',
-        'Photo Required':
-          task.photo_requirement === 'mandatory'
-            ? 'YES'
-            : task.photo_requirement === 'optional'
-            ? 'OPTIONAL'
-            : 'NO',
-        'Active / Inactive': 'Active',
-      });
-    });
+    tasks.forEach((task: any, idx: number) => rows.push(buildRow(task, idx + 1)));
   });
 
   const wb = XLSX.utils.book_new();
+  const headerOrder = [
+    'Template Code',
+    'Template Name',
+    'Branch',
+    'Department',
+    'Checklist Type',
+    'Frequency',
+    'Due Time',
+    'Assigned Staff',
+    'Warning Recipient / Manager',
+    'Task No',
+    'Task Title',
+    'Task Instruction / Notes',
+    'Photo Required',
+    'Active',
+    'Needs Review',
+  ];
   XLSX.utils.book_append_sheet(
     wb,
-    XLSX.utils.json_to_sheet(rows.length ? rows : [{}]),
+    XLSX.utils.json_to_sheet(rows.length ? rows : [{}], { header: headerOrder }),
     'Templates Review',
   );
 
