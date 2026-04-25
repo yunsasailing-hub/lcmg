@@ -1549,6 +1549,11 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_orphan_pending_checklists: { Args: never; Returns: Json }
+      cleanup_pending_for_assignment: {
+        Args: { _assignment_id: string }
+        Returns: Json
+      }
       create_checklist_instance_tasks: {
         Args: { _instance_id: string }
         Returns: undefined

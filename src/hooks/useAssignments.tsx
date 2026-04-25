@@ -142,6 +142,10 @@ export function useDeleteAssignment() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['assignments'] });
+      // The DB trigger removes pending instances + their notifications when
+      // an assignment is deleted, so refresh those caches too.
+      qc.invalidateQueries({ queryKey: ['checklists'] });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
