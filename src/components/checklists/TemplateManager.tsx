@@ -45,6 +45,43 @@ const DEFAULT_DUE_TIMES: Record<ChecklistType, string> = {
   closing: '22:30',
 };
 
+// ─── Template Code helpers ───
+
+const BRANCH_CODE_MAP: Record<string, string> = {
+  'la cala': 'LCL',
+  'la cala mare': 'LCM',
+  'bottega26': 'B26',
+  'bottega 26': 'B26',
+};
+
+const DEPARTMENT_CODE_MAP: Record<Department, string> = {
+  pizza: 'PIZ',
+  kitchen: 'KIT',
+  service: 'SER',
+  bar: 'BAR',
+  management: 'MGT',
+  office: 'OFF',
+  bakery: 'BAK',
+};
+
+const TEMPLATE_CODE_REGEX = /^[A-Z0-9]{2,4}-[A-Z]{2,4}-\d{3}$/;
+
+function suggestTemplatePrefix(branchName: string | null | undefined, department: Department): string {
+  const b = BRANCH_CODE_MAP[(branchName || '').trim().toLowerCase()] || (branchName?.slice(0, 3).toUpperCase() ?? 'XXX');
+  const d = DEPARTMENT_CODE_MAP[department] || 'XXX';
+  return `${b}-${d}-`;
+}
+
+/** Returns the next progressive number for a given prefix (LCL-PIZ-) → "001". */
+function nextProgressive(prefix: string, existingCodes: (string | null | undefined)[]): string {
+  const used = existingCodes
+    .filter((c): c is string => !!c && c.toUpperCase().startsWith(prefix))
+    .map((c) => parseInt(c.slice(prefix.length), 10))
+    .filter((n) => !Number.isNaN(n));
+  const next = (used.length ? Math.max(...used) : 0) + 1;
+  return String(next).padStart(3, '0');
+}
+
 // ─── Create Template Dialog ───
 
 function CreateTemplateDialog({ onCreated }: { onCreated: () => void }) {
