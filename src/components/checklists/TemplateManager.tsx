@@ -809,7 +809,7 @@ export default function TemplateManager() {
                       )}
                       <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
                         {aCount > 0 && (
-                          <Button variant="outline" size="sm" onClick={() => setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title })}>
+                          <Button variant="outline" size="sm" onClick={() => setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title, code: (tpl as any).code ?? null })}>
                             <Eye className="h-3.5 w-3.5 mr-1" /> View Assignments
                           </Button>
                         )}
