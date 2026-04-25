@@ -21,22 +21,10 @@ export async function exportTemplatesToXlsx(templates: any[]) {
     throw new Error('Your session expired. Please sign in again.');
   }
 
-  // Fetch lookups for branches + users so we can show names instead of UUIDs.
-  const [branchesRes, profilesRes] = await Promise.all([
-    supabase.from('branches').select('id, name'),
-    supabase.from('profiles').select('user_id, full_name, email'),
-  ]);
+  // Fetch branches lookup so we can show names instead of UUIDs.
+  const branchesRes = await supabase.from('branches').select('id, name');
   const branchMap = new Map<string, string>();
   (branchesRes.data || []).forEach((b: any) => branchMap.set(b.id, b.name));
-  const userMap = new Map<string, string>();
-  (profilesRes.data || []).forEach((p: any) =>
-    userMap.set(p.user_id, p.full_name || p.email || p.user_id),
-  );
-
-  const lookupUsers = (ids: any) =>
-    Array.isArray(ids) && ids.length
-      ? ids.map((id: string) => userMap.get(id) || id).join(', ')
-      : '';
 
   type Row = Record<string, any>;
   const rows: Row[] = [];
@@ -64,8 +52,6 @@ export async function exportTemplatesToXlsx(templates: any[]) {
 
   sorted.forEach((t: any) => {
     const branchName = t.branch_id ? branchMap.get(t.branch_id) || '' : '';
-    const assignedStaff = t.default_assigned_to ? userMap.get(t.default_assigned_to) || '' : '';
-    const warningRecipients = lookupUsers(t.warning_recipient_user_ids);
 
     const tasks = ((t.tasks as any[]) || []).slice().sort(
       (x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0),
@@ -75,20 +61,21 @@ export async function exportTemplatesToXlsx(templates: any[]) {
     const buildRow = (task: any | null, taskNo: number | '') => {
       const taskTitle = task?.title || '';
       const photoReq =
-        task?.photo_requirement === 'mandatory'
+        task?.photo_requirement === 'mandatory' || task?.photo_requirement === true
           ? 'YES'
-          : task?.photo_requirement === 'optional'
-          ? 'OPTIONAL'
-          : task?.photo_requirement === 'none'
-          ? 'NO'
-          : '';
+          : 'NO';
+      const noteReq =
+        task?.note_requirement === 'mandatory' || task?.note_requirement === true
+          ? 'YES'
+          : 'NO';
+      const taskInstruction =
+        typeof task?.instruction === 'string' ? task.instruction : '';
 
       const needsReview =
         !t.code ||
         !branchName ||
         !t.department ||
         !t.title ||
-        !t.frequency ||
         !t.default_due_time ||
         !taskTitle
           ? 'YES'
@@ -100,14 +87,12 @@ export async function exportTemplatesToXlsx(templates: any[]) {
         Branch: branchName,
         Department: t.department || '',
         'Checklist Type': t.checklist_type || '',
-        Frequency: t.frequency || '',
-        'Due Time': t.default_due_time || '',
-        'Assigned Staff': assignedStaff,
-        'Warning Recipient / Manager': warningRecipients,
+        'Default Due Time': t.default_due_time || '',
         'Task No': taskNo,
         'Task Title': taskTitle,
-        'Task Instruction / Notes': task?.instruction || task?.notes || '',
+        'Task Instruction / Notes': taskInstruction,
         'Photo Required': photoReq,
+        'Note Required': noteReq,
         Active: t.is_active ? 'YES' : 'NO',
         'Needs Review': needsReview,
       };
@@ -127,14 +112,12 @@ export async function exportTemplatesToXlsx(templates: any[]) {
     'Branch',
     'Department',
     'Checklist Type',
-    'Frequency',
-    'Due Time',
-    'Assigned Staff',
-    'Warning Recipient / Manager',
+    'Default Due Time',
     'Task No',
     'Task Title',
     'Task Instruction / Notes',
     'Photo Required',
+    'Note Required',
     'Active',
     'Needs Review',
   ];
