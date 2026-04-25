@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatVN, todayVN } from '@/lib/timezone';
 import { useAllChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
 
-const PENDING_STATUSES: ChecklistStatus[] = ['pending', 'late', 'escalated', 'rejected'];
+const PENDING_STATUSES: ChecklistStatus[] = ['pending', 'late', 'escalated'];
 
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
   pending: { label: 'Pending', variant: 'secondary' },
@@ -131,18 +131,9 @@ export default function PendingChecklistsView() {
 
   if (isOwner) {
     return (
-      <Tabs defaultValue="pending" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="pending">Pending ({allPending.length})</TabsTrigger>
-          <TabsTrigger value="late">Late ({lateItems.length})</TabsTrigger>
-        </TabsList>
-        <TabsContent value="pending" className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
-          <ChecklistList items={allPending} emptyText="No pending checklists across all branches." />
-        </TabsContent>
-        <TabsContent value="late" className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
-          <ChecklistList items={lateItems} emptyText="No late checklists right now." />
-        </TabsContent>
-      </Tabs>
+      <div className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
+        <ChecklistList items={allPending} emptyText="No open checklists across all branches." />
+      </div>
     );
   }
 

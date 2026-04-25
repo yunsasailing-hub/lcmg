@@ -9,14 +9,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function Checklists() {
-  const { hasAnyRole } = useAuth();
+  const { hasAnyRole, hasRole } = useAuth();
   const { t } = useTranslation();
-  const isManager = hasAnyRole(['owner', 'manager']);
+  const isOwner = hasRole('owner');
+  const isManager = hasAnyRole(['manager']);
 
   return (
     <AppShell>
       <PageHeader title={t('nav.checklists')} description={t('checklists.pageSubtitle')} />
-      {isManager ? (
+      {isOwner ? (
+        <PendingChecklistsView />
+      ) : isManager ? (
         <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
             <TabsTrigger value="pending">Pending</TabsTrigger>
