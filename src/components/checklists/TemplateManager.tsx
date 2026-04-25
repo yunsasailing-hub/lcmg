@@ -583,7 +583,7 @@ export default function TemplateManager() {
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string } | null>(null);
+  const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string; code: string | null } | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
