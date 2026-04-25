@@ -9,6 +9,7 @@ import { Shield, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { invokeManageRoles } from '@/lib/manageRoles';
+import { useAuth } from '@/hooks/useAuth';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -37,12 +38,15 @@ const roleBadgeVariant: Record<AppRole, 'default' | 'secondary' | 'outline'> = {
 
 export default function RoleManager() {
   const queryClient = useQueryClient();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [assignUserId, setAssignUserId] = useState('');
   const [assignRole, setAssignRole] = useState<AppRole | ''>('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['role-management'],
     queryFn: () => callManageRoles('list'),
+    enabled: isAuthenticated && !authLoading,
+    retry: false,
   });
 
   const assignMutation = useMutation({
