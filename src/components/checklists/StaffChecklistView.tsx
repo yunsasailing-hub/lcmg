@@ -336,7 +336,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         toast.success('Checklist submitted!');
         onBack();
       },
-      onError: () => toast.error('Failed to submit checklist'),
+      onError: (err: any) => toast.error(err?.message || 'Failed to submit checklist'),
     });
   };
 
@@ -408,12 +408,11 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                 const photoRequired = task.photo_required === true;
                 const noteRequired = task.note_required === true;
                 const needsPhoto = photoRequired && !c?.photo_url;
-                const needsNote = noteRequired && !(c?.comment?.trim() || comments[taskKey]?.trim());
 
                 return (
                   <div
                     key={task.id}
-                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${(needsPhoto || needsNote) && done ? 'border-destructive/50' : ''}`}
+                    className={`rounded-xl border bg-card p-4 md:p-5 space-y-3 transition-colors ${done ? 'bg-accent/30' : ''} ${needsPhoto && done ? 'border-destructive/50' : ''}`}
                   >
                     <div className="flex items-start gap-3 md:gap-4">
                       <div className="flex-1 min-w-0">
@@ -424,7 +423,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                           {photoRequired && (
                             <Badge variant="destructive" className="text-xs">📸 Photo required</Badge>
                           )}
-                          {noteRequired && (
+                          {noteRequired && showOwnerDebug && (
                             <Badge variant="destructive" className="text-xs">📝 Note required</Badge>
                           )}
                         </div>
