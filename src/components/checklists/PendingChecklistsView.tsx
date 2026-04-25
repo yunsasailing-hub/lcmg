@@ -102,63 +102,50 @@ function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: bool
     ?? (ownerView ? 'Unassigned — Needs Review' : 'Unknown / Legacy');
 
   return (
-    <div className="w-full flex flex-col gap-3 rounded-lg border bg-card p-4 sm:p-5">
-      <div className="flex items-start gap-3 min-w-0">
+    <div className="w-full flex flex-col gap-1.5 rounded-lg border bg-card px-3 py-2.5 sm:px-4 sm:py-3">
+      {/* Line 1: icon + code · title + status */}
+      <div className="flex items-center gap-2 min-w-0">
         <StatusIcon
-          className={`h-5 w-5 shrink-0 mt-0.5 ${
+          className={`h-4 w-4 shrink-0 ${
             instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive'
               : instance.status === 'late' ? 'text-warning'
               : 'text-muted-foreground'
           }`}
         />
-        <div className="flex-1 min-w-0">
-          <div className="mb-1.5">
-            <TemplateCodeBadge code={tpl?.code} />
-          </div>
-          <p className="font-heading font-semibold text-base sm:text-lg text-foreground leading-snug break-words line-clamp-2">
-            {tpl?.code ? (
-              <>
-                <span className="font-mono text-muted-foreground">{tpl.code}</span>
-                <span className="text-muted-foreground"> · </span>
-              </>
-            ) : null}
-            {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
-          </p>
-        </div>
-        <Badge variant={cfg.variant} className={`${cfg.className} shrink-0`}>{cfg.label}</Badge>
+        <p className="flex-1 min-w-0 font-heading font-semibold text-sm sm:text-base text-foreground leading-tight truncate">
+          {tpl?.code ? (
+            <>
+              <span className="font-mono text-muted-foreground">{tpl.code}</span>
+              <span className="text-muted-foreground"> · </span>
+            </>
+          ) : null}
+          {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
+        </p>
+        <Badge variant={cfg.variant} className={`${cfg.className} shrink-0 text-[10px] px-1.5 py-0`}>{cfg.label}</Badge>
       </div>
-      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-8">
-        <div className="flex gap-1.5">
-          <dt className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />Branch:</dt>
-          <dd className="font-medium truncate">{branchLabel}</dd>
-        </div>
-        <div className="flex gap-1.5">
-          <dt className="text-muted-foreground">Department:</dt>
-          <dd className="font-medium capitalize">{instance.department}</dd>
-        </div>
-        <div className="flex gap-1.5">
-          <dt className="text-muted-foreground">Type:</dt>
-          <dd className="font-medium capitalize">{instance.checklist_type}</dd>
-        </div>
+      {/* Line 2: meta */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground pl-6">
+        <span><span className="text-muted-foreground/70">Branch:</span> <span className="text-foreground font-medium">{branchLabel}</span></span>
+        <span><span className="text-muted-foreground/70">Dept:</span> <span className="text-foreground font-medium capitalize">{instance.department}</span></span>
+        <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{instance.checklist_type}</span></span>
         {instance.due_datetime && (
-          <div className="flex gap-1.5">
-            <dt className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />Due:</dt>
-            <dd className="font-medium">{formatDueTime(instance.due_datetime)}</dd>
-          </div>
+          <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /><span className="text-foreground font-medium">{formatDueTime(instance.due_datetime)}</span></span>
         )}
-        {instance.assignee?.full_name && (
-          <div className="flex gap-1.5">
-            <dt className="text-muted-foreground flex items-center gap-1"><UserIcon className="h-3 w-3" />Assignee:</dt>
-            <dd className="font-medium truncate">{instance.assignee.full_name}</dd>
-          </div>
-        )}
-        {overdueText && (
-          <div className="flex gap-1.5">
-            <dt className="text-muted-foreground">Overdue:</dt>
-            <dd className="text-destructive font-semibold">{overdueText}</dd>
-          </div>
-        )}
-      </dl>
+      </div>
+      {/* Line 3: assignee + overdue, only if any */}
+      {(instance.assignee?.full_name || overdueText) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs pl-6">
+          {instance.assignee?.full_name && (
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <UserIcon className="h-3 w-3" />
+              <span className="text-foreground font-medium truncate max-w-[180px]">{instance.assignee.full_name}</span>
+            </span>
+          )}
+          {overdueText && (
+            <span className="text-destructive font-semibold">{overdueText}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -729,93 +729,70 @@ export default function TemplateManager() {
               <div key={tpl.id} className="rounded-lg border bg-card overflow-hidden">
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : tpl.id)}
-                  className="w-full p-4 sm:p-5 text-left hover:bg-accent/50 transition-colors"
+                  className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-left hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex flex-col gap-3">
-                    {/* Row 1: title + chevron */}
-                    <div className="flex items-start gap-2 min-w-0">
-                      {isExpanded ? <ChevronUp className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-5 w-5 mt-0.5 text-muted-foreground shrink-0" />}
-                      <div className="flex-1 min-w-0">
-                        <div className="mb-1.5">
-                          <TemplateCodeBadge code={(tpl as any).code} />
-                        </div>
-                        <p className="font-heading font-semibold text-base sm:text-lg text-foreground leading-snug break-words line-clamp-2">
-                          {(tpl as any).code ? (
-                            <>
-                              <span className="font-mono text-muted-foreground">{(tpl as any).code}</span>
-                              <span className="text-muted-foreground"> · </span>
-                            </>
-                          ) : null}
-                          {tpl.title}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Row 2: details on separate lines */}
-                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-7">
-                      <div className="flex gap-1.5">
-                        <dt className="text-muted-foreground">Branch:</dt>
-                        <dd className={cn('font-medium', branchMissing && 'text-destructive')}>
-                          {branchMissing ? 'Missing — recreate template' : (branchName ?? 'Unknown')}
-                        </dd>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <dt className="text-muted-foreground">Department:</dt>
-                        <dd className="font-medium capitalize">{tpl.department}</dd>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <dt className="text-muted-foreground">Type:</dt>
-                        <dd className="font-medium capitalize">{tpl.checklist_type}</dd>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <dt className="text-muted-foreground">Due time:</dt>
-                        <dd className="font-medium">{(tpl as any).default_due_time?.slice(0, 5) ?? '—'}</dd>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <dt className="text-muted-foreground">Tasks:</dt>
-                        <dd className="font-medium">{taskCount}</dd>
-                      </div>
-                      {aCount > 0 && (
-                        <div className="flex gap-1.5">
-                          <dt className="text-muted-foreground">Assignments:</dt>
-                          <dd className="font-medium">{aCount}</dd>
-                        </div>
-                      )}
-                    </dl>
-
-                    {/* Row 3: status + actions */}
-                    <div
-                      className="flex flex-wrap items-center gap-2 pl-7"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      role="presentation"
-                    >
+                  <div className="flex flex-col gap-1.5">
+                    {/* Line 1: chevron + code · title + status */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                      <p className="flex-1 min-w-0 font-heading font-semibold text-sm sm:text-base text-foreground leading-tight truncate">
+                        {(tpl as any).code ? (
+                          <>
+                            <span className="font-mono text-muted-foreground">{(tpl as any).code}</span>
+                            <span className="text-muted-foreground"> · </span>
+                          </>
+                        ) : null}
+                        {tpl.title}
+                      </p>
                       <Badge
                         variant={isTplActive ? 'default' : 'secondary'}
-                        className="text-xs"
+                        className="text-[10px] px-1.5 py-0 shrink-0"
                       >
                         {isTplActive ? 'Active' : 'Inactive'}
                       </Badge>
-                      {isOwner && (
-                        <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Switch
-                            checked={isTplActive}
-                            disabled={setTemplateActive.isPending}
-                            onCheckedChange={(v) => handleToggleActive(tpl.id, v)}
-                            aria-label={isTplActive ? 'Set template inactive' : 'Set template active'}
-                          />
-                          ON / OFF
-                        </label>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-                        {aCount > 0 && (
-                          <Button variant="outline" size="sm" onClick={() => setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title, code: (tpl as any).code ?? null })}>
-                            <Eye className="h-3.5 w-3.5 mr-1" /> View Assignments
-                          </Button>
-                        )}
-                        {isTplActive && <AssignDialog template={tpl} />}
-                      </div>
                     </div>
+
+                    {/* Line 2: meta */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground pl-6">
+                      <span><span className="text-muted-foreground/70">Branch:</span> <span className={cn('font-medium', branchMissing ? 'text-destructive' : 'text-foreground')}>{branchMissing ? 'Missing' : (branchName ?? 'Unknown')}</span></span>
+                      <span><span className="text-muted-foreground/70">Dept:</span> <span className="text-foreground font-medium capitalize">{tpl.department}</span></span>
+                      <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{tpl.checklist_type}</span></span>
+                      <span><span className="text-muted-foreground/70">Due:</span> <span className="text-foreground font-medium">{(tpl as any).default_due_time?.slice(0, 5) ?? '—'}</span></span>
+                      <span><span className="text-muted-foreground/70">Tasks:</span> <span className="text-foreground font-medium">{taskCount}</span></span>
+                      {aCount > 0 && (
+                        <span><span className="text-muted-foreground/70">Assignments:</span> <span className="text-foreground font-medium">{aCount}</span></span>
+                      )}
+                    </div>
+
+                    {/* Line 3: actions (only if any) */}
+                    {(isOwner || aCount > 0 || isTplActive) && (
+                      <div
+                        className="flex flex-wrap items-center gap-2 pl-6"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        role="presentation"
+                      >
+                        {isOwner && (
+                          <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <Switch
+                              checked={isTplActive}
+                              disabled={setTemplateActive.isPending}
+                              onCheckedChange={(v) => handleToggleActive(tpl.id, v)}
+                              aria-label={isTplActive ? 'Set template inactive' : 'Set template active'}
+                            />
+                            ON / OFF
+                          </label>
+                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
+                          {aCount > 0 && (
+                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title, code: (tpl as any).code ?? null })}>
+                              <Eye className="h-3 w-3 mr-1" /> View Assignments
+                            </Button>
+                          )}
+                          {isTplActive && <AssignDialog template={tpl} />}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </button>
                 {isExpanded && (

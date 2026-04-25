@@ -87,46 +87,29 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
           <button
             key={instance.id}
             onClick={() => onSelect(instance.id, instance.template_id)}
-            className="w-full flex flex-col gap-3 rounded-xl border bg-card p-4 sm:p-5 text-left transition-colors hover:bg-accent active:bg-accent"
+            className="w-full flex flex-col gap-1.5 rounded-lg border bg-card px-3 py-2.5 sm:px-4 sm:py-3 text-left transition-colors hover:bg-accent active:bg-accent"
           >
-            <div className="flex items-start gap-3 min-w-0">
-              <StatusIcon className={`h-6 w-6 shrink-0 mt-0.5 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
-              <div className="flex-1 min-w-0">
-                <div className="mb-1.5">
-                  <TemplateCodeBadge code={tpl?.code} />
-                </div>
-                <p className="font-heading font-semibold text-base sm:text-lg text-foreground leading-snug break-words line-clamp-2">
-                  {tpl?.code ? (
-                    <>
-                      <span className="font-mono text-muted-foreground">{tpl.code}</span>
-                      <span className="text-muted-foreground"> · </span>
-                    </>
-                  ) : null}
-                  {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
-                </p>
-              </div>
-              <Badge variant={cfg.variant} className={`${cfg.className} shrink-0`}>{cfg.label}</Badge>
+            <div className="flex items-center gap-2 min-w-0">
+              <StatusIcon className={`h-4 w-4 shrink-0 ${instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive' : instance.status === 'pending' || instance.status === 'late' ? 'text-muted-foreground' : 'text-emerald-600'}`} />
+              <p className="flex-1 min-w-0 font-heading font-semibold text-sm sm:text-base text-foreground leading-tight truncate">
+                {tpl?.code ? (
+                  <>
+                    <span className="font-mono text-muted-foreground">{tpl.code}</span>
+                    <span className="text-muted-foreground"> · </span>
+                  </>
+                ) : null}
+                {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
+              </p>
+              <Badge variant={cfg.variant} className={`${cfg.className} shrink-0 text-[10px] px-1.5 py-0`}>{cfg.label}</Badge>
             </div>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm pl-9">
-              <div className="flex gap-1.5">
-                <dt className="text-muted-foreground">Branch:</dt>
-                <dd className="font-medium truncate">{branchName}</dd>
-              </div>
-              <div className="flex gap-1.5">
-                <dt className="text-muted-foreground">Department:</dt>
-                <dd className="font-medium capitalize">{instance.department}</dd>
-              </div>
-              <div className="flex gap-1.5">
-                <dt className="text-muted-foreground">Type:</dt>
-                <dd className="font-medium capitalize">{instance.checklist_type}</dd>
-              </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground pl-6">
+              <span><span className="text-muted-foreground/70">Branch:</span> <span className="text-foreground font-medium">{branchName}</span></span>
+              <span><span className="text-muted-foreground/70">Dept:</span> <span className="text-foreground font-medium capitalize">{instance.department}</span></span>
+              <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{instance.checklist_type}</span></span>
               {dueText && (
-                <div className="flex gap-1.5">
-                  <dt className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" />Due:</dt>
-                  <dd className="font-medium">{dueText}</dd>
-                </div>
+                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /><span className="text-foreground font-medium">{dueText}</span></span>
               )}
-            </dl>
+            </div>
           </button>
         );
       })}
