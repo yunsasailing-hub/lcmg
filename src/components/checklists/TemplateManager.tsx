@@ -573,8 +573,12 @@ export default function TemplateManager() {
   const { hasAnyRole } = useAuth();
   const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const isOwner = hasAnyRole(['owner']);
-  // Owner sees all templates (active + inactive); other roles only see active.
-  const { data: templates, isLoading, refetch } = useTemplates(undefined, isOwner ? 'all' : 'active');
+  // Owner can toggle visibility of inactive templates; staff/managers only see active.
+  const [showInactive, setShowInactive] = useState(false);
+  const { data: templates, isLoading, refetch } = useTemplates(
+    undefined,
+    isOwner ? (showInactive ? 'all' : 'active') : 'active',
+  );
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
