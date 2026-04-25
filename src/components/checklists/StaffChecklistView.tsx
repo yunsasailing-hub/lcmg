@@ -277,7 +277,14 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   };
 
   const handleSubmit = () => {
-    if (!tasks) return;
+    if (!tasks) {
+      toast.error('Checklist tasks are still loading. Please try again.');
+      return;
+    }
+    if (!tasks.length) {
+      toast.error('No checklist tasks found.');
+      return;
+    }
     // Per-task validation with explicit messages
     for (const task of tasks) {
       const taskKey = task.template_task_id ?? task.id;
