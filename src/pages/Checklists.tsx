@@ -25,7 +25,6 @@ export default function Checklists() {
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="my-checklists">{t('checklists.tabs.myChecklists')}</TabsTrigger>
             <TabsTrigger value="templates">{t('checklists.tabs.templates')}</TabsTrigger>
-            <TabsTrigger value="dashboard">{t('checklists.tabs.dashboard')}</TabsTrigger>
           </TabsList>
           <TabsContent value="pending">
             <PendingChecklistsView />
@@ -35,9 +34,6 @@ export default function Checklists() {
           </TabsContent>
           <TabsContent value="templates">
             <TemplateManager />
-          </TabsContent>
-          <TabsContent value="dashboard">
-            <ManagerDashboard />
           </TabsContent>
         </Tabs>
       ) : (
