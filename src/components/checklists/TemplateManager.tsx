@@ -575,11 +575,14 @@ export default function TemplateManager() {
   const { hasAnyRole } = useAuth();
   const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const isOwner = hasAnyRole(['owner']);
-  const { data: templates, isLoading, refetch } = useTemplates();
+  const [statusFilter, setStatusFilter] = useState<TemplateStatusFilter>('active');
+  const { data: templates, isLoading, refetch } = useTemplates(undefined, statusFilter);
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
+  const archiveTemplate = useArchiveTemplate();
+  const restoreTemplate = useRestoreTemplate();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
