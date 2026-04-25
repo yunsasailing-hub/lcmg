@@ -676,6 +676,23 @@ export default function TemplateManager() {
     });
   };
 
+  const handleArchiveTemplate = (templateId: string) => {
+    archiveTemplate.mutate(templateId, {
+      onSuccess: () => {
+        toast.success('Template archived');
+        if (expandedId === templateId) setExpandedId(null);
+      },
+      onError: (err: any) => toast.error(err?.message || 'Failed to archive template'),
+    });
+  };
+
+  const handleRestoreTemplate = (templateId: string) => {
+    restoreTemplate.mutate(templateId, {
+      onSuccess: () => toast.success('Template restored'),
+      onError: (err: any) => toast.error(err?.message || 'Failed to restore template'),
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
