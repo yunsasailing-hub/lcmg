@@ -520,6 +520,7 @@ function AssignDialog({ template }: { template: any }) {
 export default function TemplateManager() {
   const { hasAnyRole } = useAuth();
   const canManageTemplates = hasAnyRole(['owner', 'manager']);
+  const isOwner = hasAnyRole(['owner']);
   const { data: templates, isLoading, refetch } = useTemplates();
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
@@ -531,12 +532,21 @@ export default function TemplateManager() {
   const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string } | null>(null);
 
   const handleExport = async () => {
+    if (!isOwner) {
+      toast.error('Only Owners can export checklist templates.');
+      return;
+    }
     if (!templates?.length) { toast.error('No templates to export'); return; }
     try {
       await exportTemplatesToXlsx(templates);
       toast.success('Checklist templates exported for review. Missing fields are left empty.');
     } catch (err: any) {
-      toast.error(err?.message || 'Export failed');
+      const msg = err?.message || 'Export failed';
+      if (/session expired|jwt|not authenticated|unauthorized/i.test(msg)) {
+        toast.error('Your session expired. Please sign in again.');
+      } else {
+        toast.error(msg);
+      }
     }
   };
 
@@ -585,9 +595,11 @@ export default function TemplateManager() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-medium text-muted-foreground">Checklist Templates</h3>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-1" /> Export Templates for Review
-          </Button>
+          {isOwner && (
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-1" /> Export Templates for Review
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-1" /> Import
           </Button>
