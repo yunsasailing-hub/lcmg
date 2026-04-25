@@ -280,7 +280,8 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
     if (!tasks) return;
     // Per-task validation with explicit messages
     for (const task of tasks) {
-      const c = completionMap[task.id];
+      const taskKey = task.template_task_id ?? task.id;
+      const c = completionMap[taskKey];
       if (!c?.is_completed) {
         toast.error(`Please complete: ${task.title}`);
         return;
@@ -292,23 +293,24 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         return;
       }
       if (noteRequired) {
-        const draft = comments[task.id]?.trim();
+        const draft = comments[taskKey]?.trim();
         const saved = c.comment?.trim();
         if (!saved && !draft) {
           toast.error(`Please fill the required note for: ${task.title}`);
-          setExpandedComment(task.id);
+          setExpandedComment(taskKey);
           return;
         }
       }
     }
     // Persist any pending draft notes for mandatory tasks before submit
     for (const task of tasks) {
-      const draft = comments[task.id]?.trim();
-      if (draft && draft !== completionMap[task.id]?.comment) {
+      const taskKey = task.template_task_id ?? task.id;
+      const draft = comments[taskKey]?.trim();
+      if (draft && draft !== completionMap[taskKey]?.comment) {
         upsert.mutate({
           instance_id: instanceId,
-          task_id: task.id,
-          is_completed: completionMap[task.id]?.is_completed ?? false,
+          task_id: taskKey,
+          is_completed: completionMap[taskKey]?.is_completed ?? false,
           comment: draft,
         });
       }
@@ -388,12 +390,13 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           ) : (
             <div className="space-y-3">
               {tasks?.map(task => {
-                const c = completionMap[task.id];
+                const taskKey = task.template_task_id ?? task.id;
+                const c = completionMap[taskKey];
                 const done = !!c?.is_completed;
                 const photoRequired = task.photo_required === true;
                 const noteRequired = task.note_required === true;
                 const needsPhoto = photoRequired && !c?.photo_url;
-                const needsNote = noteRequired && !(c?.comment?.trim() || comments[task.id]?.trim());
+                const needsNote = noteRequired && !(c?.comment?.trim() || comments[taskKey]?.trim());
 
                 return (
                   <div
@@ -418,7 +421,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                         )}
                         {showOwnerDebug && (
                           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                            Debug: {task.title} · photo_required={String(task.photo_required)} · note_required={String(task.note_required)} · comment exists={c?.comment?.trim() || comments[task.id]?.trim() ? 'yes' : 'no'} · photo exists={c?.photo_url ? 'yes' : 'no'}
+                            Debug: {task.title} · photo_required={String(task.photo_required)} · note_required={String(task.note_required)} · comment exists={c?.comment?.trim() || comments[taskKey]?.trim() ? 'yes' : 'no'} · photo exists={c?.photo_url ? 'yes' : 'no'}
                           </p>
                         )}
                       </div>
@@ -426,7 +429,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                       <button
                         type="button"
                         disabled={!isEditable}
-                        onClick={() => isEditable && handleToggle(task.id, !done)}
+                        onClick={() => isEditable && handleToggle(taskKey, !done)}
                         className="shrink-0 flex items-center justify-center h-14 w-14 md:h-16 md:w-16 rounded-xl border-2 border-input hover:bg-accent active:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         aria-label={done ? 'Mark incomplete' : 'Mark complete'}
                       >
@@ -444,17 +447,17 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                           variant="outline"
                           size="sm"
                           className="h-10 px-4"
-                          disabled={uploading === task.id}
-                          onClick={() => handlePhoto(task.id)}
+                          disabled={uploading === taskKey}
+                          onClick={() => handlePhoto(taskKey)}
                         >
                           <Camera className="h-4 w-4 mr-2" />
-                          {uploading === task.id ? 'Uploading…' : c?.photo_url ? 'Replace photo' : 'Add photo'}
+                          {uploading === taskKey ? 'Uploading…' : c?.photo_url ? 'Replace photo' : 'Add photo'}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-10 px-4"
-                          onClick={() => setExpandedComment(expandedComment === task.id ? null : task.id)}
+                          onClick={() => setExpandedComment(expandedComment === taskKey ? null : taskKey)}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Comment
@@ -472,15 +475,15 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                       <p className="text-sm text-muted-foreground italic">💬 {c.comment}</p>
                     )}
 
-                    {expandedComment === task.id && isEditable && (
+                    {expandedComment === taskKey && isEditable && (
                       <div className="flex gap-2">
                         <Textarea
                           placeholder="Add a comment..."
-                          value={comments[task.id] || ''}
-                          onChange={e => setComments(prev => ({ ...prev, [task.id]: e.target.value }))}
+                          value={comments[taskKey] || ''}
+                          onChange={e => setComments(prev => ({ ...prev, [taskKey]: e.target.value }))}
                           className="min-h-[72px] text-base"
                         />
-                        <Button size="icon" className="shrink-0 h-12 w-12" onClick={() => handleComment(task.id)}>
+                        <Button size="icon" className="shrink-0 h-12 w-12" onClick={() => handleComment(taskKey)}>
                           <Send className="h-5 w-5" />
                         </Button>
                       </div>
