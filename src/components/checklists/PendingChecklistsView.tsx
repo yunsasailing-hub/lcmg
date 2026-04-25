@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Circle, AlertTriangle, Clock, CircleCheck } from 'lucide-react';
+import { Circle, AlertTriangle, Clock, CircleCheck, MapPin, User as UserIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -23,13 +23,29 @@ function formatDueTime(dt: string | null) {
   return formatVN(dt);
 }
 
-function ChecklistRow({ instance }: { instance: any }) {
+function formatOverdue(dt: string | null) {
+  if (!dt) return null;
+  const diffMs = Date.now() - new Date(dt).getTime();
+  if (diffMs <= 0) return null;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${mins}m overdue`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ${mins % 60}m overdue`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h overdue`;
+}
+
+function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: boolean }) {
   const tpl = instance.template;
   const cfg = statusConfig[instance.status as ChecklistStatus];
   const StatusIcon =
     instance.status === 'rejected' || instance.status === 'escalated' ? AlertTriangle
       : instance.status === 'completed' || instance.status === 'verified' ? CircleCheck
       : Circle;
+  const isLate = instance.status === 'late' || instance.status === 'escalated';
+  const overdueText = isLate ? formatOverdue(instance.due_datetime) : null;
+  const branchLabel = instance.branch?.name
+    ?? (ownerView ? 'Unassigned — Needs Review' : 'Unknown / Legacy');
 
   return (
     <div className="w-full flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5">
@@ -46,10 +62,20 @@ function ChecklistRow({ instance }: { instance: any }) {
         </p>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 flex-wrap">
           <span className="capitalize">{instance.checklist_type}</span>
+          <span>·</span>
+          <span className="capitalize">{instance.department}</span>
+          <span>·</span>
+          <span className="flex items-center gap-0.5">
+            <MapPin className="h-3 w-3" />
+            {branchLabel}
+          </span>
           {instance.assignee?.full_name && (
             <>
               <span>·</span>
-              <span className="truncate">{instance.assignee.full_name}</span>
+              <span className="flex items-center gap-0.5 truncate">
+                <UserIcon className="h-3 w-3" />
+                {instance.assignee.full_name}
+              </span>
             </>
           )}
           {instance.due_datetime && (
@@ -59,6 +85,12 @@ function ChecklistRow({ instance }: { instance: any }) {
                 <Clock className="h-3 w-3" />
                 Due {formatDueTime(instance.due_datetime)}
               </span>
+            </>
+          )}
+          {overdueText && (
+            <>
+              <span>·</span>
+              <span className="text-destructive font-medium">{overdueText}</span>
             </>
           )}
         </div>
@@ -84,35 +116,19 @@ function GroupedChecklists({
   items,
   storageKey,
   emptyText,
+  ownerView,
 }: {
   items: any[];
   storageKey: string;
   emptyText: string;
+  ownerView?: boolean;
 }) {
-  // Session-persisted accordion state
-  const [deptOpen, setDeptOpen] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try { return JSON.parse(sessionStorage.getItem(`${storageKey}:dept`) ?? '[]'); } catch { return []; }
-  });
-  const [branchOpen, setBranchOpen] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try { return JSON.parse(sessionStorage.getItem(`${storageKey}:branch`) ?? '[]'); } catch { return []; }
-  });
-
-  const persistDept = (v: string[]) => {
-    setDeptOpen(v);
-    try { sessionStorage.setItem(`${storageKey}:dept`, JSON.stringify(v)); } catch {}
-  };
-  const persistBranch = (v: string[]) => {
-    setBranchOpen(v);
-    try { sessionStorage.setItem(`${storageKey}:branch`, JSON.stringify(v)); } catch {}
-  };
-
   const grouped = useMemo(() => {
     const map = new Map<string, Map<string, any[]>>();
     for (const it of items) {
       const dept = it.department ?? 'unknown';
-      const branchName = it.branch?.name ?? 'Unknown / Legacy';
+      const branchName = it.branch?.name
+        ?? (ownerView ? 'Unassigned — Needs Review' : 'Unknown / Legacy');
       if (!map.has(dept)) map.set(dept, new Map());
       const bm = map.get(dept)!;
       if (!bm.has(branchName)) bm.set(branchName, []);
@@ -127,12 +143,52 @@ function GroupedChecklists({
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([branch, list]) => ({ branch, list })),
       }));
-  }, [items]);
+  }, [items, ownerView]);
+
+  // Open-by-default accordion state. Recomputes when groups change so newly
+  // appearing departments/branches stay open. Session storage persists user
+  // collapses within the session.
+  const allDeptKeys = useMemo(() => grouped.map(g => g.dept), [grouped]);
+  const allBranchKeys = useMemo(
+    () => grouped.flatMap(g => g.branches.map(b => `${g.dept}::${b.branch}`)),
+    [grouped],
+  );
+
+  const [deptOpen, setDeptOpen] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = sessionStorage.getItem(`${storageKey}:dept`);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [branchOpen, setBranchOpen] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = sessionStorage.getItem(`${storageKey}:branch`);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [touchedDept, setTouchedDept] = useState(false);
+  const [touchedBranch, setTouchedBranch] = useState(false);
+
+  const effectiveDeptOpen = touchedDept ? deptOpen : allDeptKeys;
+  const effectiveBranchOpen = touchedBranch ? branchOpen : allBranchKeys;
+
+  const persistDept = (v: string[]) => {
+    setTouchedDept(true);
+    setDeptOpen(v);
+    try { sessionStorage.setItem(`${storageKey}:dept`, JSON.stringify(v)); } catch {}
+  };
+  const persistBranch = (v: string[]) => {
+    setTouchedBranch(true);
+    setBranchOpen(v);
+    try { sessionStorage.setItem(`${storageKey}:branch`, JSON.stringify(v)); } catch {}
+  };
 
   if (!items.length) return <EmptyState text={emptyText} />;
 
   return (
-    <Accordion type="multiple" value={deptOpen} onValueChange={persistDept} className="space-y-2">
+    <Accordion type="multiple" value={effectiveDeptOpen} onValueChange={persistDept} className="space-y-2">
       {grouped.map(({ dept, total, branches }) => (
         <AccordionItem
           key={dept}
@@ -146,7 +202,7 @@ function GroupedChecklists({
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-3 pb-3 pt-0">
-            <Accordion type="multiple" value={branchOpen} onValueChange={persistBranch} className="space-y-1.5">
+            <Accordion type="multiple" value={effectiveBranchOpen} onValueChange={persistBranch} className="space-y-1.5">
               {branches.map(({ branch, list }) => {
                 const key = `${dept}::${branch}`;
                 return (
@@ -159,7 +215,7 @@ function GroupedChecklists({
                     </AccordionTrigger>
                     <AccordionContent className="px-2 pb-2 pt-0">
                       <div className="flex flex-col gap-1.5">
-                        {list.map((it) => <ChecklistRow key={it.id} instance={it} />)}
+                        {list.map((it) => <ChecklistRow key={it.id} instance={it} ownerView={ownerView} />)}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -219,6 +275,7 @@ export default function PendingChecklistsView() {
           items={allPending}
           storageKey="pending:owner:all"
           emptyText="No open checklists across all branches."
+          ownerView
         />
       </div>
     );
