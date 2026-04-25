@@ -627,7 +627,14 @@ export default function TemplateManager() {
                     <div className="flex items-start gap-2 flex-1 min-w-0">
                       {isExpanded ? <ChevronUp className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{tpl.title}</p>
+                        <p className="font-medium text-foreground truncate">
+                          {(tpl as any).code && (
+                            <span className="font-mono text-xs text-muted-foreground mr-2">
+                              {(tpl as any).code}
+                            </span>
+                          )}
+                          {tpl.title}
+                        </p>
                         <p className="text-xs text-muted-foreground capitalize mt-0.5">
                           {tpl.checklist_type} · {tpl.department} · {taskCount} task{taskCount !== 1 ? 's' : ''}
                           {aCount > 0 && ` · ${aCount} assignment${aCount !== 1 ? 's' : ''}`}
