@@ -693,6 +693,16 @@ export default function TemplateManager() {
         <h3 className="text-sm font-medium text-muted-foreground">Checklist Templates</h3>
         <div className="flex items-center gap-2">
           {isOwner && (
+            <label className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground">
+              <Switch
+                checked={showInactive}
+                onCheckedChange={setShowInactive}
+                aria-label="Show inactive templates"
+              />
+              Show Inactive Templates
+            </label>
+          )}
+          {isOwner && (
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-1" /> Export Templates for Review
             </Button>
