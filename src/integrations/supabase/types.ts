@@ -116,6 +116,63 @@ export type Database = {
           },
         ]
       }
+      checklist_instance_tasks: {
+        Row: {
+          created_at: string
+          id: string
+          instance_id: string
+          instruction: string | null
+          is_active: boolean
+          note_required: boolean
+          photo_required: boolean
+          sort_order: number
+          template_task_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instance_id: string
+          instruction?: string | null
+          is_active?: boolean
+          note_required?: boolean
+          photo_required?: boolean
+          sort_order?: number
+          template_task_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instance_id?: string
+          instruction?: string | null
+          is_active?: boolean
+          note_required?: boolean
+          photo_required?: boolean
+          sort_order?: number
+          template_task_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_instance_tasks_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instance_tasks_template_task_id_fkey"
+            columns: ["template_task_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_template_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_instances: {
         Row: {
           assigned_manager_user_id: string | null
@@ -1492,6 +1549,10 @@ export type Database = {
       }
     }
     Functions: {
+      create_checklist_instance_tasks: {
+        Args: { _instance_id: string }
+        Returns: undefined
+      }
       current_user_department: {
         Args: never
         Returns: Database["public"]["Enums"]["department"]
