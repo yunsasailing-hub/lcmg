@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Constants } from '@/integrations/supabase/types';
+import { supabase } from '@/integrations/supabase/client';
 import type { ChecklistType, Department, PhotoRequirement } from '@/hooks/useChecklists';
 
 export interface ParsedTemplate {
@@ -13,30 +14,120 @@ const validTypes = Constants.public.Enums.checklist_type as readonly string[];
 const validDepts = Constants.public.Enums.department as readonly string[];
 const validPhoto = Constants.public.Enums.photo_requirement as readonly string[];
 
-export function exportTemplatesToXlsx(templates: any[]) {
-  const templatesData = templates.map(t => ({
-    Title: t.title,
-    Type: t.checklist_type,
-    Department: t.department,
-    Active: t.is_active ? 'Yes' : 'No',
-  }));
+export async function exportTemplatesToXlsx(templates: any[]) {
+  // Fetch lookups for branches + users so we can show names instead of UUIDs.
+  const [branchesRes, profilesRes] = await Promise.all([
+    supabase.from('branches').select('id, name'),
+    supabase.from('profiles').select('user_id, full_name, email'),
+  ]);
+  const branchMap = new Map<string, string>();
+  (branchesRes.data || []).forEach((b: any) => branchMap.set(b.id, b.name));
+  const userMap = new Map<string, string>();
+  (profilesRes.data || []).forEach((p: any) =>
+    userMap.set(p.user_id, p.full_name || p.email || p.user_id),
+  );
 
-  const tasksData: any[] = [];
-  templates.forEach(t => {
-    ((t as any).tasks || []).forEach((task: any) => {
-      tasksData.push({
-        'Template Title': t.title,
-        'Task Title': task.title,
-        'Sort Order': task.sort_order,
-        'Photo Requirement': task.photo_requirement,
+  const fmtDate = (v: any) => (v ? new Date(v).toISOString().replace('T', ' ').slice(0, 19) : '');
+  const lookupUsers = (ids: any) =>
+    Array.isArray(ids) && ids.length
+      ? ids.map((id: string) => userMap.get(id) || id).join(', ')
+      : '';
+
+  type Row = Record<string, any>;
+  const rows: Row[] = [];
+
+  // Sort templates: Branch → Department → Template Name. Empty branch/dept go to bottom.
+  const sorted = [...templates].sort((a, b) => {
+    const ab = branchMap.get(a.branch_id) || '';
+    const bb = branchMap.get(b.branch_id) || '';
+    if (!ab && bb) return 1;
+    if (ab && !bb) return -1;
+    if (ab !== bb) return ab.localeCompare(bb);
+    const ad = a.department || '';
+    const bd = b.department || '';
+    if (!ad && bd) return 1;
+    if (ad && !bd) return -1;
+    if (ad !== bd) return ad.localeCompare(bd);
+    return (a.title || '').localeCompare(b.title || '');
+  });
+
+  sorted.forEach((t: any) => {
+    const branchName = t.branch_id ? branchMap.get(t.branch_id) || '' : '';
+    const assignedStaff = t.default_assigned_to ? userMap.get(t.default_assigned_to) || '' : '';
+    const warningRecipients = lookupUsers(t.warning_recipient_user_ids);
+
+    const requiredMissing =
+      !branchName ||
+      !t.department ||
+      !t.frequency ||
+      !t.default_due_time ||
+      !t.checklist_type ||
+      !assignedStaff ||
+      !warningRecipients;
+    const legacy = requiredMissing ? 'YES' : 'NO';
+
+    const tasks = ((t.tasks as any[]) || []).slice().sort(
+      (x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0),
+    );
+
+    const baseTpl = {
+      'Template Name': t.title || '',
+      'Template Status': t.is_active ? 'Active' : 'Inactive',
+      Branch: branchName,
+      Department: t.department || '',
+      Frequency: t.frequency || '',
+      'Due Time': t.default_due_time || '',
+      'Checklist Type': t.checklist_type || '',
+      'Assigned Staff': assignedStaff,
+      'Responsible Manager / Warning Recipient': warningRecipients,
+      'Owner Visibility': 'YES',
+      'Manager Visibility': 'YES',
+      'Created At': fmtDate(t.created_at),
+      'Updated At': fmtDate(t.updated_at),
+      'Legacy / Needs Review': legacy,
+    };
+
+    if (!tasks.length) {
+      rows.push({
+        ...baseTpl,
+        'Task No': '',
+        'Task Title': '',
+        'Task Instruction / Notes': '',
+        'Photo Required': '',
+        'Active / Inactive': '',
+      });
+      return;
+    }
+
+    tasks.forEach((task: any, idx: number) => {
+      rows.push({
+        ...baseTpl,
+        'Task No': idx + 1,
+        'Task Title': task.title || '',
+        'Task Instruction / Notes': task.instruction || task.notes || '',
+        'Photo Required':
+          task.photo_requirement === 'mandatory'
+            ? 'YES'
+            : task.photo_requirement === 'optional'
+            ? 'OPTIONAL'
+            : 'NO',
+        'Active / Inactive': 'Active',
       });
     });
   });
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(templatesData), 'Templates');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tasksData.length ? tasksData : [{}]), 'Tasks');
-  XLSX.writeFile(wb, `checklist-templates-${new Date().toISOString().split('T')[0]}.xlsx`);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(rows.length ? rows : [{}]),
+    'Templates Review',
+  );
+
+  const today = new Date();
+  const yyyymmdd = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(
+    today.getDate(),
+  ).padStart(2, '0')}`;
+  XLSX.writeFile(wb, `checklist_template_export_review_${yyyymmdd}.xlsx`);
 }
 
 export async function parseTemplatesFromXlsx(file: File): Promise<ParsedTemplate[]> {
