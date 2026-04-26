@@ -943,31 +943,195 @@ export default function TemplateManager() {
                 </button>
                 {isExpanded && (
                   <div className="border-t px-4 pb-3 pt-2 space-y-1.5">
-                    {tasks.length > 0 ? tasks.map((task: any, idx: number) => (
-                      <div key={task.id || idx} className="flex items-center gap-2 text-sm group">
-                        <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="flex-1 text-foreground">{task.title}</span>
-                        {(task.photo_requirement === 'mandatory' || task.photo_requirement === true) && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                            📸 Photo required
-                          </Badge>
-                        )}
-                        {(task.note_requirement === 'mandatory' || task.note_requirement === true) && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                            📝 Note required
-                          </Badge>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          onClick={() => handleDeleteTask(task.id)}
+                    {tasks.length > 0 ? tasks.map((task: any, idx: number) => {
+                      const isEditing = editingTaskId === task.id;
+                      const isArchived = task.is_active === false;
+
+                      if (isEditing && isOwner) {
+                        return (
+                          <div
+                            key={task.id}
+                            className="rounded-md border bg-muted/40 p-2 space-y-2"
+                          >
+                            <Input
+                              value={editDraft.title}
+                              onChange={(e) =>
+                                setEditDraft((d) => ({ ...d, title: e.target.value }))
+                              }
+                              placeholder="Task title"
+                              className="h-8 text-sm"
+                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="inline-flex items-center gap-1.5 text-xs">
+                                <Switch
+                                  checked={editDraft.photo_requirement === 'mandatory'}
+                                  onCheckedChange={(v) =>
+                                    setEditDraft((d) => ({
+                                      ...d,
+                                      photo_requirement: v ? 'mandatory' : 'none',
+                                    }))
+                                  }
+                                />
+                                <Camera className="h-3 w-3" /> Photo Required
+                              </label>
+                              <label className="inline-flex items-center gap-1.5 text-xs">
+                                <Switch
+                                  checked={editDraft.note_requirement === 'mandatory'}
+                                  onCheckedChange={(v) =>
+                                    setEditDraft((d) => ({
+                                      ...d,
+                                      note_requirement: v ? 'mandatory' : 'none',
+                                    }))
+                                  }
+                                />
+                                <MessageSquare className="h-3 w-3" /> Note Required
+                              </label>
+                              <div className="ml-auto flex items-center gap-1.5">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={cancelEditTask}
+                                  disabled={updateTask.isPending}
+                                >
+                                  <X className="h-3 w-3 mr-1" /> Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => saveEditTask(task.id)}
+                                  disabled={updateTask.isPending}
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  {updateTask.isPending ? 'Saving…' : 'Save'}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={task.id || idx}
+                          className={cn(
+                            'flex items-center gap-2 text-sm group',
+                            isArchived && 'opacity-50',
+                          )}
                         >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
-                    )) : (
+                          <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="flex-1 text-foreground truncate">{task.title}</span>
+                          {isArchived && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              Archived
+                            </Badge>
+                          )}
+                          {(task.photo_requirement === 'mandatory' || task.photo_requirement === true) && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                              📸 Photo
+                            </Badge>
+                          )}
+                          {(task.note_requirement === 'mandatory' || task.note_requirement === true) && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                              📝 Note
+                            </Badge>
+                          )}
+                          {isOwner && !isArchived && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
+                              onClick={() => startEditTask(task)}
+                              aria-label="Edit task"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {isOwner && isArchived && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-[11px] shrink-0"
+                              onClick={() => handleRestoreTask(task.id)}
+                            >
+                              Restore
+                            </Button>
+                          )}
+                          {isOwner && !isArchived && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
+                              onClick={() => handleArchiveTask(task.id)}
+                              aria-label="Archive task"
+                            >
+                              <Archive className="h-3 w-3 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    }) : (
                       <p className="text-xs text-muted-foreground italic">No tasks in this template.</p>
+                    )}
+
+                    {/* Owner: add task inline */}
+                    {isOwner && (
+                      addingForTemplateId === tpl.id ? (
+                        <div className="rounded-md border bg-muted/40 p-2 space-y-2 mt-2">
+                          <Input
+                            autoFocus
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            placeholder="New task title"
+                            className="h-8 text-sm"
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="inline-flex items-center gap-1.5 text-xs">
+                              <Switch
+                                checked={newTaskPhoto === 'mandatory'}
+                                onCheckedChange={(v) => setNewTaskPhoto(v ? 'mandatory' : 'none')}
+                              />
+                              <Camera className="h-3 w-3" /> Photo Required
+                            </label>
+                            <label className="inline-flex items-center gap-1.5 text-xs">
+                              <Switch
+                                checked={newTaskNote === 'mandatory'}
+                                onCheckedChange={(v) => setNewTaskNote(v ? 'mandatory' : 'none')}
+                              />
+                              <MessageSquare className="h-3 w-3" /> Note Required
+                            </label>
+                            <div className="ml-auto flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => setAddingForTemplateId(null)}
+                                disabled={createTask.isPending}
+                              >
+                                <X className="h-3 w-3 mr-1" /> Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => handleAddTask(tpl.id)}
+                                disabled={createTask.isPending}
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                {createTask.isPending ? 'Adding…' : 'Add'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 h-7 text-xs"
+                          onClick={() => openAddTask(tpl.id)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Add Task
+                        </Button>
+                      )
                     )}
 
                     {/* Delete template button */}
