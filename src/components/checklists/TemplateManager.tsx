@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye, Pencil, Check, X, Archive } from 'lucide-react';
+import { useMemo, useState, useRef } from 'react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye, Pencil, Check, X, Archive, Filter, Search } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -579,18 +579,23 @@ export default function TemplateManager() {
   const isManagerOnly = !isOwner && hasAnyRole(['manager']);
   // Owner can toggle visibility of inactive templates; staff/managers only see active.
   const [showInactive, setShowInactive] = useState(false);
-  const { data: rawTemplates, isLoading, refetch } = useTemplates(
-    undefined,
-    isOwner ? (showInactive ? 'all' : 'active') : 'active',
-  );
-  // Managers see only templates within their own branch + department.
-  const templates = isManagerOnly
-    ? (rawTemplates ?? []).filter((t: any) => {
-        if (profile?.branch_id && t.branch_id && t.branch_id !== profile.branch_id) return false;
-        if (profile?.department && t.department && t.department !== profile.department) return false;
-        return true;
-      })
-    : rawTemplates;
+  // Owner-only filter panel state.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterBranch, setFilterBranch] = useState<string>('all');
+  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'assigned' | 'unassigned'>('all');
+  const [filterSearch, setFilterSearch] = useState('');
+  const clearFilters = () => {
+    setFilterBranch('all');
+    setFilterDepartment('all');
+    setFilterStatus('all');
+    setFilterSearch('');
+  };
+  const activeFilterCount =
+    (filterBranch !== 'all' ? 1 : 0) +
+    (filterDepartment !== 'all' ? 1 : 0) +
+    (filterStatus !== 'all' ? 1 : 0) +
+    (filterSearch.trim() ? 1 : 0);
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
@@ -600,6 +605,53 @@ export default function TemplateManager() {
   const setTemplateActive = useSetTemplateActive();
   const updateTemplateTitle = useUpdateTemplateTitle();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
+
+  // For owner we always fetch all so client-side status filter works; managers/staff only see active.
+  const { data: rawTemplates, isLoading, refetch } = useTemplates(
+    undefined,
+    isOwner ? 'all' : 'active',
+  );
+  // Managers see only templates within their own branch + department.
+  const scopedTemplates = isManagerOnly
+    ? (rawTemplates ?? []).filter((t: any) => {
+        if (profile?.branch_id && t.branch_id && t.branch_id !== profile.branch_id) return false;
+        if (profile?.department && t.department && t.department !== profile.department) return false;
+        return true;
+      })
+    : (rawTemplates ?? []);
+
+  // Apply visible filters (owner-only filters are always available; for non-owner all filters default to "all").
+  const templates = useMemo(() => {
+    let list = scopedTemplates;
+    // Owner-only "Show Inactive Templates" toggle: when off, hide inactive.
+    if (isOwner && !showInactive && filterStatus === 'all') {
+      list = list.filter((t: any) => t.is_active !== false);
+    }
+    if (filterBranch !== 'all') {
+      list = list.filter((t: any) => t.branch_id === filterBranch);
+    }
+    if (filterDepartment !== 'all') {
+      list = list.filter((t: any) => t.department === filterDepartment);
+    }
+    if (filterStatus === 'active') {
+      list = list.filter((t: any) => t.is_active !== false);
+    } else if (filterStatus === 'inactive') {
+      list = list.filter((t: any) => t.is_active === false);
+    } else if (filterStatus === 'assigned') {
+      list = list.filter((t: any) => (assignmentCounts?.[t.id] || 0) > 0);
+    } else if (filterStatus === 'unassigned') {
+      list = list.filter((t: any) => (assignmentCounts?.[t.id] || 0) === 0);
+    }
+    const q = filterSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (t: any) =>
+          (t.title || '').toLowerCase().includes(q) ||
+          (t.code || '').toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [scopedTemplates, isOwner, showInactive, filterBranch, filterDepartment, filterStatus, filterSearch, assignmentCounts]);
 
   // ─── Debug logs (no UI exposure) ───
   if (typeof window !== 'undefined') {
@@ -620,8 +672,10 @@ export default function TemplateManager() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
-  // Owner-only: show archived (soft-deleted) tasks inside the template's task list.
-  const [showArchivedTasks, setShowArchivedTasks] = useState(false);
+  // Owner-only: show archived (soft-deleted) tasks per-template (inside the expanded view).
+  const [archivedTasksByTemplate, setArchivedTasksByTemplate] = useState<Record<string, boolean>>({});
+  const toggleArchivedTasks = (templateId: string, value: boolean) =>
+    setArchivedTasksByTemplate((prev) => ({ ...prev, [templateId]: value }));
   // Inline edit state — single task at a time per template.
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{
@@ -871,16 +925,80 @@ export default function TemplateManager() {
               Show Inactive Templates
             </label>
           )}
-          {isOwner && (
-            <label className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground">
-              <Switch
-                checked={showArchivedTasks}
-                onCheckedChange={setShowArchivedTasks}
-                aria-label="Show archived tasks"
-              />
-              Show Archived Tasks
-            </label>
-          )}
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="relative">
+                <Filter className="h-4 w-4 mr-1" /> Filters
+                {activeFilterCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1.5 h-4 px-1.5 text-[10px]"
+                  >
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-foreground">Filter Templates</p>
+                {activeFilterCount > 0 && (
+                  <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Search by name or code</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                    placeholder="Template name or code…"
+                    className="h-8 text-xs pl-7"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Branch</Label>
+                <Select value={filterBranch} onValueChange={setFilterBranch}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Branches</SelectItem>
+                    {(branches ?? []).map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Department</Label>
+                <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {Constants.public.Enums.department.map((d) => (
+                      <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Status</Label>
+                <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="assigned">Assigned only</SelectItem>
+                    <SelectItem value="unassigned">Unassigned only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
           {isOwner && (
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-1" /> Export Templates for Review
@@ -911,9 +1029,10 @@ export default function TemplateManager() {
         <div className="space-y-3">
           {templates.map(tpl => {
             const allTasks = (tpl as any).tasks || [];
+            const showArchivedForThis = isOwner && !!archivedTasksByTemplate[tpl.id];
             // Hide archived (soft-deleted) tasks from normal template view.
-            // Owner can opt-in to show archived tasks via the header toggle.
-            const tasks = (isOwner && showArchivedTasks)
+            // Owner can opt-in to show archived tasks via the per-template toggle.
+            const tasks = showArchivedForThis
               ? [...allTasks].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
               : allTasks
                   .filter((t: any) => t.is_active !== false)
@@ -1066,6 +1185,18 @@ export default function TemplateManager() {
                 </button>
                 {isExpanded && (
                   <div className="border-t px-4 pb-3 pt-2 space-y-1.5">
+                    {isOwner && (
+                      <div className="flex justify-end">
+                        <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Switch
+                            checked={showArchivedForThis}
+                            onCheckedChange={(v) => toggleArchivedTasks(tpl.id, v)}
+                            aria-label="Show archived tasks for this template"
+                          />
+                          Show Archived Tasks
+                        </label>
+                      </div>
+                    )}
                     {tasks.length > 0 ? tasks.map((task: any, idx: number) => {
                       const isEditing = editingTaskId === task.id;
                       const isArchived = task.is_active === false;
