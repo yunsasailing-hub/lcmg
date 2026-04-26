@@ -585,6 +585,8 @@ export default function TemplateManager() {
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
+  const updateTask = useUpdateTemplateTask();
+  const createTask = useCreateTemplateTask();
   const setTemplateActive = useSetTemplateActive();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -593,6 +595,20 @@ export default function TemplateManager() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
+  // Owner-only: show archived (soft-deleted) tasks inside the template's task list.
+  const [showArchivedTasks, setShowArchivedTasks] = useState(false);
+  // Inline edit state — single task at a time per template.
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{
+    title: string;
+    photo_requirement: PhotoRequirement;
+    note_requirement: NoteRequirement;
+  }>({ title: '', photo_requirement: 'none', note_requirement: 'none' });
+  // Add-task dialog state — keyed by template id so different templates don't interfere.
+  const [addingForTemplateId, setAddingForTemplateId] = useState<string | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskPhoto, setNewTaskPhoto] = useState<PhotoRequirement>('none');
+  const [newTaskNote, setNewTaskNote] = useState<NoteRequirement>('none');
 
   const handleExport = async () => {
     try {
