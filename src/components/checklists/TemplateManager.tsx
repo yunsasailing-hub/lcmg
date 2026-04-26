@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye, Pencil, Check, X, Archive } from 'lucide-react';
+import { useMemo, useState, useRef } from 'react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye, Pencil, Check, X, Archive, Filter, Search } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
