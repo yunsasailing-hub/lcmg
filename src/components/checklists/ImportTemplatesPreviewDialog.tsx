@@ -28,15 +28,25 @@ export default function ImportTemplatesPreviewDialog({ open, onOpenChange, previ
   const handleConfirm = async () => {
     if (blocked) return;
     setImporting(true);
-    let createdCount = 0;
-    let updatedCount = 0;
+    const summary = {
+      templatesCreated: 0,
+      templatesUpdated: 0,
+      tasksAdded: 0,
+      tasksUpdated: 0,
+      tasksArchived: 0,
+      tasksSkipped: 0,
+    };
     const failures: string[] = [];
 
     for (const tpl of importable) {
       try {
-        await applyTemplateImport(tpl, user?.id ?? null);
-        if (tpl.action === 'create') createdCount += 1;
-        else updatedCount += 1;
+        const result = await applyTemplateImport(tpl, user?.id ?? null);
+        if (tpl.action === 'create') summary.templatesCreated += 1;
+        else summary.templatesUpdated += 1;
+        summary.tasksAdded += result.tasksAdded;
+        summary.tasksUpdated += result.tasksUpdated;
+        summary.tasksArchived += result.tasksArchived;
+        summary.tasksSkipped += result.tasksSkipped;
       } catch (err: any) {
         failures.push(`${tpl.code}: ${err?.message || 'failed'}`);
       }
@@ -46,7 +56,11 @@ export default function ImportTemplatesPreviewDialog({ open, onOpenChange, previ
     if (failures.length) {
       toast.error(`Some templates failed: ${failures.slice(0, 3).join('; ')}${failures.length > 3 ? '…' : ''}`);
     } else {
-      toast.success(`Imported: ${createdCount} created, ${updatedCount} updated.`);
+      toast.success(
+        `Templates: ${summary.templatesCreated} created, ${summary.templatesUpdated} updated. ` +
+        `Tasks: ${summary.tasksAdded} added, ${summary.tasksUpdated} updated, ${summary.tasksArchived} archived` +
+        (summary.tasksSkipped ? `, ${summary.tasksSkipped} skipped` : '') + '.'
+      );
     }
     onImported();
     onOpenChange(false);
@@ -154,7 +168,16 @@ function TemplateRow({ tpl }: { tpl: ImportTemplatePreview }) {
 
 // ─── Apply one template (create or update + replace tasks) ───
 
-async function applyTemplateImport(tpl: ImportTemplatePreview, userId: string | null) {
+type ApplyResult = {
+  tasksAdded: number;
+  tasksUpdated: number;
+  tasksArchived: number;
+  tasksSkipped: number;
+};
+
+async function applyTemplateImport(tpl: ImportTemplatePreview, userId: string | null): Promise<ApplyResult> {
+  const result: ApplyResult = { tasksAdded: 0, tasksUpdated: 0, tasksArchived: 0, tasksSkipped: 0 };
+
   // Find existing template by code (if any).
   const { data: existing, error: findErr } = await supabase
     .from('checklist_templates')
@@ -174,6 +197,7 @@ async function applyTemplateImport(tpl: ImportTemplatePreview, userId: string | 
   };
 
   let templateId: string;
+  let isNewTemplate = false;
   if (existing) {
     templateId = existing.id;
     const { error: updErr } = await supabase
@@ -181,13 +205,6 @@ async function applyTemplateImport(tpl: ImportTemplatePreview, userId: string | 
       .update(templatePayload)
       .eq('id', templateId);
     if (updErr) throw updErr;
-
-    // Replace task list (template tasks only — assignments and instances untouched).
-    const { error: delErr } = await supabase
-      .from('checklist_template_tasks')
-      .delete()
-      .eq('template_id', templateId);
-    if (delErr) throw delErr;
   } else {
     const { data: created, error: insErr } = await supabase
       .from('checklist_templates')
@@ -196,20 +213,158 @@ async function applyTemplateImport(tpl: ImportTemplatePreview, userId: string | 
       .single();
     if (insErr) throw insErr;
     templateId = created.id;
+    isNewTemplate = true;
   }
 
-  if (tpl.tasks.length) {
-    const taskRows = tpl.tasks.map((t, idx) => ({
-      template_id: templateId,
-      title: t.instruction ? `${t.title}\n${t.instruction}` : t.title,
-      sort_order: t.task_no ?? idx,
-      photo_requirement: (t.photo_required ? 'mandatory' : 'none') as any,
-      note_requirement: (t.note_required ? 'mandatory' : 'none') as any,
-      is_active: true,
-    }));
-    const { error: tErr } = await supabase
-      .from('checklist_template_tasks')
-      .insert(taskRows as any);
-    if (tErr) throw tErr;
+  // Build the desired task list from the import file.
+  const desiredTasks = tpl.tasks.map((t, idx) => ({
+    title: t.instruction ? `${t.title}\n${t.instruction}` : t.title,
+    sort_order: t.task_no ?? idx,
+    photo_requirement: (t.photo_required ? 'mandatory' : 'none') as 'mandatory' | 'none',
+    note_requirement: (t.note_required ? 'mandatory' : 'none') as 'mandatory' | 'none',
+  }));
+
+  // Fast path: brand-new template — just insert all tasks.
+  if (isNewTemplate) {
+    if (desiredTasks.length) {
+      const { error: tErr } = await supabase
+        .from('checklist_template_tasks')
+        .insert(
+          desiredTasks.map((t) => ({
+            template_id: templateId,
+            title: t.title,
+            sort_order: t.sort_order,
+            photo_requirement: t.photo_requirement as any,
+            note_requirement: t.note_requirement as any,
+            is_active: true,
+          })) as any
+        );
+      if (tErr) throw tErr;
+      result.tasksAdded += desiredTasks.length;
+    }
+    return result;
   }
+
+  // ─── Diff-merge mode for existing template ───
+
+  // Load current active tasks for this template.
+  const { data: existingTasks, error: exErr } = await supabase
+    .from('checklist_template_tasks')
+    .select('id, title, sort_order, photo_requirement, note_requirement, is_active')
+    .eq('template_id', templateId);
+  if (exErr) throw exErr;
+
+  const existingActive = (existingTasks ?? []).filter((t) => t.is_active);
+
+  // Bulk-load completion counts for these tasks.
+  const taskIds = existingActive.map((t) => t.id);
+  const historyMap = new Map<string, number>();
+  if (taskIds.length) {
+    const { data: comps, error: cErr } = await supabase
+      .from('checklist_task_completions')
+      .select('task_id')
+      .in('task_id', taskIds);
+    if (cErr) throw cErr;
+    for (const c of comps ?? []) {
+      historyMap.set(c.task_id, (historyMap.get(c.task_id) ?? 0) + 1);
+    }
+  }
+  const hasHistory = (id: string) => (historyMap.get(id) ?? 0) > 0;
+
+  // Match desired vs existing by sort_order (stable key from import).
+  const existingBySort = new Map<number, typeof existingActive[number]>();
+  for (const t of existingActive) existingBySort.set(t.sort_order, t);
+
+  const desiredSortKeys = new Set(desiredTasks.map((t) => t.sort_order));
+
+  // 1) Process tasks present in the import file.
+  for (const want of desiredTasks) {
+    const current = existingBySort.get(want.sort_order);
+    if (!current) {
+      // New task → insert.
+      const { error } = await supabase.from('checklist_template_tasks').insert({
+        template_id: templateId,
+        title: want.title,
+        sort_order: want.sort_order,
+        photo_requirement: want.photo_requirement as any,
+        note_requirement: want.note_requirement as any,
+        is_active: true,
+      } as any);
+      if (error) throw error;
+      result.tasksAdded += 1;
+      continue;
+    }
+
+    const changed =
+      current.title !== want.title ||
+      current.photo_requirement !== want.photo_requirement ||
+      current.note_requirement !== want.note_requirement;
+
+    if (!changed) continue;
+
+    if (!hasHistory(current.id)) {
+      // Safe in-place update.
+      const { error } = await supabase
+        .from('checklist_template_tasks')
+        .update({
+          title: want.title,
+          photo_requirement: want.photo_requirement as any,
+          note_requirement: want.note_requirement as any,
+        })
+        .eq('id', current.id);
+      if (error) throw error;
+      result.tasksUpdated += 1;
+    } else {
+      // Has history → archive old, insert new version preserving sort_order.
+      const { error: archErr } = await supabase
+        .from('checklist_template_tasks')
+        .update({ is_active: false })
+        .eq('id', current.id);
+      if (archErr) throw archErr;
+      result.tasksArchived += 1;
+
+      const { error: insErr } = await supabase.from('checklist_template_tasks').insert({
+        template_id: templateId,
+        title: want.title,
+        sort_order: want.sort_order,
+        photo_requirement: want.photo_requirement as any,
+        note_requirement: want.note_requirement as any,
+        is_active: true,
+      } as any);
+      if (insErr) throw insErr;
+      result.tasksAdded += 1;
+    }
+  }
+
+  // 2) Tasks that exist but are no longer in the import file.
+  for (const current of existingActive) {
+    if (desiredSortKeys.has(current.sort_order)) continue;
+    if (hasHistory(current.id)) {
+      const { error } = await supabase
+        .from('checklist_template_tasks')
+        .update({ is_active: false })
+        .eq('id', current.id);
+      if (error) throw error;
+      result.tasksArchived += 1;
+    } else {
+      const { error } = await supabase
+        .from('checklist_template_tasks')
+        .delete()
+        .eq('id', current.id);
+      if (error) {
+        // FK or other issue — fall back to archive so import still completes.
+        const { error: aErr } = await supabase
+          .from('checklist_template_tasks')
+          .update({ is_active: false })
+          .eq('id', current.id);
+        if (aErr) {
+          result.tasksSkipped += 1;
+          continue;
+        }
+        result.tasksArchived += 1;
+      }
+    }
+  }
+
+  return result;
 }
