@@ -1566,6 +1566,10 @@ export type Database = {
         Args: { _template_id: string }
         Returns: Json
       }
+      delete_checklist_template_task: {
+        Args: { _task_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
