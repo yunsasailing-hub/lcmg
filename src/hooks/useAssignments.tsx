@@ -101,7 +101,7 @@ export function useAssignmentCountByTemplate() {
       const { data, error } = await supabase
         .from('checklist_assignments')
         .select('template_id, status')
-        .in('status', ['active', 'paused']);
+        .eq('status', 'active');
       if (error) throw error;
       const counts: Record<string, number> = {};
       for (const row of data || []) {

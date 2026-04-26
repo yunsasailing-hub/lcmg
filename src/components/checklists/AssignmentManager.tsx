@@ -25,7 +25,7 @@ const statusColors: Record<string, string> = {
   ended: 'bg-muted text-muted-foreground',
 };
 
-function AssignmentRow({ assignment }: { assignment: AssignmentWithProfile }) {
+function AssignmentRow({ assignment, canManage }: { assignment: AssignmentWithProfile; canManage: boolean }) {
   const updateStatus = useUpdateAssignmentStatus();
   const deleteAssignment = useDeleteAssignment();
 
@@ -122,7 +122,7 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithProfile }) {
         <p className="text-xs text-muted-foreground italic border-t pt-1">{assignment.notes}</p>
       )}
 
-      {!isEnded && (
+      {canManage && !isEnded && (
         <div className="flex items-center gap-1.5 pt-1 border-t">
           {isActive && (
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handlePause} disabled={busy}>
@@ -162,7 +162,7 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithProfile }) {
         </div>
       )}
 
-      {isEnded && (
+      {canManage && isEnded && (
         <div className="flex items-center gap-1.5 pt-1 border-t">
           <div className="flex-1" />
           <AlertDialog>
@@ -198,13 +198,38 @@ interface AssignmentManagerProps {
   templateCode?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When false, hides Pause/Resume/End/Remove controls. Defaults to true (Owner). */
+  canManage?: boolean;
+  /** Manager scope: only show assignments whose assignee branch matches this id. */
+  restrictToBranchId?: string | null;
+  /** Manager scope: only show assignments whose assignee department matches this. */
+  restrictToDepartment?: string | null;
 }
 
-export default function AssignmentManager({ templateId, templateTitle, templateCode, open, onOpenChange }: AssignmentManagerProps) {
+export default function AssignmentManager({
+  templateId,
+  templateTitle,
+  templateCode,
+  open,
+  onOpenChange,
+  canManage = true,
+  restrictToBranchId = null,
+  restrictToDepartment = null,
+}: AssignmentManagerProps) {
   const { data: assignments, isLoading } = useAssignmentsByTemplate(open ? templateId : undefined);
 
-  const activeCount = assignments?.filter(a => a.status === 'active').length || 0;
-  const pausedCount = assignments?.filter(a => a.status === 'paused').length || 0;
+  // Manager scope filter — applied on top of the raw query.
+  const visibleAssignments = (assignments ?? []).filter(a => {
+    if (restrictToBranchId && a.branch_id && a.branch_id !== restrictToBranchId) return false;
+    if (restrictToDepartment && a.assignee?.department && a.assignee.department !== restrictToDepartment) return false;
+    return true;
+  });
+
+  // For managers we only ever surface active assignments.
+  const scopedAssignments = canManage ? visibleAssignments : visibleAssignments.filter(a => a.status === 'active');
+
+  const activeCount = scopedAssignments.filter(a => a.status === 'active').length;
+  const pausedCount = scopedAssignments.filter(a => a.status === 'paused').length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -218,7 +243,8 @@ export default function AssignmentManager({ templateId, templateTitle, templateC
             <div className="flex flex-col gap-1.5">
               <TemplateCodeBadge code={templateCode} className="self-start" />
               <span>
-                {activeCount} active{pausedCount > 0 ? `, ${pausedCount} paused` : ''} assignment{(activeCount + pausedCount) !== 1 ? 's' : ''}
+                {activeCount} active assignment{activeCount !== 1 ? 's' : ''}
+                {canManage && pausedCount > 0 ? `, ${pausedCount} paused` : ''}
               </span>
             </div>
           </DialogDescription>
@@ -228,15 +254,15 @@ export default function AssignmentManager({ templateId, templateTitle, templateC
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        ) : !assignments?.length ? (
+        ) : !scopedAssignments.length ? (
           <div className="flex flex-col items-center py-8 text-center">
             <Users className="h-8 w-8 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No assignments for this template.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {assignments.map(a => (
-              <AssignmentRow key={a.id} assignment={a} />
+            {scopedAssignments.map(a => (
+              <AssignmentRow key={a.id} assignment={a} canManage={canManage} />
             ))}
           </div>
         )}

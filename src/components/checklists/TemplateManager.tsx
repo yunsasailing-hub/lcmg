@@ -572,15 +572,24 @@ function AssignDialog({ template }: { template: any }) {
 // ─── Main ───
 
 export default function TemplateManager() {
-  const { hasAnyRole } = useAuth();
+  const { hasAnyRole, profile } = useAuth();
   const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const isOwner = hasAnyRole(['owner']);
+  const isManagerOnly = !isOwner && hasAnyRole(['manager']);
   // Owner can toggle visibility of inactive templates; staff/managers only see active.
   const [showInactive, setShowInactive] = useState(false);
-  const { data: templates, isLoading, refetch } = useTemplates(
+  const { data: rawTemplates, isLoading, refetch } = useTemplates(
     undefined,
     isOwner ? (showInactive ? 'all' : 'active') : 'active',
   );
+  // Managers see only templates within their own branch + department.
+  const templates = isManagerOnly
+    ? (rawTemplates ?? []).filter((t: any) => {
+        if (profile?.branch_id && t.branch_id && t.branch_id !== profile.branch_id) return false;
+        if (profile?.department && t.department && t.department !== profile.department) return false;
+        return true;
+      })
+    : rawTemplates;
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
@@ -905,9 +914,7 @@ export default function TemplateManager() {
                       <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{tpl.checklist_type}</span></span>
                       <span><span className="text-muted-foreground/70">Due:</span> <span className="text-foreground font-medium">{(tpl as any).default_due_time?.slice(0, 5) ?? '—'}</span></span>
                       <span><span className="text-muted-foreground/70">Tasks:</span> <span className="text-foreground font-medium">{taskCount}</span></span>
-                      {aCount > 0 && (
-                        <span><span className="text-muted-foreground/70">Assignments:</span> <span className="text-foreground font-medium">{aCount}</span></span>
-                      )}
+                      <span><span className="text-muted-foreground/70">Assignments:</span> <span className="text-foreground font-medium">{aCount}</span></span>
                     </div>
 
                     {/* Line 3: actions (only if any) */}
@@ -1134,7 +1141,8 @@ export default function TemplateManager() {
                       )
                     )}
 
-                    {/* Delete template button */}
+                    {/* Delete template button (Owner only) */}
+                    {isOwner && (
                     <div className="pt-2 border-t mt-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -1161,6 +1169,7 @@ export default function TemplateManager() {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1176,6 +1185,9 @@ export default function TemplateManager() {
           templateCode={assignmentManagerTemplate.code}
           open={!!assignmentManagerTemplate}
           onOpenChange={(open) => { if (!open) setAssignmentManagerTemplate(null); }}
+          canManage={isOwner}
+          restrictToBranchId={isManagerOnly ? (profile?.branch_id ?? null) : null}
+          restrictToDepartment={isManagerOnly ? (profile?.department ?? null) : null}
         />
       )}
 
