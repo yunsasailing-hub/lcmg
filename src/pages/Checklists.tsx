@@ -22,7 +22,7 @@ export default function Checklists() {
           <TabsList>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="my-checklists">{t('checklists.tabs.myChecklists')}</TabsTrigger>
-            {isOwner && (
+            {(isOwner || isManager) && (
               <TabsTrigger value="templates">{t('checklists.tabs.templates')}</TabsTrigger>
             )}
             <TabsTrigger value="archive">Done Archive</TabsTrigger>
@@ -33,7 +33,7 @@ export default function Checklists() {
           <TabsContent value="my-checklists">
             <StaffChecklistView />
           </TabsContent>
-          {isOwner && (
+          {(isOwner || isManager) && (
             <TabsContent value="templates">
               <TemplateManager />
             </TabsContent>
