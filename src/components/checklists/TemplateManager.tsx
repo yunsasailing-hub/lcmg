@@ -579,18 +579,36 @@ export default function TemplateManager() {
   const isManagerOnly = !isOwner && hasAnyRole(['manager']);
   // Owner can toggle visibility of inactive templates; staff/managers only see active.
   const [showInactive, setShowInactive] = useState(false);
+  // Owner-only filter panel state.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterBranch, setFilterBranch] = useState<string>('all');
+  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'assigned' | 'unassigned'>('all');
+  const [filterSearch, setFilterSearch] = useState('');
+  const clearFilters = () => {
+    setFilterBranch('all');
+    setFilterDepartment('all');
+    setFilterStatus('all');
+    setFilterSearch('');
+  };
+  const activeFilterCount =
+    (filterBranch !== 'all' ? 1 : 0) +
+    (filterDepartment !== 'all' ? 1 : 0) +
+    (filterStatus !== 'all' ? 1 : 0) +
+    (filterSearch.trim() ? 1 : 0);
+  // For owner we always fetch all so client-side status filter works; managers/staff only see active.
   const { data: rawTemplates, isLoading, refetch } = useTemplates(
     undefined,
-    isOwner ? (showInactive ? 'all' : 'active') : 'active',
+    isOwner ? 'all' : 'active',
   );
   // Managers see only templates within their own branch + department.
-  const templates = isManagerOnly
+  const scopedTemplates = isManagerOnly
     ? (rawTemplates ?? []).filter((t: any) => {
         if (profile?.branch_id && t.branch_id && t.branch_id !== profile.branch_id) return false;
         if (profile?.department && t.department && t.department !== profile.department) return false;
         return true;
       })
-    : rawTemplates;
+    : (rawTemplates ?? []);
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
