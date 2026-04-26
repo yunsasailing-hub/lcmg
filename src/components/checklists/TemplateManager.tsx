@@ -1141,7 +1141,8 @@ export default function TemplateManager() {
                       )
                     )}
 
-                    {/* Delete template button */}
+                    {/* Delete template button (Owner only) */}
+                    {isOwner && (
                     <div className="pt-2 border-t mt-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -1168,6 +1169,7 @@ export default function TemplateManager() {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
+                    )}
                   </div>
                 )}
               </div>
