@@ -715,6 +715,87 @@ export default function TemplateManager() {
     );
   };
 
+  const startEditTask = (task: any) => {
+    setEditingTaskId(task.id);
+    setEditDraft({
+      title: task.title || '',
+      photo_requirement: (task.photo_requirement || 'none') as PhotoRequirement,
+      note_requirement: (task.note_requirement || 'none') as NoteRequirement,
+    });
+  };
+
+  const cancelEditTask = () => {
+    setEditingTaskId(null);
+  };
+
+  const saveEditTask = (taskId: string) => {
+    const title = editDraft.title.trim();
+    if (!title) {
+      toast.error('Task title cannot be empty');
+      return;
+    }
+    updateTask.mutate(
+      {
+        taskId,
+        title,
+        photo_requirement: editDraft.photo_requirement,
+        note_requirement: editDraft.note_requirement,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Task updated');
+          setEditingTaskId(null);
+        },
+        onError: (err: any) => toast.error(err?.message || 'Failed to update task'),
+      },
+    );
+  };
+
+  const handleArchiveTask = (taskId: string) => {
+    // Reuse delete RPC: it auto-archives if there is history, hard-deletes otherwise.
+    handleDeleteTask(taskId);
+  };
+
+  const handleRestoreTask = (taskId: string) => {
+    updateTask.mutate(
+      { taskId, is_active: true },
+      {
+        onSuccess: () => toast.success('Task restored'),
+        onError: (err: any) => toast.error(err?.message || 'Failed to restore task'),
+      },
+    );
+  };
+
+  const openAddTask = (templateId: string) => {
+    setAddingForTemplateId(templateId);
+    setNewTaskTitle('');
+    setNewTaskPhoto('none');
+    setNewTaskNote('none');
+  };
+
+  const handleAddTask = (templateId: string) => {
+    const title = newTaskTitle.trim();
+    if (!title) {
+      toast.error('Task title cannot be empty');
+      return;
+    }
+    createTask.mutate(
+      {
+        template_id: templateId,
+        title,
+        photo_requirement: newTaskPhoto,
+        note_requirement: newTaskNote,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Task added');
+          setAddingForTemplateId(null);
+        },
+        onError: (err: any) => toast.error(err?.message || 'Failed to add task'),
+      },
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
