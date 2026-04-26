@@ -596,19 +596,6 @@ export default function TemplateManager() {
     (filterDepartment !== 'all' ? 1 : 0) +
     (filterStatus !== 'all' ? 1 : 0) +
     (filterSearch.trim() ? 1 : 0);
-  // For owner we always fetch all so client-side status filter works; managers/staff only see active.
-  const { data: rawTemplates, isLoading, refetch } = useTemplates(
-    undefined,
-    isOwner ? 'all' : 'active',
-  );
-  // Managers see only templates within their own branch + department.
-  const scopedTemplates = isManagerOnly
-    ? (rawTemplates ?? []).filter((t: any) => {
-        if (profile?.branch_id && t.branch_id && t.branch_id !== profile.branch_id) return false;
-        if (profile?.department && t.department && t.department !== profile.department) return false;
-        return true;
-      })
-    : (rawTemplates ?? []);
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
@@ -618,6 +605,39 @@ export default function TemplateManager() {
   const setTemplateActive = useSetTemplateActive();
   const updateTemplateTitle = useUpdateTemplateTitle();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
+
+  // Apply visible filters (owner-only filters are always available; for non-owner all filters default to "all").
+  const templates = useMemo(() => {
+    let list = scopedTemplates;
+    // Owner-only "Show Inactive Templates" toggle: when off, hide inactive.
+    if (isOwner && !showInactive && filterStatus === 'all') {
+      list = list.filter((t: any) => t.is_active !== false);
+    }
+    if (filterBranch !== 'all') {
+      list = list.filter((t: any) => t.branch_id === filterBranch);
+    }
+    if (filterDepartment !== 'all') {
+      list = list.filter((t: any) => t.department === filterDepartment);
+    }
+    if (filterStatus === 'active') {
+      list = list.filter((t: any) => t.is_active !== false);
+    } else if (filterStatus === 'inactive') {
+      list = list.filter((t: any) => t.is_active === false);
+    } else if (filterStatus === 'assigned') {
+      list = list.filter((t: any) => (assignmentCounts?.[t.id] || 0) > 0);
+    } else if (filterStatus === 'unassigned') {
+      list = list.filter((t: any) => (assignmentCounts?.[t.id] || 0) === 0);
+    }
+    const q = filterSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (t: any) =>
+          (t.title || '').toLowerCase().includes(q) ||
+          (t.code || '').toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [scopedTemplates, isOwner, showInactive, filterBranch, filterDepartment, filterStatus, filterSearch, assignmentCounts]);
 
   // ─── Debug logs (no UI exposure) ───
   if (typeof window !== 'undefined') {
