@@ -91,7 +91,8 @@ function RepairOrphanChecklists() {
 
 export default function Maintenance() {
   const { t } = useTranslation();
-  const { isOwner } = useAuth();
+  const { hasRole } = useAuth();
+  const isOwner = hasRole('owner');
 
   return (
     <AppShell>
