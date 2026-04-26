@@ -925,16 +925,80 @@ export default function TemplateManager() {
               Show Inactive Templates
             </label>
           )}
-          {isOwner && (
-            <label className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground">
-              <Switch
-                checked={showArchivedTasks}
-                onCheckedChange={setShowArchivedTasks}
-                aria-label="Show archived tasks"
-              />
-              Show Archived Tasks
-            </label>
-          )}
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="relative">
+                <Filter className="h-4 w-4 mr-1" /> Filters
+                {activeFilterCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-1.5 h-4 px-1.5 text-[10px]"
+                  >
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-foreground">Filter Templates</p>
+                {activeFilterCount > 0 && (
+                  <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Search by name or code</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                    placeholder="Template name or code…"
+                    className="h-8 text-xs pl-7"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Branch</Label>
+                <Select value={filterBranch} onValueChange={setFilterBranch}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Branches</SelectItem>
+                    {(branches ?? []).map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Department</Label>
+                <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {Constants.public.Enums.department.map((d) => (
+                      <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Status</Label>
+                <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="assigned">Assigned only</SelectItem>
+                    <SelectItem value="unassigned">Unassigned only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
           {isOwner && (
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-1" /> Export Templates for Review
