@@ -381,6 +381,99 @@ export function useDeleteTemplateTask() {
   });
 }
 
+/**
+ * Owner action: update a single template task (title / photo / note / active flag).
+ * Affects only the template; existing assigned checklist instances stay untouched.
+ */
+export function useUpdateTemplateTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      taskId,
+      title,
+      photo_requirement,
+      note_requirement,
+      is_active,
+    }: {
+      taskId: string;
+      title?: string;
+      photo_requirement?: PhotoRequirement;
+      note_requirement?: NoteRequirement;
+      is_active?: boolean;
+    }) => {
+      const updates: Record<string, unknown> = {};
+      if (title !== undefined) updates.title = title;
+      if (photo_requirement !== undefined) updates.photo_requirement = photo_requirement;
+      if (note_requirement !== undefined) updates.note_requirement = note_requirement;
+      if (is_active !== undefined) updates.is_active = is_active;
+
+      const { data, error } = await supabase
+        .from('checklist_template_tasks')
+        .update(updates as any)
+        .eq('id', taskId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['template-tasks'] });
+    },
+  });
+}
+
+/**
+ * Owner action: append a new task to an existing template.
+ * Sort order defaults to (max + 1) to place at the end.
+ */
+export function useCreateTemplateTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      template_id,
+      title,
+      photo_requirement,
+      note_requirement,
+    }: {
+      template_id: string;
+      title: string;
+      photo_requirement?: PhotoRequirement;
+      note_requirement?: NoteRequirement;
+    }) => {
+      const { data: existing, error: existingErr } = await supabase
+        .from('checklist_template_tasks')
+        .select('sort_order')
+        .eq('template_id', template_id)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      if (existingErr) throw existingErr;
+      const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+      const { data, error } = await supabase
+        .from('checklist_template_tasks')
+        .insert({
+          template_id,
+          title,
+          sort_order: nextOrder,
+          photo_requirement: photo_requirement || ('none' as PhotoRequirement),
+          note_requirement: (note_requirement || 'none') as NoteRequirement,
+          is_active: true,
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      queryClient.invalidateQueries({ queryKey: ['template-tasks'] });
+    },
+  });
+}
+
 export function useDeleteInstance() {
   const queryClient = useQueryClient();
 
