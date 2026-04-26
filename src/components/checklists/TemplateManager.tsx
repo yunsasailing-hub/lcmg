@@ -32,6 +32,7 @@ import {
   useSetTemplateActive,
   useUpdateTemplateTask,
   useCreateTemplateTask,
+  useUpdateTemplateTitle,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
@@ -597,6 +598,7 @@ export default function TemplateManager() {
   const updateTask = useUpdateTemplateTask();
   const createTask = useCreateTemplateTask();
   const setTemplateActive = useSetTemplateActive();
+  const updateTemplateTitle = useUpdateTemplateTitle();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
 
   // ─── Debug logs (no UI exposure) ───
@@ -632,6 +634,41 @@ export default function TemplateManager() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPhoto, setNewTaskPhoto] = useState<PhotoRequirement>('none');
   const [newTaskNote, setNewTaskNote] = useState<NoteRequirement>('none');
+  // Rename state — owner-only inline rename of the template title.
+  const [renamingTemplateId, setRenamingTemplateId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+
+  const startRename = (tpl: any) => {
+    setRenamingTemplateId(tpl.id);
+    setRenameDraft(tpl.title ?? '');
+  };
+  const cancelRename = () => {
+    setRenamingTemplateId(null);
+    setRenameDraft('');
+  };
+  const saveRename = (templateId: string, originalTitle: string) => {
+    const cleaned = renameDraft.trim().replace(/\s+/g, ' ');
+    if (!cleaned) {
+      toast.error('Title cannot be empty');
+      return;
+    }
+    if (cleaned === (originalTitle ?? '').trim()) {
+      cancelRename();
+      return;
+    }
+    updateTemplateTitle.mutate(
+      { templateId, title: cleaned },
+      {
+        onSuccess: () => {
+          toast.success('Template name updated');
+          cancelRename();
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || 'Failed to update template name');
+        },
+      },
+    );
+  };
 
   const handleExport = async () => {
     try {
@@ -904,15 +941,83 @@ export default function TemplateManager() {
                     {/* Line 1: chevron + code · title + status */}
                     <div className="flex items-center gap-2 min-w-0">
                       {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      <p className="flex-1 min-w-0 font-heading font-semibold text-sm sm:text-base text-foreground leading-tight truncate">
-                        {(tpl as any).code ? (
-                          <>
-                            <span className="font-mono text-muted-foreground">{(tpl as any).code}</span>
-                            <span className="text-muted-foreground"> · </span>
-                          </>
-                        ) : null}
-                        {tpl.title}
-                      </p>
+                      {renamingTemplateId === tpl.id ? (
+                        <div
+                          className="flex flex-1 min-w-0 items-center gap-1.5"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          role="presentation"
+                        >
+                          {(tpl as any).code && (
+                            <span className="font-mono text-xs sm:text-sm text-muted-foreground shrink-0">
+                              {(tpl as any).code} ·
+                            </span>
+                          )}
+                          <Input
+                            autoFocus
+                            value={renameDraft}
+                            onChange={(e) => setRenameDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveRename(tpl.id, tpl.title);
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                cancelRename();
+                              }
+                            }}
+                            placeholder="Template title"
+                            className="h-8 text-sm flex-1 min-w-0"
+                            disabled={updateTemplateTitle.isPending}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0"
+                            disabled={updateTemplateTitle.isPending}
+                            onClick={() => saveRename(tpl.id, tpl.title)}
+                            aria-label="Save template name"
+                          >
+                            {updateTemplateTitle.isPending
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Check className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0"
+                            disabled={updateTemplateTitle.isPending}
+                            onClick={cancelRename}
+                            aria-label="Cancel rename"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="flex-1 min-w-0 font-heading font-semibold text-sm sm:text-base text-foreground leading-tight truncate">
+                            {(tpl as any).code ? (
+                              <>
+                                <span className="font-mono text-muted-foreground">{(tpl as any).code}</span>
+                                <span className="text-muted-foreground"> · </span>
+                              </>
+                            ) : null}
+                            {tpl.title}
+                          </p>
+                          {isOwner && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 shrink-0"
+                              onClick={(e) => { e.stopPropagation(); startRename(tpl); }}
+                              aria-label="Edit template name"
+                              title="Edit name"
+                            >
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          )}
+                        </>
+                      )}
                       <Badge
                         variant={isTplActive ? 'default' : 'secondary'}
                         className="text-[10px] px-1.5 py-0 shrink-0"

@@ -577,6 +577,60 @@ export function useSetTemplateActive() {
   });
 }
 
+/**
+ * Owner action: rename a checklist template (title only).
+ * Code, branch, department, type, due time and history are preserved.
+ * Existing instances keep the snapshot they were generated with — only
+ * future generations pick up the new title.
+ */
+export function useUpdateTemplateTitle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ templateId, title }: { templateId: string; title: string }) => {
+      const cleaned = title.trim().replace(/\s+/g, ' ');
+      if (!cleaned) throw new Error('Title cannot be empty');
+
+      // Fetch current template so we can scope the duplicate check
+      // to the same branch + department.
+      const { data: current, error: currentErr } = await supabase
+        .from('checklist_templates')
+        .select('id, branch_id, department')
+        .eq('id', templateId)
+        .maybeSingle();
+      if (currentErr) throw currentErr;
+      if (!current) throw new Error('Template not found');
+
+      // Duplicate guard within the same branch + department.
+      let dupQuery = supabase
+        .from('checklist_templates')
+        .select('id')
+        .ilike('title', cleaned)
+        .eq('department', current.department)
+        .neq('id', templateId);
+      dupQuery = current.branch_id
+        ? dupQuery.eq('branch_id', current.branch_id)
+        : dupQuery.is('branch_id', null);
+      const { data: dup, error: dupErr } = await dupQuery.limit(1);
+      if (dupErr) throw dupErr;
+      if (dup && dup.length > 0) {
+        throw new Error('A template with this name already exists for this branch and department.');
+      }
+
+      const { data, error } = await supabase
+        .from('checklist_templates')
+        .update({ title: cleaned })
+        .eq('id', templateId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+    },
+  });
+}
+
 export function useCreateTemplate() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
