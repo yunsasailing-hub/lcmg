@@ -1185,6 +1185,18 @@ export default function TemplateManager() {
                 </button>
                 {isExpanded && (
                   <div className="border-t px-4 pb-3 pt-2 space-y-1.5">
+                    {isOwner && (
+                      <div className="flex justify-end">
+                        <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Switch
+                            checked={showArchivedForThis}
+                            onCheckedChange={(v) => toggleArchivedTasks(tpl.id, v)}
+                            aria-label="Show archived tasks for this template"
+                          />
+                          Show Archived Tasks
+                        </label>
+                      </div>
+                    )}
                     {tasks.length > 0 ? tasks.map((task: any, idx: number) => {
                       const isEditing = editingTaskId === task.id;
                       const isArchived = task.is_active === false;
