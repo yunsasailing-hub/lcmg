@@ -459,8 +459,7 @@ export default function DoneArchiveView() {
           </p>
         </div>
       ) : (
-      {/* All accordions collapsed by default — uncontrolled with no defaultValue */}
-      <Accordion type="multiple" className="space-y-2">
+        <Accordion type="multiple" className="space-y-2">
         {grouped.map(({ dept, total, branches }) => (
           <AccordionItem
             key={dept}
@@ -535,7 +534,7 @@ export default function DoneArchiveView() {
             </AccordionContent>
           </AccordionItem>
         ))}
-      </Accordion>
+        </Accordion>
       )}
 
       <ArchiveDetailDialog
