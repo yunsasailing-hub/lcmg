@@ -914,13 +914,6 @@ export default function TemplateManager() {
                         {tpl.title}
                       </p>
                       <Badge
-                        variant={aCount > 0 ? 'default' : 'outline'}
-                        className="text-[10px] px-1.5 py-0 shrink-0 whitespace-nowrap"
-                        aria-label={`Active Assignments: ${aCount}`}
-                      >
-                        Active Assignments: {aCount}
-                      </Badge>
-                      <Badge
                         variant={isTplActive ? 'default' : 'secondary'}
                         className="text-[10px] px-1.5 py-0 shrink-0"
                       >
@@ -935,7 +928,6 @@ export default function TemplateManager() {
                       <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{tpl.checklist_type}</span></span>
                       <span><span className="text-muted-foreground/70">Due:</span> <span className="text-foreground font-medium">{(tpl as any).default_due_time?.slice(0, 5) ?? '—'}</span></span>
                       <span><span className="text-muted-foreground/70">Tasks:</span> <span className="text-foreground font-medium">{taskCount}</span></span>
-                      <span><span className="text-muted-foreground/70">Assignments:</span> <span className="text-foreground font-medium">{aCount}</span></span>
                     </div>
 
                     {/* Line 3: actions (only if any) */}
@@ -958,11 +950,9 @@ export default function TemplateManager() {
                           </label>
                         )}
                         <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
-                          {aCount > 0 && (
-                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title, code: (tpl as any).code ?? null })}>
-                              <Eye className="h-3 w-3 mr-1" /> View Assignments
-                            </Button>
-                          )}
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAssignmentManagerTemplate({ id: tpl.id, title: tpl.title, code: (tpl as any).code ?? null })}>
+                            <Eye className="h-3 w-3 mr-1" /> View Assignments ({aCount})
+                          </Button>
                           {isTplActive && <AssignDialog template={tpl} />}
                         </div>
                       </div>
