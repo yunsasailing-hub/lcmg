@@ -1,64 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Circle, AlertTriangle, Clock, CircleCheck, MapPin, User as UserIcon, Trash2, Loader2 } from 'lucide-react';
+import { Circle, AlertTriangle, Clock, CircleCheck, MapPin, User as UserIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN, todayVN } from '@/lib/timezone';
-import { useAllChecklists, useCleanupOrphanPendingChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
+import { useAllChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
-
-function CleanupOrphanButton() {
-  const cleanup = useCleanupOrphanPendingChecklists();
-  const handleConfirm = () => {
-    cleanup.mutate(undefined, {
-      onSuccess: (res) => {
-        const i = res.deleted_instances ?? 0;
-        const n = res.deleted_notifications ?? 0;
-        if (i === 0 && n === 0) {
-          toast.success('No orphan pending checklists found.');
-        } else {
-          toast.success(`Cleaned ${i} pending checklist${i === 1 ? '' : 's'} and ${n} related notification${n === 1 ? '' : 's'}.`);
-        }
-      },
-      onError: (err: any) => toast.error(err?.message || 'Cleanup failed'),
-    });
-  };
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 text-xs" disabled={cleanup.isPending}>
-          {cleanup.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
-          Clean Orphan Pending Checklists
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Clean orphan pending checklists?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Removes pending, late, and overdue checklists whose assignment was deleted or ended,
-            along with their related notifications. Submitted and Done Archive checklists are kept untouched.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            Run Cleanup
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
 
 const PENDING_STATUSES: ChecklistStatus[] = ['pending', 'late', 'escalated'];
 
@@ -322,9 +270,6 @@ export default function PendingChecklistsView() {
   if (isOwner) {
     return (
       <div className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
-        <div className="flex justify-end mb-3">
-          <CleanupOrphanButton />
-        </div>
         <GroupedChecklists
           items={allPending}
           storageKey="pending:owner:all"
