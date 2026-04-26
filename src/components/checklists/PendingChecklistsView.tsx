@@ -1,13 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Circle, AlertTriangle, Clock, CircleCheck, MapPin, User as UserIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN, todayVN } from '@/lib/timezone';
 import { useAllChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
