@@ -1,1 +1,4 @@
 project_id = "wcrnjuhyxqwtkmdhiiju"
+
+[functions.manage-roles]
+verify_jwt = false
