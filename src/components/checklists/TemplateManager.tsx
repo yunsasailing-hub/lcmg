@@ -572,15 +572,24 @@ function AssignDialog({ template }: { template: any }) {
 // ─── Main ───
 
 export default function TemplateManager() {
-  const { hasAnyRole } = useAuth();
+  const { hasAnyRole, profile } = useAuth();
   const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const isOwner = hasAnyRole(['owner']);
+  const isManagerOnly = !isOwner && hasAnyRole(['manager']);
   // Owner can toggle visibility of inactive templates; staff/managers only see active.
   const [showInactive, setShowInactive] = useState(false);
-  const { data: templates, isLoading, refetch } = useTemplates(
+  const { data: rawTemplates, isLoading, refetch } = useTemplates(
     undefined,
     isOwner ? (showInactive ? 'all' : 'active') : 'active',
   );
+  // Managers see only templates within their own branch + department.
+  const templates = isManagerOnly
+    ? (rawTemplates ?? []).filter((t: any) => {
+        if (profile?.branch_id && t.branch_id && t.branch_id !== profile.branch_id) return false;
+        if (profile?.department && t.department && t.department !== profile.department) return false;
+        return true;
+      })
+    : rawTemplates;
   const { data: branches } = useBranches();
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
