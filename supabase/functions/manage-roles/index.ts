@@ -12,12 +12,13 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "No auth header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const token = authHeader.replace("Bearer ", "").trim();
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -30,8 +31,21 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: { user } } = await supabaseUser.auth.getUser();
-    if (!user) {
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    let userId = claimsData?.claims?.sub as string | undefined;
+
+    if (claimsError || !userId) {
+      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+      userId = userData?.user?.id;
+      if (userError || !userId) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (!userId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -45,7 +59,7 @@ Deno.serve(async (req) => {
     const { data: callerRoles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
 
     const roles_list = (callerRoles || []).map((r: any) => r.role);
     const isOwner = roles_list.includes("owner");
@@ -177,7 +191,7 @@ Deno.serve(async (req) => {
     if (action === "toggle_active") {
       const { user_id, is_active } = params;
       if (!user_id) throw new Error("user_id required");
-      if (user_id === user.id) throw new Error("Cannot deactivate yourself");
+      if (user_id === userId) throw new Error("Cannot deactivate yourself");
 
       const { error } = await supabaseAdmin
         .from("profiles")
@@ -207,7 +221,7 @@ Deno.serve(async (req) => {
     // ─── REMOVE role ───
     if (action === "remove") {
       const { user_id, role } = params;
-      if (user_id === user.id && role === "owner") {
+      if (user_id === userId && role === "owner") {
         return new Response(JSON.stringify({ error: "Cannot remove your own owner role" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -228,7 +242,7 @@ Deno.serve(async (req) => {
     if (action === "set_role") {
       const { user_id, role } = params;
       if (!user_id || !role) throw new Error("user_id and role required");
-      if (user_id === user.id) throw new Error("Cannot change your own role");
+      if (user_id === userId) throw new Error("Cannot change your own role");
 
       await supabaseAdmin
         .from("user_roles")
