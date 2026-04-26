@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ClipboardList, Users, Camera, MessageSquare, Download, Upload, ChevronDown, ChevronUp, Circle, CalendarIcon, Loader2, Eye, Pencil, Check, X, Archive } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,8 @@ import {
   useCreateAssignment,
   useBranches,
   useSetTemplateActive,
+  useUpdateTemplateTask,
+  useCreateTemplateTask,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
@@ -583,6 +585,8 @@ export default function TemplateManager() {
   const createTemplate = useCreateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const deleteTask = useDeleteTemplateTask();
+  const updateTask = useUpdateTemplateTask();
+  const createTask = useCreateTemplateTask();
   const setTemplateActive = useSetTemplateActive();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -591,6 +595,20 @@ export default function TemplateManager() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
+  // Owner-only: show archived (soft-deleted) tasks inside the template's task list.
+  const [showArchivedTasks, setShowArchivedTasks] = useState(false);
+  // Inline edit state — single task at a time per template.
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<{
+    title: string;
+    photo_requirement: PhotoRequirement;
+    note_requirement: NoteRequirement;
+  }>({ title: '', photo_requirement: 'none', note_requirement: 'none' });
+  // Add-task dialog state — keyed by template id so different templates don't interfere.
+  const [addingForTemplateId, setAddingForTemplateId] = useState<string | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskPhoto, setNewTaskPhoto] = useState<PhotoRequirement>('none');
+  const [newTaskNote, setNewTaskNote] = useState<NoteRequirement>('none');
 
   const handleExport = async () => {
     try {
@@ -697,6 +715,87 @@ export default function TemplateManager() {
     );
   };
 
+  const startEditTask = (task: any) => {
+    setEditingTaskId(task.id);
+    setEditDraft({
+      title: task.title || '',
+      photo_requirement: (task.photo_requirement || 'none') as PhotoRequirement,
+      note_requirement: (task.note_requirement || 'none') as NoteRequirement,
+    });
+  };
+
+  const cancelEditTask = () => {
+    setEditingTaskId(null);
+  };
+
+  const saveEditTask = (taskId: string) => {
+    const title = editDraft.title.trim();
+    if (!title) {
+      toast.error('Task title cannot be empty');
+      return;
+    }
+    updateTask.mutate(
+      {
+        taskId,
+        title,
+        photo_requirement: editDraft.photo_requirement,
+        note_requirement: editDraft.note_requirement,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Task updated');
+          setEditingTaskId(null);
+        },
+        onError: (err: any) => toast.error(err?.message || 'Failed to update task'),
+      },
+    );
+  };
+
+  const handleArchiveTask = (taskId: string) => {
+    // Reuse delete RPC: it auto-archives if there is history, hard-deletes otherwise.
+    handleDeleteTask(taskId);
+  };
+
+  const handleRestoreTask = (taskId: string) => {
+    updateTask.mutate(
+      { taskId, is_active: true },
+      {
+        onSuccess: () => toast.success('Task restored'),
+        onError: (err: any) => toast.error(err?.message || 'Failed to restore task'),
+      },
+    );
+  };
+
+  const openAddTask = (templateId: string) => {
+    setAddingForTemplateId(templateId);
+    setNewTaskTitle('');
+    setNewTaskPhoto('none');
+    setNewTaskNote('none');
+  };
+
+  const handleAddTask = (templateId: string) => {
+    const title = newTaskTitle.trim();
+    if (!title) {
+      toast.error('Task title cannot be empty');
+      return;
+    }
+    createTask.mutate(
+      {
+        template_id: templateId,
+        title,
+        photo_requirement: newTaskPhoto,
+        note_requirement: newTaskNote,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Task added');
+          setAddingForTemplateId(null);
+        },
+        onError: (err: any) => toast.error(err?.message || 'Failed to add task'),
+      },
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -710,6 +809,16 @@ export default function TemplateManager() {
                 aria-label="Show inactive templates"
               />
               Show Inactive Templates
+            </label>
+          )}
+          {isOwner && (
+            <label className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground">
+              <Switch
+                checked={showArchivedTasks}
+                onCheckedChange={setShowArchivedTasks}
+                aria-label="Show archived tasks"
+              />
+              Show Archived Tasks
             </label>
           )}
           {isOwner && (
@@ -742,9 +851,14 @@ export default function TemplateManager() {
         <div className="space-y-3">
           {templates.map(tpl => {
             const allTasks = (tpl as any).tasks || [];
-            // Hide archived (soft-deleted) tasks from normal template view
-            const tasks = allTasks.filter((t: any) => t.is_active !== false);
-            const taskCount = tasks.length;
+            // Hide archived (soft-deleted) tasks from normal template view.
+            // Owner can opt-in to show archived tasks via the header toggle.
+            const tasks = (isOwner && showArchivedTasks)
+              ? [...allTasks].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+              : allTasks
+                  .filter((t: any) => t.is_active !== false)
+                  .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+            const taskCount = tasks.filter((t: any) => t.is_active !== false).length;
             const isExpanded = expandedId === tpl.id;
             const aCount = assignmentCounts?.[tpl.id] || 0;
             const branchName = branches?.find((b) => b.id === (tpl as any).branch_id)?.name;
@@ -829,31 +943,195 @@ export default function TemplateManager() {
                 </button>
                 {isExpanded && (
                   <div className="border-t px-4 pb-3 pt-2 space-y-1.5">
-                    {tasks.length > 0 ? tasks.map((task: any, idx: number) => (
-                      <div key={task.id || idx} className="flex items-center gap-2 text-sm group">
-                        <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="flex-1 text-foreground">{task.title}</span>
-                        {(task.photo_requirement === 'mandatory' || task.photo_requirement === true) && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                            📸 Photo required
-                          </Badge>
-                        )}
-                        {(task.note_requirement === 'mandatory' || task.note_requirement === true) && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                            📝 Note required
-                          </Badge>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          onClick={() => handleDeleteTask(task.id)}
+                    {tasks.length > 0 ? tasks.map((task: any, idx: number) => {
+                      const isEditing = editingTaskId === task.id;
+                      const isArchived = task.is_active === false;
+
+                      if (isEditing && isOwner) {
+                        return (
+                          <div
+                            key={task.id}
+                            className="rounded-md border bg-muted/40 p-2 space-y-2"
+                          >
+                            <Input
+                              value={editDraft.title}
+                              onChange={(e) =>
+                                setEditDraft((d) => ({ ...d, title: e.target.value }))
+                              }
+                              placeholder="Task title"
+                              className="h-8 text-sm"
+                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="inline-flex items-center gap-1.5 text-xs">
+                                <Switch
+                                  checked={editDraft.photo_requirement === 'mandatory'}
+                                  onCheckedChange={(v) =>
+                                    setEditDraft((d) => ({
+                                      ...d,
+                                      photo_requirement: v ? 'mandatory' : 'none',
+                                    }))
+                                  }
+                                />
+                                <Camera className="h-3 w-3" /> Photo Required
+                              </label>
+                              <label className="inline-flex items-center gap-1.5 text-xs">
+                                <Switch
+                                  checked={editDraft.note_requirement === 'mandatory'}
+                                  onCheckedChange={(v) =>
+                                    setEditDraft((d) => ({
+                                      ...d,
+                                      note_requirement: v ? 'mandatory' : 'none',
+                                    }))
+                                  }
+                                />
+                                <MessageSquare className="h-3 w-3" /> Note Required
+                              </label>
+                              <div className="ml-auto flex items-center gap-1.5">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={cancelEditTask}
+                                  disabled={updateTask.isPending}
+                                >
+                                  <X className="h-3 w-3 mr-1" /> Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => saveEditTask(task.id)}
+                                  disabled={updateTask.isPending}
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  {updateTask.isPending ? 'Saving…' : 'Save'}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={task.id || idx}
+                          className={cn(
+                            'flex items-center gap-2 text-sm group',
+                            isArchived && 'opacity-50',
+                          )}
                         >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
-                    )) : (
+                          <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="flex-1 text-foreground truncate">{task.title}</span>
+                          {isArchived && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              Archived
+                            </Badge>
+                          )}
+                          {(task.photo_requirement === 'mandatory' || task.photo_requirement === true) && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                              📸 Photo
+                            </Badge>
+                          )}
+                          {(task.note_requirement === 'mandatory' || task.note_requirement === true) && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                              📝 Note
+                            </Badge>
+                          )}
+                          {isOwner && !isArchived && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
+                              onClick={() => startEditTask(task)}
+                              aria-label="Edit task"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {isOwner && isArchived && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-[11px] shrink-0"
+                              onClick={() => handleRestoreTask(task.id)}
+                            >
+                              Restore
+                            </Button>
+                          )}
+                          {isOwner && !isArchived && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
+                              onClick={() => handleArchiveTask(task.id)}
+                              aria-label="Archive task"
+                            >
+                              <Archive className="h-3 w-3 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    }) : (
                       <p className="text-xs text-muted-foreground italic">No tasks in this template.</p>
+                    )}
+
+                    {/* Owner: add task inline */}
+                    {isOwner && (
+                      addingForTemplateId === tpl.id ? (
+                        <div className="rounded-md border bg-muted/40 p-2 space-y-2 mt-2">
+                          <Input
+                            autoFocus
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            placeholder="New task title"
+                            className="h-8 text-sm"
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="inline-flex items-center gap-1.5 text-xs">
+                              <Switch
+                                checked={newTaskPhoto === 'mandatory'}
+                                onCheckedChange={(v) => setNewTaskPhoto(v ? 'mandatory' : 'none')}
+                              />
+                              <Camera className="h-3 w-3" /> Photo Required
+                            </label>
+                            <label className="inline-flex items-center gap-1.5 text-xs">
+                              <Switch
+                                checked={newTaskNote === 'mandatory'}
+                                onCheckedChange={(v) => setNewTaskNote(v ? 'mandatory' : 'none')}
+                              />
+                              <MessageSquare className="h-3 w-3" /> Note Required
+                            </label>
+                            <div className="ml-auto flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => setAddingForTemplateId(null)}
+                                disabled={createTask.isPending}
+                              >
+                                <X className="h-3 w-3 mr-1" /> Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => handleAddTask(tpl.id)}
+                                disabled={createTask.isPending}
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                {createTask.isPending ? 'Adding…' : 'Add'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 h-7 text-xs"
+                          onClick={() => openAddTask(tpl.id)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Add Task
+                        </Button>
+                      )
                     )}
 
                     {/* Delete template button */}
