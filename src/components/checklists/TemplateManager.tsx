@@ -1029,9 +1029,10 @@ export default function TemplateManager() {
         <div className="space-y-3">
           {templates.map(tpl => {
             const allTasks = (tpl as any).tasks || [];
+            const showArchivedForThis = isOwner && !!archivedTasksByTemplate[tpl.id];
             // Hide archived (soft-deleted) tasks from normal template view.
-            // Owner can opt-in to show archived tasks via the header toggle.
-            const tasks = (isOwner && showArchivedTasks)
+            // Owner can opt-in to show archived tasks via the per-template toggle.
+            const tasks = showArchivedForThis
               ? [...allTasks].sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
               : allTasks
                   .filter((t: any) => t.is_active !== false)
