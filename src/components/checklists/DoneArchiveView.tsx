@@ -1,6 +1,23 @@
 import { useMemo, useState } from 'react';
-import { CircleCheck, MapPin, User as UserIcon, Calendar, Camera, MessageSquare } from 'lucide-react';
+import { CircleCheck, MapPin, User as UserIcon, Calendar, Camera, MessageSquare, EyeOff, Eye, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   Accordion,
   AccordionItem,
@@ -46,10 +63,20 @@ function ArchiveRow({
   instance,
   ownerView,
   onOpen,
+  selectable,
+  selected,
+  onToggleSelect,
+  onHide,
+  onUnhide,
 }: {
   instance: any;
   ownerView?: boolean;
   onOpen: (i: any) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  onHide?: (id: string) => void;
+  onUnhide?: (id: string) => void;
 }) {
   const tpl = instance.template;
   const cfg = statusConfig[instance.status] ?? { label: instance.status, className: '' };
@@ -58,37 +85,81 @@ function ArchiveRow({
     ?? instance.branch?.name
     ?? (ownerView ? 'Unassigned — Needs Review' : 'Unknown / Legacy');
   const completedAt = instance.submitted_at ?? instance.completed_at ?? null;
+  const isHidden = !!instance.archive_hidden_at;
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(instance)}
-      className="w-full text-left flex flex-col gap-1.5 rounded-lg border bg-card px-3 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/40 transition-colors"
-    >
-      <div className="flex items-center gap-2 min-w-0">
-        <CircleCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-        <p className="flex-1 min-w-0 font-heading font-semibold text-sm sm:text-base text-foreground leading-tight truncate">
-          {tpl?.code ? (
-            <>
-              <span className="font-mono text-muted-foreground">{tpl.code}</span>
-              <span className="text-muted-foreground"> · </span>
-            </>
-          ) : null}
-          {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
-        </p>
-        <Badge className={`${cfg.className} shrink-0 text-[10px] px-1.5 py-0`}>{cfg.label}</Badge>
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground pl-6">
-        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="text-foreground font-medium">{branchLabel}</span></span>
-        <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{instance.checklist_type}</span></span>
-        {instance.assignee?.full_name && (
-          <span className="inline-flex items-center gap-1"><UserIcon className="h-3 w-3" /><span className="text-foreground font-medium truncate max-w-[180px]">{instance.assignee.full_name}</span></span>
-        )}
-        {completedAt && (
-          <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /><span className="text-foreground font-medium">{formatVNDateTime(completedAt)}</span></span>
-        )}
-      </div>
-    </button>
+    <div className="flex items-stretch gap-2 rounded-lg border bg-card hover:bg-muted/40 transition-colors px-2 py-2 sm:px-3 sm:py-2.5">
+      {selectable && (
+        <div className="flex items-start pt-1">
+          <Checkbox
+            checked={!!selected}
+            onCheckedChange={() => onToggleSelect?.(instance.id)}
+            aria-label="Select archive record"
+          />
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => onOpen(instance)}
+        className="flex-1 min-w-0 text-left flex flex-col gap-1.5"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <CircleCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+          <p className="flex-1 min-w-0 font-heading font-semibold text-sm sm:text-base text-foreground leading-tight truncate">
+            {tpl?.code ? (
+              <>
+                <span className="font-mono text-muted-foreground">{tpl.code}</span>
+                <span className="text-muted-foreground"> · </span>
+              </>
+            ) : null}
+            {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
+          </p>
+          {isHidden && (
+            <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 border-amber-500 text-amber-600">
+              Hidden
+            </Badge>
+          )}
+          <Badge className={`${cfg.className} shrink-0 text-[10px] px-1.5 py-0`}>{cfg.label}</Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground pl-6">
+          <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="text-foreground font-medium">{branchLabel}</span></span>
+          <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{instance.checklist_type}</span></span>
+          {instance.assignee?.full_name && (
+            <span className="inline-flex items-center gap-1"><UserIcon className="h-3 w-3" /><span className="text-foreground font-medium truncate max-w-[180px]">{instance.assignee.full_name}</span></span>
+          )}
+          {completedAt && (
+            <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /><span className="text-foreground font-medium">{formatVNDateTime(completedAt)}</span></span>
+          )}
+        </div>
+      </button>
+      {ownerView && (
+        <div className="flex items-start pt-1">
+          {isHidden ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={(e) => { e.stopPropagation(); onUnhide?.(instance.id); }}
+              title="Unhide"
+            >
+              <Eye className="h-3.5 w-3.5 mr-1" />
+              Unhide
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={(e) => { e.stopPropagation(); onHide?.(instance.id); }}
+              title="Hide from Archive"
+            >
+              <EyeOff className="h-3.5 w-3.5 mr-1" />
+              Hide
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -227,14 +298,63 @@ function ArchiveDetailDialog({
 export default function DoneArchiveView() {
   const { user, profile, hasRole } = useAuth();
   const isOwner = hasRole('owner');
+  const queryClient = useQueryClient();
 
   // No date filter → fetch all instances; we filter to done statuses below.
   const { data, isLoading } = useAllChecklists();
 
   const [openInstance, setOpenInstance] = useState<any | null>(null);
+  const [showHidden, setShowHidden] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmIds, setConfirmIds] = useState<string[] | null>(null);
+  const [confirmUnhideId, setConfirmUnhideId] = useState<string | null>(null);
+
+  const hideMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('checklist_instances')
+        .update({ archive_hidden_at: new Date().toISOString(), archive_hidden_by: user!.id })
+        .in('id', ids);
+      if (error) throw error;
+      return ids;
+    },
+    onSuccess: (ids) => {
+      toast.success(ids.length === 1 ? 'Hidden from archive' : `${ids.length} records hidden`);
+      setSelected(new Set());
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+    },
+    onError: (e: any) => toast.error(e?.message || 'Failed to hide'),
+  });
+
+  const unhideMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('checklist_instances')
+        .update({ archive_hidden_at: null, archive_hidden_by: null })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Restored to archive');
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
+    },
+    onError: (e: any) => toast.error(e?.message || 'Failed to unhide'),
+  });
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const archived = useMemo(() => {
-    const all = (data ?? []).filter((c: any) => DONE_STATUSES.includes(c.status));
+    let all = (data ?? []).filter((c: any) => DONE_STATUSES.includes(c.status));
+    // Hide archive-hidden records by default. Owner toggle can show them.
+    if (!(isOwner && showHidden)) {
+      all = all.filter((c: any) => !c.archive_hidden_at);
+    }
     if (isOwner) return all;
     // Manager scope: department match OR own assignments.
     const myDept = profile?.department ?? null;
@@ -248,7 +368,7 @@ export default function DoneArchiveView() {
       }
       return false;
     });
-  }, [data, isOwner, profile?.department, profile?.branch_id, user?.id]);
+  }, [data, isOwner, showHidden, profile?.department, profile?.branch_id, user?.id]);
 
   // Group: department → branch → month
   const grouped = useMemo(() => {
@@ -303,24 +423,43 @@ export default function DoneArchiveView() {
     );
   }
 
-  if (!archived.length) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground mb-4">
-          <CircleCheck className="h-7 w-7" />
-        </div>
-        <h3 className="text-lg font-heading font-semibold text-foreground">Archive is empty</h3>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          Completed checklists will appear here, grouped by department, branch and month.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="pb-[calc(env(safe-area-inset-bottom)+6rem)] lg:pb-6">
-      {/* All accordions collapsed by default — uncontrolled with no defaultValue */}
-      <Accordion type="multiple" className="space-y-2">
+      {isOwner && (
+        <div className="flex flex-wrap items-center gap-3 mb-3 px-1">
+          <div className="flex items-center gap-2">
+            <Switch id="show-hidden" checked={showHidden} onCheckedChange={setShowHidden} />
+            <Label htmlFor="show-hidden" className="text-sm cursor-pointer">
+              Show Hidden Archive Records
+            </Label>
+          </div>
+          {selected.size > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              onClick={() => setConfirmIds(Array.from(selected))}
+              disabled={hideMutation.isPending}
+            >
+              {hideMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <EyeOff className="h-3.5 w-3.5 mr-1" />}
+              Hide Selected from Archive ({selected.size})
+            </Button>
+          )}
+        </div>
+      )}
+
+      {!archived.length ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground mb-4">
+            <CircleCheck className="h-7 w-7" />
+          </div>
+          <h3 className="text-lg font-heading font-semibold text-foreground">Archive is empty</h3>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Completed checklists will appear here, grouped by department, branch and month.
+          </p>
+        </div>
+      ) : (
+        <Accordion type="multiple" className="space-y-2">
         {grouped.map(({ dept, total, branches }) => (
           <AccordionItem
             key={dept}
@@ -374,6 +513,11 @@ export default function DoneArchiveView() {
                                         instance={it}
                                         ownerView={isOwner}
                                         onOpen={setOpenInstance}
+                                        selectable={isOwner && !it.archive_hidden_at}
+                                        selected={selected.has(it.id)}
+                                        onToggleSelect={toggleSelect}
+                                        onHide={(id) => setConfirmIds([id])}
+                                        onUnhide={(id) => setConfirmUnhideId(id)}
                                       />
                                     ))}
                                   </div>
@@ -390,13 +534,64 @@ export default function DoneArchiveView() {
             </AccordionContent>
           </AccordionItem>
         ))}
-      </Accordion>
+        </Accordion>
+      )}
 
       <ArchiveDetailDialog
         instance={openInstance}
         open={!!openInstance}
         onClose={() => setOpenInstance(null)}
       />
+
+      <AlertDialog open={!!confirmIds} onOpenChange={(v) => !v && setConfirmIds(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hide from Archive</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmIds && confirmIds.length > 1
+                ? 'Hide selected completed checklists from normal archive view?'
+                : 'Hide this completed checklist from normal archive view?'}
+              <br />
+              <span className="text-xs mt-2 block">
+                Records, photos, notes and history are preserved and remain available to Owners via "Show Hidden Archive Records".
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmIds) hideMutation.mutate(confirmIds);
+                setConfirmIds(null);
+              }}
+            >
+              Hide
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!confirmUnhideId} onOpenChange={(v) => !v && setConfirmUnhideId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore to Archive</AlertDialogTitle>
+            <AlertDialogDescription>
+              Restore this checklist to the normal archive view?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmUnhideId) unhideMutation.mutate(confirmUnhideId);
+                setConfirmUnhideId(null);
+              }}
+            >
+              Unhide
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

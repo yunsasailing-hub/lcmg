@@ -175,6 +175,8 @@ export type Database = {
       }
       checklist_instances: {
         Row: {
+          archive_hidden_at: string | null
+          archive_hidden_by: string | null
           assigned_manager_user_id: string | null
           assigned_to: string | null
           assignment_id: string | null
@@ -200,6 +202,8 @@ export type Database = {
           warning_sent_at: string | null
         }
         Insert: {
+          archive_hidden_at?: string | null
+          archive_hidden_by?: string | null
           assigned_manager_user_id?: string | null
           assigned_to?: string | null
           assignment_id?: string | null
@@ -225,6 +229,8 @@ export type Database = {
           warning_sent_at?: string | null
         }
         Update: {
+          archive_hidden_at?: string | null
+          archive_hidden_by?: string | null
           assigned_manager_user_id?: string | null
           assigned_to?: string | null
           assignment_id?: string | null
