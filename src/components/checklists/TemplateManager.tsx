@@ -572,7 +572,7 @@ function AssignDialog({ template }: { template: any }) {
 // ─── Main ───
 
 export default function TemplateManager() {
-  const { hasAnyRole, profile } = useAuth();
+  const { hasAnyRole, profile, user } = useAuth();
   const canManageTemplates = hasAnyRole(['owner', 'manager']);
   const isOwner = hasAnyRole(['owner']);
   const isManagerOnly = !isOwner && hasAnyRole(['manager']);
@@ -598,6 +598,20 @@ export default function TemplateManager() {
   const createTask = useCreateTemplateTask();
   const setTemplateActive = useSetTemplateActive();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
+
+  // ─── Debug logs (no UI exposure) ───
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.log('[TemplateManager] auth/scope', {
+      userId: user?.id,
+      role: isOwner ? 'owner' : isManagerOnly ? 'manager' : 'other',
+      branchId: profile?.branch_id,
+      department: profile?.department,
+      templatesLoaded: templates?.length ?? 0,
+      assignmentCounts: assignmentCounts ?? {},
+    });
+  }
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [assignmentManagerTemplate, setAssignmentManagerTemplate] = useState<{ id: string; title: string; code: string | null } | null>(null);
