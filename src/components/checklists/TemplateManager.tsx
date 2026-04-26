@@ -1185,6 +1185,9 @@ export default function TemplateManager() {
           templateCode={assignmentManagerTemplate.code}
           open={!!assignmentManagerTemplate}
           onOpenChange={(open) => { if (!open) setAssignmentManagerTemplate(null); }}
+          canManage={isOwner}
+          restrictToBranchId={isManagerOnly ? (profile?.branch_id ?? null) : null}
+          restrictToDepartment={isManagerOnly ? (profile?.department ?? null) : null}
         />
       )}
 
