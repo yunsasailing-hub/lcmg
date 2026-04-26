@@ -672,8 +672,18 @@ export default function TemplateManager() {
 
   const handleDeleteTask = (taskId: string) => {
     deleteTask.mutate(taskId, {
-      onSuccess: () => toast.success('Task removed'),
-      onError: () => toast.error('Failed to delete task'),
+      onSuccess: (result: any) => {
+        if (result?.archived) {
+          toast.success(result.message || 'Task archived (history preserved)');
+        } else {
+          toast.success(result?.message || 'Task removed');
+        }
+      },
+      onError: (err: any) => {
+        const msg = err?.message || 'Could not remove task';
+        console.error('[TemplateManager] delete task failed:', { taskId, err });
+        toast.error(msg);
+      },
     });
   };
 
@@ -731,7 +741,9 @@ export default function TemplateManager() {
       ) : (
         <div className="space-y-3">
           {templates.map(tpl => {
-            const tasks = (tpl as any).tasks || [];
+            const allTasks = (tpl as any).tasks || [];
+            // Hide archived (soft-deleted) tasks from normal template view
+            const tasks = allTasks.filter((t: any) => t.is_active !== false);
             const taskCount = tasks.length;
             const isExpanded = expandedId === tpl.id;
             const aCount = assignmentCounts?.[tpl.id] || 0;

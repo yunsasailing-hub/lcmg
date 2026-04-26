@@ -358,15 +358,25 @@ export function useDeleteTemplateTask() {
 
   return useMutation({
     mutationFn: async (taskId: string) => {
-      const { error } = await supabase
-        .from('checklist_template_tasks')
-        .delete()
-        .eq('id', taskId);
-      if (error) throw error;
+      const { data, error } = await supabase.rpc('delete_checklist_template_task', {
+        _task_id: taskId,
+      });
+      if (error) {
+        console.error('[deleteTemplateTask] rpc error:', { taskId, error });
+        throw new Error(error.message);
+      }
+      const result = data as { ok: boolean; archived?: boolean; message?: string; error?: string } | null;
+      if (!result || !result.ok) {
+        const msg = result?.message || 'Unknown error while deleting task';
+        console.error('[deleteTemplateTask] business error:', { taskId, result });
+        throw new Error(msg);
+      }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       queryClient.invalidateQueries({ queryKey: ['template-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['checklists'] });
     },
   });
 }
