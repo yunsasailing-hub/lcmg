@@ -25,7 +25,7 @@ const statusColors: Record<string, string> = {
   ended: 'bg-muted text-muted-foreground',
 };
 
-function AssignmentRow({ assignment }: { assignment: AssignmentWithProfile }) {
+function AssignmentRow({ assignment, canManage }: { assignment: AssignmentWithProfile; canManage: boolean }) {
   const updateStatus = useUpdateAssignmentStatus();
   const deleteAssignment = useDeleteAssignment();
 
@@ -122,7 +122,7 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithProfile }) {
         <p className="text-xs text-muted-foreground italic border-t pt-1">{assignment.notes}</p>
       )}
 
-      {!isEnded && (
+      {canManage && !isEnded && (
         <div className="flex items-center gap-1.5 pt-1 border-t">
           {isActive && (
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handlePause} disabled={busy}>
@@ -162,7 +162,7 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithProfile }) {
         </div>
       )}
 
-      {isEnded && (
+      {canManage && isEnded && (
         <div className="flex items-center gap-1.5 pt-1 border-t">
           <div className="flex-1" />
           <AlertDialog>
