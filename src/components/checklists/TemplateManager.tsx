@@ -914,6 +914,13 @@ export default function TemplateManager() {
                         {tpl.title}
                       </p>
                       <Badge
+                        variant={aCount > 0 ? 'default' : 'outline'}
+                        className="text-[10px] px-1.5 py-0 shrink-0 whitespace-nowrap"
+                        aria-label={`Active Assignments: ${aCount}`}
+                      >
+                        Active Assignments: {aCount}
+                      </Badge>
+                      <Badge
                         variant={isTplActive ? 'default' : 'secondary'}
                         className="text-[10px] px-1.5 py-0 shrink-0"
                       >
