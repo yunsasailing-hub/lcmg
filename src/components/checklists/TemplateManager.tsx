@@ -672,8 +672,10 @@ export default function TemplateManager() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
-  // Owner-only: show archived (soft-deleted) tasks inside the template's task list.
-  const [showArchivedTasks, setShowArchivedTasks] = useState(false);
+  // Owner-only: show archived (soft-deleted) tasks per-template (inside the expanded view).
+  const [archivedTasksByTemplate, setArchivedTasksByTemplate] = useState<Record<string, boolean>>({});
+  const toggleArchivedTasks = (templateId: string, value: boolean) =>
+    setArchivedTasksByTemplate((prev) => ({ ...prev, [templateId]: value }));
   // Inline edit state — single task at a time per template.
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<{
