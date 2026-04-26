@@ -598,6 +598,7 @@ export default function TemplateManager() {
   const updateTask = useUpdateTemplateTask();
   const createTask = useCreateTemplateTask();
   const setTemplateActive = useSetTemplateActive();
+  const updateTemplateTitle = useUpdateTemplateTitle();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
 
   // ─── Debug logs (no UI exposure) ───
@@ -633,6 +634,41 @@ export default function TemplateManager() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPhoto, setNewTaskPhoto] = useState<PhotoRequirement>('none');
   const [newTaskNote, setNewTaskNote] = useState<NoteRequirement>('none');
+  // Rename state — owner-only inline rename of the template title.
+  const [renamingTemplateId, setRenamingTemplateId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+
+  const startRename = (tpl: any) => {
+    setRenamingTemplateId(tpl.id);
+    setRenameDraft(tpl.title ?? '');
+  };
+  const cancelRename = () => {
+    setRenamingTemplateId(null);
+    setRenameDraft('');
+  };
+  const saveRename = (templateId: string, originalTitle: string) => {
+    const cleaned = renameDraft.trim().replace(/\s+/g, ' ');
+    if (!cleaned) {
+      toast.error('Title cannot be empty');
+      return;
+    }
+    if (cleaned === (originalTitle ?? '').trim()) {
+      cancelRename();
+      return;
+    }
+    updateTemplateTitle.mutate(
+      { templateId, title: cleaned },
+      {
+        onSuccess: () => {
+          toast.success('Template name updated');
+          cancelRename();
+        },
+        onError: (err: any) => {
+          toast.error(err?.message || 'Failed to update template name');
+        },
+      },
+    );
+  };
 
   const handleExport = async () => {
     try {
