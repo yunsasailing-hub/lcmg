@@ -812,6 +812,16 @@ export default function TemplateManager() {
             </label>
           )}
           {isOwner && (
+            <label className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground">
+              <Switch
+                checked={showArchivedTasks}
+                onCheckedChange={setShowArchivedTasks}
+                aria-label="Show archived tasks"
+              />
+              Show Archived Tasks
+            </label>
+          )}
+          {isOwner && (
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-1" /> Export Templates for Review
             </Button>
