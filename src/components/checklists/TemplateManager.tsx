@@ -914,9 +914,7 @@ export default function TemplateManager() {
                       <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{tpl.checklist_type}</span></span>
                       <span><span className="text-muted-foreground/70">Due:</span> <span className="text-foreground font-medium">{(tpl as any).default_due_time?.slice(0, 5) ?? '—'}</span></span>
                       <span><span className="text-muted-foreground/70">Tasks:</span> <span className="text-foreground font-medium">{taskCount}</span></span>
-                      {aCount > 0 && (
-                        <span><span className="text-muted-foreground/70">Assignments:</span> <span className="text-foreground font-medium">{aCount}</span></span>
-                      )}
+                      <span><span className="text-muted-foreground/70">Assignments:</span> <span className="text-foreground font-medium">{aCount}</span></span>
                     </div>
 
                     {/* Line 3: actions (only if any) */}
