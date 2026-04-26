@@ -32,6 +32,7 @@ import {
   useSetTemplateActive,
   useUpdateTemplateTask,
   useCreateTemplateTask,
+  useUpdateTemplateTitle,
   type PhotoRequirement,
   type ChecklistType,
   type Department,
