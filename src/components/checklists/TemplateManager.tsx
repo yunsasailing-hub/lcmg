@@ -606,6 +606,20 @@ export default function TemplateManager() {
   const updateTemplateTitle = useUpdateTemplateTitle();
   const { data: assignmentCounts } = useAssignmentCountByTemplate();
 
+  // For owner we always fetch all so client-side status filter works; managers/staff only see active.
+  const { data: rawTemplates, isLoading, refetch } = useTemplates(
+    undefined,
+    isOwner ? 'all' : 'active',
+  );
+  // Managers see only templates within their own branch + department.
+  const scopedTemplates = isManagerOnly
+    ? (rawTemplates ?? []).filter((t: any) => {
+        if (profile?.branch_id && t.branch_id && t.branch_id !== profile.branch_id) return false;
+        if (profile?.department && t.department && t.department !== profile.department) return false;
+        return true;
+      })
+    : (rawTemplates ?? []);
+
   // Apply visible filters (owner-only filters are always available; for non-owner all filters default to "all").
   const templates = useMemo(() => {
     let list = scopedTemplates;
