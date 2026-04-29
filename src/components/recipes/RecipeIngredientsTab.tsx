@@ -331,6 +331,16 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                 <TableBody>
                   {draft.map((l, idx) => {
                     const { ing, baseUnit, avgCostPerBaseUnit, lineCost, adjusted, subRecipe } = computeRow(l);
+                    // Usage Unit / Unit Cost display (no math change).
+                    const convEnabled = Boolean((ing as any)?.conversion_enabled);
+                    const convUnit = convEnabled && (ing as any)?.conversion_unit_id
+                      ? unitMap[(ing as any).conversion_unit_id]
+                      : null;
+                    const convQty = (ing as any)?.conversion_qty as number | null | undefined;
+                    const usageUnit = convUnit ?? baseUnit ?? null;
+                    const usageUnitCost = convEnabled && convQty
+                      ? (Number(ing?.price ?? 0) / Number(convQty || 1))
+                      : avgCostPerBaseUnit;
                     return (
                       <TableRow key={l._key}>
                         <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
@@ -343,6 +353,14 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                               ? `${subRecipe.code ?? ''} · ${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}`
                               : (ing?.code ?? '')}
                           </div>
+                          {ing && usageUnit && (
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {t('recipes.ingredients.fields.usageUnit', { defaultValue: 'Usage Unit' })}: {usageUnit.name_en}
+                              {' · '}
+                              {t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}:{' '}
+                              {fmt(usageUnitCost, currency)} / {usageUnit.code ?? usageUnit.name_en}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{l.quantity}</TableCell>
                         <TableCell>
