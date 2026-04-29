@@ -258,12 +258,6 @@ function ArchiveDetailDialog({
                           <span className="whitespace-pre-wrap break-words">{c.comment}</span>
                         </div>
                       )}
-                      {c?.photo_url && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                          <Camera className="h-3 w-3" />
-                          <span>Photo attached</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                   {c?.photo_url && (
