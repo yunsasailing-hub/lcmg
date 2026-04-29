@@ -234,6 +234,11 @@ export function buildExportRows(
     [COLUMNS.active]: i.is_active ? 'Yes' : 'No',
     [COLUMNS.price]: i.price != null ? Number(i.price) : '',
     [COLUMNS.currency]: i.currency ?? '',
+    [COLUMNS.conversionEnabled]: (i as any).conversion_enabled ? 'Yes' : 'No',
+    [COLUMNS.conversionQty]: (i as any).conversion_qty != null ? Number((i as any).conversion_qty) : '',
+    [COLUMNS.conversionUnit]: (i as any).conversion_unit_id
+      ? unitById.get((i as any).conversion_unit_id)?.name_en ?? ''
+      : '',
   }));
 }
 
