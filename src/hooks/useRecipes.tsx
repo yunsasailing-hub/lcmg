@@ -231,6 +231,69 @@ export function applyAdjustment(lineCost: number, adjustPct: number): number {
   return lineCost * (1 + pct / 100);
 }
 
+/**
+ * Compute a recipe ingredient line's cost in a way consistent with the
+ * Recipe Ingredients tab (RecipeIngredientsTab.computeRow). This honors:
+ *  - Sub-recipe lines (uses the sub-recipe's costPerYieldUnit)
+ *  - Ingredient conversion layer (Package/Bao → Kg, etc.)
+ *  - Legacy purchase_to_base_factor + same-unit-type math
+ *
+ * Returned cost already has cost_adjust_pct applied.
+ */
+export function computeRecipeLineAdjustedCost(args: {
+  line: { ingredient_id?: string | null; sub_recipe_id?: string | null; unit_id?: string | null; quantity?: number | null; cost_adjust_pct?: number | null };
+  ingMap: Record<string, any>;
+  unitMap: Record<string, any>;
+  subRecipeMap?: Record<string, { yield_unit_id: string | null; costPerYieldUnit: number }>;
+}): number {
+  const { line, ingMap, unitMap, subRecipeMap } = args;
+  const qty = Number(line.quantity) || 0;
+  const adjPct = Number(line.cost_adjust_pct) || 0;
+
+  // Sub-recipe path
+  if (line.sub_recipe_id) {
+    const sub = subRecipeMap?.[line.sub_recipe_id];
+    if (!sub) return 0;
+    const lineUnit = line.unit_id ? unitMap[line.unit_id] : null;
+    const yieldUnit = sub.yield_unit_id ? unitMap[sub.yield_unit_id] : null;
+    const sameType = lineUnit && yieldUnit && lineUnit.unit_type === yieldUnit.unit_type;
+    const lineFactor = Number(lineUnit?.factor_to_base ?? 1);
+    const yieldFactor = Number(yieldUnit?.factor_to_base ?? 1) || 1;
+    const qtyInYieldUnit = sameType ? qty * (lineFactor / yieldFactor) : qty;
+    return applyAdjustment(qtyInYieldUnit * (sub.costPerYieldUnit ?? 0), adjPct);
+  }
+
+  const ing = line.ingredient_id ? ingMap[line.ingredient_id] : null;
+  if (!ing) return 0;
+  const lineUnit = line.unit_id ? unitMap[line.unit_id] : null;
+  const baseUnit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
+  const purchasePrice = Number(ing.price ?? 0);
+  const baseFactor = Number(ing.purchase_to_base_factor ?? 1) || 1;
+
+  // Legacy line cost (default).
+  const sameType = lineUnit && baseUnit && lineUnit.unit_type === baseUnit.unit_type;
+  const unitFactor = sameType ? Number(lineUnit?.factor_to_base ?? 1) : 1;
+  let lineCost = computeLineCost(qty, unitFactor, baseFactor, purchasePrice);
+
+  // Conversion-layer override (mirrors RecipeIngredientsTab).
+  if (ing.conversion_enabled && lineUnit) {
+    const purchaseUnit = ing.purchase_unit_id ? unitMap[ing.purchase_unit_id] : null;
+    const convUnit = ing.conversion_unit_id ? unitMap[ing.conversion_unit_id] : null;
+    const conv = computeConvertedLineCost({
+      recipeQty: qty,
+      lineUnitName: lineUnit?.name_en,
+      purchasePrice,
+      purchaseUnitName: purchaseUnit?.name_en,
+      conversionEnabled: true,
+      conversionQty: ing.conversion_qty,
+      conversionUnitName: convUnit?.name_en,
+    });
+    if (conv && !conv.warning) lineCost = conv.lineCost;
+  }
+
+  return applyAdjustment(lineCost, adjPct);
+}
+
 /** Case-insensitive code uniqueness check. */
 export async function isRecipeCodeTaken(code: string, excludeId?: string): Promise<boolean> {
   const trimmed = code.trim();
