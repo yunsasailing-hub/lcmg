@@ -172,6 +172,9 @@ export default function IngredientImportDialog({ open, onOpenChange }: Props) {
               is_active: r.parsed.is_active,
               price: r.parsed.price,
               currency: r.parsed.currency,
+              conversion_enabled: r.parsed.conversion_enabled,
+              conversion_qty: r.parsed.conversion_qty,
+              conversion_unit_id: r.parsed.conversion_unit_id,
               updated_by: user?.id ?? null,
             })
             .eq('id', r.existingId);
