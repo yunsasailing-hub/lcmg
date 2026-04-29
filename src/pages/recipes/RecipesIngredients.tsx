@@ -380,11 +380,13 @@ export default function RecipesIngredients() {
                 const usageUnit = convEnabled && convUnit ? convUnit : unit;
                 const priceNum = ing.price != null ? Number(ing.price) : null;
                 const unitCostVal =
-                  priceNum == null
-                    ? null
-                    : convEnabled
-                      ? (convQty > 0 ? priceNum / convQty : null)
-                      : priceNum;
+                  derived
+                    ? (ing as DerivedRow).__costPerUnit
+                    : priceNum == null
+                      ? null
+                      : convEnabled
+                        ? (convQty > 0 ? priceNum / convQty : null)
+                        : priceNum;
                 const onRowClick = () => {
                   if (derived) navigate(`/recipes/list/${(ing as DerivedRow).__recipeId}`);
                   else openView(ing as Ingredient);
