@@ -16,6 +16,7 @@ import type { RecipeProcedureRow } from '@/hooks/useRecipeProcedures';
 import type { RecipeMediaRow } from '@/hooks/useRecipeMedia';
 import type { RecipeServiceInfoRow } from '@/hooks/useRecipeServiceInfo';
 import { computeLineCost, applyAdjustment } from '@/hooks/useRecipes';
+import { computeConvertedLineCost } from '@/lib/ingredientConversion';
 
 // ---------- Minimal shapes we read from related lookups ----------
 interface IngredientLite {
@@ -25,6 +26,10 @@ interface IngredientLite {
   price?: number | null;
   purchase_to_base_factor?: number | null;
   base_unit_id?: string | null;
+  purchase_unit_id?: string | null;
+  conversion_enabled?: boolean | null;
+  conversion_qty?: number | null;
+  conversion_unit_id?: string | null;
 }
 interface UnitLite {
   id: string;
@@ -404,7 +409,22 @@ function buildPrintHtml(p: RecipePdfPayload): string {
         ing?.purchase_to_base_factor ?? 1,
         ing?.price ?? 0,
       );
-      const adjusted = applyAdjustment(lineCost, Number((line as any).cost_adjust_pct) || 0);
+      let finalCost = lineCost;
+      if (ing && ing.conversion_enabled && lineUnit) {
+        const purchaseUnit = ing.purchase_unit_id ? p.unitMap[ing.purchase_unit_id] : null;
+        const convUnit = ing.conversion_unit_id ? p.unitMap[ing.conversion_unit_id] : null;
+        const conv = computeConvertedLineCost({
+          recipeQty: Number(line.quantity) || 0,
+          lineUnitName: lineUnit.name_en,
+          purchasePrice: ing.price ?? 0,
+          purchaseUnitName: purchaseUnit?.name_en,
+          conversionEnabled: true,
+          conversionQty: ing.conversion_qty ?? null,
+          conversionUnitName: convUnit?.name_en,
+        });
+        if (conv && !conv.warning) finalCost = conv.lineCost;
+      }
+      const adjusted = applyAdjustment(finalCost, Number((line as any).cost_adjust_pct) || 0);
       return { line, ing, lineUnit, displayUnit, adjusted };
     });
 

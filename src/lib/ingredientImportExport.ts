@@ -35,6 +35,9 @@ export const COLUMNS = {
   active: 'Active',
   price: 'Price',
   currency: 'Currency',
+  conversionEnabled: 'Conversion Enabled',
+  conversionQty: 'Conversion Qty',
+  conversionUnit: 'Conversion Unit',
 } as const;
 
 /**
@@ -53,6 +56,9 @@ const HEADER_ALIASES: Record<keyof typeof COLUMNS, string[]> = {
   active: ['active', 'is active', 'enabled', 'status'],
   price: ['price', 'unit price', 'cost'],
   currency: ['currency', 'ccy'],
+  conversionEnabled: ['conversion enabled', 'conversion_enabled', 'conv enabled'],
+  conversionQty: ['conversion qty', 'conversion_qty', 'conversion quantity', 'conv qty'],
+  conversionUnit: ['conversion unit', 'conversion_unit', 'conv unit'],
 };
 
 export const EXPORT_HEADER_ORDER = [
@@ -66,6 +72,9 @@ export const EXPORT_HEADER_ORDER = [
   COLUMNS.active,
   COLUMNS.price,
   COLUMNS.currency,
+  COLUMNS.conversionEnabled,
+  COLUMNS.conversionQty,
+  COLUMNS.conversionUnit,
 ] as const;
 
 // ---------- Types ----------
@@ -109,6 +118,9 @@ export interface ParsedIngredientPayload {
   notes: string | null;
   price: number | null;
   currency: CurrencyCode;
+  conversion_enabled: boolean;
+  conversion_qty: number | null;
+  conversion_unit_id: string | null;
 }
 
 export interface MasterLists {
@@ -222,6 +234,11 @@ export function buildExportRows(
     [COLUMNS.active]: i.is_active ? 'Yes' : 'No',
     [COLUMNS.price]: i.price != null ? Number(i.price) : '',
     [COLUMNS.currency]: i.currency ?? '',
+    [COLUMNS.conversionEnabled]: (i as any).conversion_enabled ? 'Yes' : 'No',
+    [COLUMNS.conversionQty]: (i as any).conversion_qty != null ? Number((i as any).conversion_qty) : '',
+    [COLUMNS.conversionUnit]: (i as any).conversion_unit_id
+      ? unitById.get((i as any).conversion_unit_id)?.name_en ?? ''
+      : '',
   }));
 }
 
@@ -404,6 +421,9 @@ export function validateRows(
     const activeVal = raw[COLUMNS.active] ?? '';
     const priceVal = raw[COLUMNS.price] ?? '';
     const currencyVal = raw[COLUMNS.currency] ?? '';
+    const convEnabledVal = raw[COLUMNS.conversionEnabled] ?? '';
+    const convQtyVal = raw[COLUMNS.conversionQty] ?? '';
+    const convUnitVal = raw[COLUMNS.conversionUnit] ?? '';
 
     // Required: ID
     const code = norm(idVal);
@@ -522,6 +542,37 @@ export function validateRows(
       warnings.push(`'${COLUMNS.currency}' is empty — defaulting to VND.`);
     }
 
+    // Optional: Conversion fields (never block import).
+    let conversion_enabled = false;
+    const convEnabledKey = normKey(convEnabledVal);
+    if (convEnabledKey) {
+      if (TRUE_SET.has(convEnabledKey)) conversion_enabled = true;
+      else if (FALSE_SET.has(convEnabledKey)) conversion_enabled = false;
+      else warnings.push(`'${COLUMNS.conversionEnabled}' '${convEnabledVal}' not recognized — treated as No.`);
+    }
+    let conversion_qty: number | null = null;
+    if (norm(convQtyVal)) {
+      const cleanedQ = norm(convQtyVal).replace(/,/g, '');
+      const qn = Number(cleanedQ);
+      if (!Number.isFinite(qn) || qn <= 0) {
+        warnings.push(`'${COLUMNS.conversionQty}' '${convQtyVal}' is not a valid positive number — ignored.`);
+      } else {
+        conversion_qty = qn;
+      }
+    }
+    let conversion_unit_id: string | null = null;
+    if (norm(convUnitVal)) {
+      const m = unitLk.get(normLabel(convUnitVal));
+      if (!m) {
+        warnings.push(`'${COLUMNS.conversionUnit}' '${convUnitVal}' is invalid — ignored.`);
+      } else {
+        conversion_unit_id = m.id;
+      }
+    }
+    if (conversion_enabled && (conversion_qty == null || !conversion_unit_id)) {
+      warnings.push(`Conversion is incomplete. Recipe cost may need manual adjustment.`);
+    }
+
     // Existing record by code
     const existing = code ? codeToIngredient.get(code.toLowerCase()) : undefined;
 
@@ -545,6 +596,9 @@ export function validateRows(
         notes: norm(noteVal) || null,
         price,
         currency,
+        conversion_enabled,
+        conversion_qty,
+        conversion_unit_id,
       };
     }
 

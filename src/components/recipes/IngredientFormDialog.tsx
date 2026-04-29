@@ -24,6 +24,7 @@ import {
 import { ChevronDown } from 'lucide-react';
 import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
 import { toast } from '@/hooks/use-toast';
+import { isContainerUnitName, calculateUnitCost } from '@/lib/ingredientConversion';
 
 interface Props {
   open: boolean;
@@ -49,6 +50,9 @@ const emptyForm = {
   yield_percent: '100',
   tax_rate: '0',
   allergens: '',
+  conversion_enabled: false,
+  conversion_qty: '',
+  conversion_unit_id: '',
 };
 
 const sectionTitle = 'mb-3 text-sm font-semibold text-foreground/80 uppercase tracking-wide';
@@ -90,6 +94,9 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         yield_percent: String(ingredient.yield_percent ?? '100'),
         tax_rate: String(ingredient.tax_rate ?? '0'),
         allergens: (ingredient.allergens ?? []).join(', '),
+        conversion_enabled: Boolean((ingredient as any).conversion_enabled),
+        conversion_qty: (ingredient as any).conversion_qty != null ? String((ingredient as any).conversion_qty) : '',
+        conversion_unit_id: (ingredient as any).conversion_unit_id ?? '',
       });
     } else {
       setForm(emptyForm);
@@ -147,6 +154,31 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
     () => buildManagedOptions(units, form.purchase_unit_id, (item) => item.name_en, (item) => item.name_vi ?? undefined),
     [units, form.purchase_unit_id, archivedLabel],
   );
+
+  const conversionUnitOptions = useMemo(
+    () => buildManagedOptions(units, form.conversion_unit_id, (item) => item.name_en, (item) => item.name_vi ?? undefined),
+    [units, form.conversion_unit_id, archivedLabel],
+  );
+
+  const selectedPurchaseUnit = useMemo(
+    () => units.find((u) => u.id === form.purchase_unit_id) ?? null,
+    [units, form.purchase_unit_id],
+  );
+  const purchaseUnitLabel = selectedPurchaseUnit
+    ? (selectedPurchaseUnit.name_vi ? `${selectedPurchaseUnit.name_en}/${selectedPurchaseUnit.name_vi}` : selectedPurchaseUnit.name_en)
+    : '';
+  const isContainerPurchase = isContainerUnitName(purchaseUnitLabel) || isContainerUnitName(selectedPurchaseUnit?.name_en);
+
+  const selectedConversionUnit = useMemo(
+    () => units.find((u) => u.id === form.conversion_unit_id) ?? null,
+    [units, form.conversion_unit_id],
+  );
+  const previewUnitCost = useMemo(() => {
+    if (!form.conversion_enabled) return null;
+    const price = Number(form.price);
+    const qty = Number(form.conversion_qty);
+    return calculateUnitCost(price, qty);
+  }, [form.conversion_enabled, form.price, form.conversion_qty]);
 
   const storehouseOptions = useMemo(
     () => buildManagedOptions(storehouses, form.storehouse_id, (item) => item.name),
@@ -213,8 +245,24 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
         allergens: form.allergens
           ? form.allergens.split(',').map((item) => item.trim()).filter(Boolean)
           : null,
+        conversion_enabled: !!form.conversion_enabled,
+        conversion_qty: form.conversion_enabled && form.conversion_qty ? Number(form.conversion_qty) : null,
+        conversion_unit_id: form.conversion_enabled && form.conversion_unit_id ? form.conversion_unit_id : null,
         ...(ingredient ? {} : { created_by: user?.id ?? null }),
       };
+
+      // Soft warning: incomplete conversion (do not block save).
+      if (form.conversion_enabled) {
+        const qtyN = Number(form.conversion_qty);
+        if (!form.conversion_unit_id || !Number.isFinite(qtyN) || qtyN <= 0) {
+          toast({
+            title: t('common.warning', { defaultValue: 'Warning' }),
+            description: t('recipes.ingredients.conversion.incompleteWarning', {
+              defaultValue: 'Conversion is incomplete. Recipe cost may need manual adjustment.',
+            }),
+          });
+        }
+      }
 
       await upsert.mutateAsync(payload as any);
       toast({ title: ingredient ? t('recipes.ingredients.updated') : t('recipes.ingredients.created') });
@@ -394,6 +442,68 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                     <p className="mt-1 text-xs text-muted-foreground">{t('recipes.ingredients.fields.purchaseFactorHelp')}</p>
                   </div>
                 </div>
+
+                {isContainerPurchase && (
+                  <div className="rounded-md border bg-muted/30 p-4 space-y-3">
+                    <h4 className="text-sm font-semibold">
+                      {t('recipes.ingredients.conversion.title', { defaultValue: 'Unit Conversion' })}
+                    </h4>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        id="conv-enabled"
+                        checked={form.conversion_enabled}
+                        onCheckedChange={(checked) => set('conversion_enabled', checked)}
+                      />
+                      <Label htmlFor="conv-enabled" className="cursor-pointer">
+                        {t('recipes.ingredients.conversion.enable', { defaultValue: 'Enable conversion' })}: {form.conversion_enabled ? t('common.yes') : t('common.no', { defaultValue: 'No' })}
+                      </Label>
+                    </div>
+                    {form.conversion_enabled && (
+                      <>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div>
+                            <Label>
+                              {t('recipes.ingredients.conversion.qtyLabel', {
+                                defaultValue: '1 {{unit}} contains',
+                                unit: purchaseUnitLabel || t('recipes.ingredients.fields.purchaseUnit'),
+                              })}
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.0001"
+                              min="0"
+                              value={form.conversion_qty}
+                              onChange={(e) => set('conversion_qty', e.target.value)}
+                              placeholder="e.g. 25"
+                            />
+                          </div>
+                          <div>
+                            <Label>{t('recipes.ingredients.conversion.unit', { defaultValue: 'Converted unit' })}</Label>
+                            <SearchableCombobox
+                              value={form.conversion_unit_id}
+                              onChange={(value) => set('conversion_unit_id', value)}
+                              options={conversionUnitOptions}
+                              placeholder={t('common.selectPlaceholder')}
+                              searchPlaceholder={t('common.searchPlaceholder')}
+                              emptyText={t('common.noResults')}
+                              noneLabel={t('common.none')}
+                              allowNone
+                            />
+                          </div>
+                        </div>
+                        {previewUnitCost != null && selectedConversionUnit && (
+                          <p className="text-sm">
+                            {t('recipes.ingredients.conversion.calculated', { defaultValue: 'Calculated cost' })}:{' '}
+                            <span className="font-semibold tabular-nums">
+                              {new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(previewUnitCost)} {form.currency}
+                            </span>{' '}
+                            / {selectedConversionUnit.name_en}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </CollapsibleContent>
             </Collapsible>
           )}

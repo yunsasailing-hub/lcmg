@@ -603,6 +603,9 @@ export type Database = {
           base_unit_id: string | null
           category_id: string | null
           code: string | null
+          conversion_enabled: boolean
+          conversion_qty: number | null
+          conversion_unit_id: string | null
           cost_updated_at: string | null
           created_at: string
           created_by: string | null
@@ -634,6 +637,9 @@ export type Database = {
           base_unit_id?: string | null
           category_id?: string | null
           code?: string | null
+          conversion_enabled?: boolean
+          conversion_qty?: number | null
+          conversion_unit_id?: string | null
           cost_updated_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -665,6 +671,9 @@ export type Database = {
           base_unit_id?: string | null
           category_id?: string | null
           code?: string | null
+          conversion_enabled?: boolean
+          conversion_qty?: number | null
+          conversion_unit_id?: string | null
           cost_updated_at?: string | null
           created_at?: string
           created_by?: string | null
