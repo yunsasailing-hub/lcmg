@@ -271,7 +271,8 @@ export default function RecipeDetail() {
       const payload: any = {
         code: form.code.trim(),
         name_en: form.name_en.trim(),
-        is_active: form.is_active,
+        // Explicit boolean coercion so `false` is never dropped or treated as empty.
+        is_active: form.is_active === true,
         category_id: form.category_id === NONE ? null : form.category_id,
         recipe_type_id: form.recipe_type_id === NONE ? null : form.recipe_type_id,
         department: form.department === NONE ? null : (form.department as RecipeDepartment),
