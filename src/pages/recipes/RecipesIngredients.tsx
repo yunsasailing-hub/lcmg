@@ -409,8 +409,8 @@ export default function RecipesIngredients() {
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">{usageUnit?.name_en ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">
-                      {unitCostVal != null && usageUnit
-                        ? `${unitCostVal.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${ing.currency} / ${usageUnit.code ?? usageUnit.name_en}`
+                      {unitCostVal != null
+                        ? `${unitCostVal.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${ing.currency}`
                         : '—'}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">{sh?.name ?? '—'}</TableCell>
