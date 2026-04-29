@@ -41,6 +41,8 @@ type DerivedRow = Ingredient & {
   __derived: true;
   __recipeId: string;
   __costPerUnit: number;
+  __totalCost: number;
+  __yieldQty: number | null;
 };
 
 type AnyRow = Ingredient | DerivedRow;
@@ -92,6 +94,8 @@ export default function RecipesIngredients() {
       __derived: true,
       __recipeId: r.id,
       __costPerUnit: r.costPerYieldUnit,
+      __totalCost: r.totalCost,
+      __yieldQty: r.yield_quantity,
       code: r.code ?? r.id.slice(0, 8).toUpperCase(),
       name_en: r.name_en,
       name_vi: null,
@@ -102,7 +106,8 @@ export default function RecipesIngredients() {
       base_unit_id: r.yield_unit_id,
       purchase_unit_id: null,
       storehouse_id: null,
-      price: r.costPerYieldUnit,
+      // Purchase Cost = total recipe ingredient cost (spec).
+      price: r.totalCost,
       currency: r.currency,
       is_active: true,
       is_global: true,
@@ -375,11 +380,13 @@ export default function RecipesIngredients() {
                 const usageUnit = convEnabled && convUnit ? convUnit : unit;
                 const priceNum = ing.price != null ? Number(ing.price) : null;
                 const unitCostVal =
-                  priceNum == null
-                    ? null
-                    : convEnabled
-                      ? (convQty > 0 ? priceNum / convQty : null)
-                      : priceNum;
+                  derived
+                    ? (ing as DerivedRow).__costPerUnit
+                    : priceNum == null
+                      ? null
+                      : convEnabled
+                        ? (convQty > 0 ? priceNum / convQty : null)
+                        : priceNum;
                 const onRowClick = () => {
                   if (derived) navigate(`/recipes/list/${(ing as DerivedRow).__recipeId}`);
                   else openView(ing as Ingredient);
