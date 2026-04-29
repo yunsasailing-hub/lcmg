@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,29 +38,50 @@ function PhotoLightbox({ src, alt, onClose }: { src: string; alt?: string; onClo
     };
   }, [onClose]);
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 sm:p-8 animate-in fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(0,0,0,0.85)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+      }}
     >
       <button
         type="button"
-        onClick={onClose}
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
         aria-label="Close image preview"
-        className="absolute top-3 right-3 sm:top-5 sm:right-5 rounded-full bg-background/90 text-foreground p-2 shadow-lg hover:bg-background"
+        style={{ position: 'fixed', top: 16, right: 16, zIndex: 10000 }}
+        className="rounded-full bg-background/90 text-foreground p-2 shadow-lg hover:bg-background"
       >
         <X className="h-5 w-5" />
       </button>
       <img
         src={src}
         alt={alt ?? 'Checklist photo enlarged'}
-        className="max-w-[95vw] max-h-[90vh] object-contain rounded-md select-none"
         onClick={(e) => e.stopPropagation()}
         draggable={false}
+        style={{
+          maxWidth: '95vw',
+          maxHeight: '90vh',
+          width: 'auto',
+          height: 'auto',
+          objectFit: 'contain',
+          borderRadius: 6,
+          userSelect: 'none',
+        }}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }
 
