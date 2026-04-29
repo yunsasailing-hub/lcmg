@@ -392,7 +392,7 @@ const en = {
         ingredient: 'Ingredient',
         qty: 'Qty',
         unit: 'Unit',
-        avgCost: 'Avg cost/unit',
+        avgCost: 'Unit Cost',
         lineCost: 'Line cost',
         adjPct: 'Adj %',
         adjusted: 'Adjusted cost',
