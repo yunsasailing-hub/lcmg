@@ -85,11 +85,19 @@ interface ChecklistPhotoPreviewProps {
 export function ChecklistPhotoPreview({ imageUrl, altText, className }: ChecklistPhotoPreviewProps) {
   const [open, setOpen] = useState(false);
 
+  // Do not remove checklist photo click handler. Required for new and archived photos.
+  // The button below + the image onClick BOTH open the full-screen viewer.
+  // Removing either will break click-to-enlarge for newly uploaded or archived checklist photos.
+  const handleOpen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(true);
+  };
+
   return (
     <>
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        onClick={handleOpen}
         className={cn(
           'block w-full overflow-hidden rounded-md border bg-muted cursor-pointer transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring',
           className,
@@ -102,6 +110,8 @@ export function ChecklistPhotoPreview({ imageUrl, altText, className }: Checklis
           loading="lazy"
           className="w-full max-h-[220px] md:max-h-[260px] object-contain bg-muted cursor-pointer"
           draggable={false}
+          // Do not remove. Ensures click works for both new uploads and archived photos.
+          onClick={handleOpen}
         />
       </button>
       {open && <PhotoLightbox src={imageUrl} alt={altText} onClose={() => setOpen(false)} />}
