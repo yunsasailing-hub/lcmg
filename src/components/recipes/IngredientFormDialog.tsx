@@ -360,6 +360,68 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                   emptyText={t('common.noResults')}
                 />
               </div>
+              {showConversionSection && (
+                <div className="sm:col-span-2 rounded-md border bg-muted/30 p-4 space-y-3">
+                  <h4 className="text-sm font-semibold">
+                    {t('recipes.ingredients.conversion.title', { defaultValue: 'Unit Conversion' })}
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="conv-enabled"
+                      checked={form.conversion_enabled}
+                      onCheckedChange={(checked) => set('conversion_enabled', checked)}
+                    />
+                    <Label htmlFor="conv-enabled" className="cursor-pointer">
+                      {t('recipes.ingredients.conversion.enable', { defaultValue: 'Enable conversion' })}:{' '}
+                      {form.conversion_enabled ? t('common.yes') : t('common.no', { defaultValue: 'No' })}
+                    </Label>
+                  </div>
+                  {form.conversion_enabled && (
+                    <>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <Label>
+                            {t('recipes.ingredients.conversion.qtyLabel', {
+                              defaultValue: '1 {{unit}} contains',
+                              unit: conversionSourceUnitLabel || t('recipes.ingredients.fields.baseUnit'),
+                            })}
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            min="0"
+                            value={form.conversion_qty}
+                            onChange={(e) => set('conversion_qty', e.target.value)}
+                            placeholder="e.g. 25"
+                          />
+                        </div>
+                        <div>
+                          <Label>{t('recipes.ingredients.conversion.unit', { defaultValue: 'Converted unit' })}</Label>
+                          <SearchableCombobox
+                            value={form.conversion_unit_id}
+                            onChange={(value) => set('conversion_unit_id', value)}
+                            options={conversionUnitOptions}
+                            placeholder={t('common.selectPlaceholder')}
+                            searchPlaceholder={t('common.searchPlaceholder')}
+                            emptyText={t('common.noResults')}
+                            noneLabel={t('common.none')}
+                            allowNone
+                          />
+                        </div>
+                      </div>
+                      {previewUnitCost != null && selectedConversionUnit && (
+                        <p className="text-sm">
+                          {t('recipes.ingredients.conversion.calculated', { defaultValue: 'Calculated cost' })}:{' '}
+                          <span className="font-semibold tabular-nums">
+                            {new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(previewUnitCost)} {form.currency}
+                          </span>{' '}
+                          / {selectedConversionUnit.name_en}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 
