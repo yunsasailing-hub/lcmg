@@ -30,6 +30,7 @@ import {
   type ChecklistStatus,
 } from '@/hooks/useChecklists';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
+import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 
 // ─── Status helpers ───
 
@@ -218,9 +219,10 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
       logSaveStep({ step: 'captureStarted' });
       logSaveStep({ step: 'fileReceived', name: file.name, mime: file.type, size: file.size });
       const optimizingToast = toast.loading('Optimizing photo…');
+      let optimized: { file: File; width: number; height: number; size: number } | null = null;
       try {
         logSaveStep({ step: 'optimizationStarted' });
-        const optimized = await optimizeChecklistImage(file);
+        optimized = await optimizeChecklistImage(file);
         logSaveStep({
           step: 'optimizationSuccess',
           width: optimized.width,
@@ -228,6 +230,29 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           size: optimized.size,
           mime: optimized.file.type,
         });
+      } catch (err) {
+        logSaveStep({
+          step: 'optimizationFailed',
+          error: err instanceof Error ? err.message : String(err),
+        });
+        if (err instanceof ImageTooLargeError) {
+          toast.dismiss(optimizingToast);
+          logSaveStep({ step: 'final', outcome: 'processingFailed' });
+          toast.error('Photo is too large. Please retake the photo.');
+          setUploading(null);
+          return;
+        }
+        // Non-fatal: fall back to original file.
+        optimized = {
+          file,
+          width: 0,
+          height: 0,
+          size: file.size,
+        };
+        toast.warning('Could not optimize photo — uploading original.');
+      }
+
+      try {
         toast.dismiss(optimizingToast);
         const uploadingToast = toast.loading('Uploading photo…');
         try {
@@ -237,7 +262,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             taskId,
             userId: user!.id,
           });
-          const url = await uploadChecklistPhoto(optimized.file, user!.id);
+          const url = await uploadChecklistPhoto(optimized!.file, user!.id);
           logSaveStep({ step: 'uploadSuccess', url });
           upsert.mutate({
             instance_id: instanceId,
@@ -250,7 +275,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           // Local device save — only after successful upload.
           if (getSaveToDeviceEnabled()) {
             const savingToast = toast.loading('Saving photo to device…');
-            const result = await saveOptimizedPhotoToDevice(optimized.file, {
+            const result = await saveOptimizedPhotoToDevice(optimized!.file, {
               branch: (instance as any)?.branch_id ?? null,
               department: instance?.department ?? null,
               checklistType: instance?.checklist_type ?? null,
@@ -279,16 +304,8 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
         }
       } catch (err) {
         toast.dismiss(optimizingToast);
-        logSaveStep({
-          step: 'optimizationFailed',
-          error: err instanceof Error ? err.message : String(err),
-        });
         logSaveStep({ step: 'final', outcome: 'processingFailed' });
-        if (err instanceof ImageTooLargeError) {
-          toast.error('Photo processing failed. Please retake the photo.');
-        } else {
-          toast.error('Photo processing failed. Please retake the photo.');
-        }
+        toast.error('Photo upload failed. Please try again.');
       } finally {
         setUploading(null);
       }
@@ -512,9 +529,11 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                     )}
 
                     {c?.photo_url && (
-                      <div>
-                        <img src={c.photo_url} alt="Task photo" className="h-24 w-24 md:h-28 md:w-28 rounded-lg object-cover border" />
-                      </div>
+                      <ChecklistPhotoPreview
+                        imageUrl={c.photo_url}
+                        altText="Task photo"
+                        className="max-w-full md:max-w-md"
+                      />
                     )}
 
                     {c?.comment && (

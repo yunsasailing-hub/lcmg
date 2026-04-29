@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN, formatVNDateTime } from '@/lib/timezone';
+import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 import {
   useAllChecklists,
   useTemplateTasks,
@@ -258,25 +259,17 @@ function ArchiveDetailDialog({
                         </div>
                       )}
                       {c?.photo_url && (
-                        <a
-                          href={c.photo_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                        >
+                        <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                           <Camera className="h-3 w-3" />
-                          View photo
-                        </a>
+                          <span>Photo attached</span>
+                        </div>
                       )}
                     </div>
                   </div>
                   {c?.photo_url && (
-                    <img
-                      src={c.photo_url}
-                      alt={task.title}
-                      loading="lazy"
-                      className="mt-2 max-h-64 w-full object-contain rounded border bg-muted"
-                    />
+                    <div className="mt-2">
+                      <ChecklistPhotoPreview imageUrl={c.photo_url} altText={task.title} />
+                    </div>
                   )}
                 </div>
               );
