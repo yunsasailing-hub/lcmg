@@ -13,14 +13,28 @@ import { cn } from '@/lib/utils';
  */
 function PhotoLightbox({ src, alt, onClose }: { src: string; alt?: string; onClose: () => void }) {
   useEffect(() => {
+    // Soft mobile back-button intercept: push a sentinel history entry so the
+    // device "back" gesture closes ONLY the lightbox and keeps the underlying
+    // checklist detail open.
+    const stateMarker = { __checklistPhotoLightbox: true, ts: Date.now() };
+    window.history.pushState(stateMarker, '');
+    let closedViaPop = false;
+    const onPop = () => { closedViaPop = true; onClose(); };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('popstate', onPop);
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
+      window.removeEventListener('popstate', onPop);
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
+      // If the user closed via Back button / ESC (not via device-back), pop
+      // the sentinel so we don't leave a stale history entry behind.
+      if (!closedViaPop && window.history.state && (window.history.state as any).__checklistPhotoLightbox) {
+        window.history.back();
+      }
     };
   }, [onClose]);
 
@@ -95,7 +109,7 @@ export function ChecklistPhotoPreview({ imageUrl, altText, className }: Checklis
           'block w-full overflow-hidden rounded-md border bg-muted cursor-zoom-in transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring',
           className,
         )}
-        aria-label="Open photo preview"
+        aria-label="Open checklist photo"
       >
         <img
           src={imageUrl}

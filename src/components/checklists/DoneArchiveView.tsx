@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CircleCheck, MapPin, User as UserIcon, Calendar, Camera, MessageSquare, EyeOff, Eye, Loader2 } from 'lucide-react';
+import { CircleCheck, MapPin, User as UserIcon, Calendar, MessageSquare, EyeOff, Eye, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -256,12 +256,6 @@ function ArchiveDetailDialog({
                         <div className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/40 rounded px-2 py-1.5">
                           <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
                           <span className="whitespace-pre-wrap break-words">{c.comment}</span>
-                        </div>
-                      )}
-                      {c?.photo_url && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                          <Camera className="h-3 w-3" />
-                          <span>Photo attached</span>
                         </div>
                       )}
                     </div>
