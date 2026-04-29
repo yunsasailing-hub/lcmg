@@ -396,7 +396,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                           />
                         </div>
                         <div>
-                          <Label>{t('recipes.ingredients.conversion.unit', { defaultValue: 'Converted unit' })}</Label>
+                          <Label>{t('recipes.ingredients.fields.usageUnit', { defaultValue: 'Usage Unit' })}</Label>
                           <SearchableCombobox
                             value={form.conversion_unit_id}
                             onChange={(value) => set('conversion_unit_id', value)}
