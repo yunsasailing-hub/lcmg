@@ -437,7 +437,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                       </span>{' '}
                       <span className="font-semibold tabular-nums">
                         {form.price
-                          ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(Number(form.price))} ${form.currency} / ${selectedBaseUnit.name_en}`
+                          ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(Number(form.price))} ${form.currency}`
                           : '—'}
                       </span>
                     </div>
