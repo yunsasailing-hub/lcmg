@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CircleCheck, MapPin, User as UserIcon, Calendar, Camera, MessageSquare, EyeOff, Eye, Loader2 } from 'lucide-react';
+import { CircleCheck, MapPin, User as UserIcon, Calendar, MessageSquare, EyeOff, Eye, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
