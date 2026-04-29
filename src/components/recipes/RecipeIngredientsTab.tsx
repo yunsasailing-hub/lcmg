@@ -348,17 +348,10 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                           <div className="font-medium">
                             {subRecipe ? subRecipe.name_en : (ing?.name_en ?? '—')}
                           </div>
-                          <div className="font-mono text-xs text-muted-foreground">
-                            {subRecipe
-                              ? `${subRecipe.code ?? ''} · ${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}`
-                              : (ing?.code ?? '')}
-                          </div>
-                          {ing && usageUnit && (
+                          {(subRecipe || ing) && (
                             <div className="text-xs text-muted-foreground mt-0.5">
-                              {t('recipes.ingredients.fields.usageUnit', { defaultValue: 'Usage Unit' })}: {usageUnit.name_en}
-                              {' · '}
                               {t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}:{' '}
-                              {fmt(usageUnitCost, currency)} / {usageUnit.code ?? usageUnit.name_en}
+                              {fmt(subRecipe ? (subRecipe.costPerYieldUnit ?? 0) : usageUnitCost, currency)}
                             </div>
                           )}
                         </TableCell>
