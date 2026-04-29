@@ -341,7 +341,7 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
                     type="button"
                     onClick={() => setLightboxSrc(c.photo_url)}
                     className="block rounded-md overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
-                    aria-label="Open photo preview"
+                    aria-label="Open checklist photo"
                   >
                     <img src={c.photo_url} alt="Task photo" className="h-20 w-20 object-cover" />
                   </button>
