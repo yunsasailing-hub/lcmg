@@ -421,6 +421,9 @@ export function validateRows(
     const activeVal = raw[COLUMNS.active] ?? '';
     const priceVal = raw[COLUMNS.price] ?? '';
     const currencyVal = raw[COLUMNS.currency] ?? '';
+    const convEnabledVal = raw[COLUMNS.conversionEnabled] ?? '';
+    const convQtyVal = raw[COLUMNS.conversionQty] ?? '';
+    const convUnitVal = raw[COLUMNS.conversionUnit] ?? '';
 
     // Required: ID
     const code = norm(idVal);
@@ -539,6 +542,37 @@ export function validateRows(
       warnings.push(`'${COLUMNS.currency}' is empty — defaulting to VND.`);
     }
 
+    // Optional: Conversion fields (never block import).
+    let conversion_enabled = false;
+    const convEnabledKey = normKey(convEnabledVal);
+    if (convEnabledKey) {
+      if (TRUE_SET.has(convEnabledKey)) conversion_enabled = true;
+      else if (FALSE_SET.has(convEnabledKey)) conversion_enabled = false;
+      else warnings.push(`'${COLUMNS.conversionEnabled}' '${convEnabledVal}' not recognized — treated as No.`);
+    }
+    let conversion_qty: number | null = null;
+    if (norm(convQtyVal)) {
+      const cleanedQ = norm(convQtyVal).replace(/,/g, '');
+      const qn = Number(cleanedQ);
+      if (!Number.isFinite(qn) || qn <= 0) {
+        warnings.push(`'${COLUMNS.conversionQty}' '${convQtyVal}' is not a valid positive number — ignored.`);
+      } else {
+        conversion_qty = qn;
+      }
+    }
+    let conversion_unit_id: string | null = null;
+    if (norm(convUnitVal)) {
+      const m = unitLk.get(normLabel(convUnitVal));
+      if (!m) {
+        warnings.push(`'${COLUMNS.conversionUnit}' '${convUnitVal}' is invalid — ignored.`);
+      } else {
+        conversion_unit_id = m.id;
+      }
+    }
+    if (conversion_enabled && (conversion_qty == null || !conversion_unit_id)) {
+      warnings.push(`Conversion is incomplete. Recipe cost may need manual adjustment.`);
+    }
+
     // Existing record by code
     const existing = code ? codeToIngredient.get(code.toLowerCase()) : undefined;
 
@@ -562,6 +596,9 @@ export function validateRows(
         notes: norm(noteVal) || null,
         price,
         currency,
+        conversion_enabled,
+        conversion_qty,
+        conversion_unit_id,
       };
     }
 
