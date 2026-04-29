@@ -17,6 +17,7 @@ import {
 } from '@/hooks/useIngredients';
 import { classifyByPrefix, PREFIX_CLASS_LABEL } from '@/lib/ingredientClassification';
 import { toast } from '@/hooks/use-toast';
+import { calculateUnitCost } from '@/lib/ingredientConversion';
 
 const formatDateTime = (iso?: string | null) => {
   if (!iso) return '—';
@@ -167,10 +168,34 @@ export default function IngredientDetail() {
               {t('recipes.ingredients.sections.pricing')}
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <Field label={t('recipes.ingredients.fields.price')}>
-                {ing.price != null ? Number(ing.price).toLocaleString() : '—'}
+              <Field label={t('recipes.ingredients.fields.purchaseUnitLabel', { defaultValue: 'Purchase Unit' })}>
+                {withArchivedSuffix(unit?.name_en ?? null, unit?.is_active)}
               </Field>
-              <Field label={t('recipes.ingredients.fields.currency')}>{ing.currency}</Field>
+              <Field label={t('recipes.ingredients.fields.price', { defaultValue: 'Purchase Cost' })}>
+                {ing.price != null ? `${Number(ing.price).toLocaleString()} ${ing.currency}` : '—'}
+              </Field>
+              {(() => {
+                const convEnabled = Boolean((ing as any).conversion_enabled);
+                const convQty = (ing as any).conversion_qty as number | null;
+                const convUnitId = (ing as any).conversion_unit_id as string | null;
+                const convUnit = convUnitId ? units.find((u) => u.id === convUnitId) : null;
+                const usageUnit = convEnabled && convUnit ? convUnit : unit;
+                const unitCost = convEnabled && convQty
+                  ? calculateUnitCost(ing.price as any, convQty)
+                  : (ing.price != null ? Number(ing.price) : null);
+                return (
+                  <>
+                    <Field label={t('recipes.ingredients.fields.usageUnit', { defaultValue: 'Usage Unit' })}>
+                      {usageUnit ? withArchivedSuffix(usageUnit.name_en, usageUnit.is_active) : '—'}
+                    </Field>
+                    <Field label={t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}>
+                      {unitCost != null && usageUnit
+                        ? `${unitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${ing.currency} / ${usageUnit.name_en}`
+                        : '—'}
+                    </Field>
+                  </>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
