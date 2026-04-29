@@ -88,6 +88,13 @@ export function useUpsertRecipe() {
     mutationFn: async (payload: RecipeInsert & { id?: string }) => {
       if (payload.id) {
         const { id, ...rest } = payload;
+        // Debug: ensure yield_unit_id is present in the update payload.
+        // (Helps diagnose Master Info -> Yield Unit save issues.)
+        // eslint-disable-next-line no-console
+        console.debug('[useUpsertRecipe] update', id, {
+          yield_unit_id: (rest as any).yield_unit_id,
+          yield_quantity: (rest as any).yield_quantity,
+        });
         const { data, error } = await supabase
           .from('recipes').update(rest as any).eq('id', id).select().single();
         if (error) throw error;
@@ -98,9 +105,14 @@ export function useUpsertRecipe() {
       if (error) throw error;
       return data as Recipe;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['recipes'] });
-      qc.invalidateQueries({ queryKey: ['recipe'] });
+    onSuccess: async (data) => {
+      // Force a refetch so the form re-reads persisted values (esp. yield_unit_id)
+      // immediately after save. Awaiting prevents a flash of stale data.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['recipes'] }),
+        qc.invalidateQueries({ queryKey: ['recipe', data?.id] }),
+        qc.invalidateQueries({ queryKey: ['recipe'] }),
+      ]);
     },
   });
 }
