@@ -372,39 +372,32 @@ export function useRecipeAsIngredientPublication(recipeId: string | undefined) {
       // Compute total ingredient cost for this recipe (linked-to-master lines only).
       const { data: lines } = await supabase
         .from('recipe_ingredients')
-        .select('ingredient_id, unit_id, quantity, cost_adjust_pct')
+        .select('ingredient_id, sub_recipe_id, unit_id, quantity, cost_adjust_pct')
         .eq('recipe_id', recipeId!);
       const ingIds = Array.from(new Set((lines ?? []).map(l => l.ingredient_id).filter(Boolean) as string[]));
       const ingMap: Record<string, any> = {};
       if (ingIds.length) {
         const { data: ings } = await supabase
           .from('ingredients')
-          .select('id, price, purchase_to_base_factor, base_unit_id')
+          .select('id, price, purchase_to_base_factor, base_unit_id, purchase_unit_id, conversion_enabled, conversion_qty, conversion_unit_id')
           .in('id', ingIds);
         (ings ?? []).forEach(i => { ingMap[i.id] = i; });
       }
       const unitIds = Array.from(new Set([
         ...((lines ?? []).map(l => l.unit_id).filter(Boolean) as string[]),
         ...Object.values(ingMap).map((i: any) => i.base_unit_id).filter(Boolean),
+        ...Object.values(ingMap).map((i: any) => i.purchase_unit_id).filter(Boolean),
+        ...Object.values(ingMap).map((i: any) => i.conversion_unit_id).filter(Boolean),
       ]));
       const unitMap: Record<string, any> = {};
       if (unitIds.length) {
         const { data: us } = await supabase
-          .from('recipe_units').select('id, factor_to_base, unit_type').in('id', unitIds);
+          .from('recipe_units').select('id, name_en, factor_to_base, unit_type').in('id', unitIds);
         (us ?? []).forEach(u => { unitMap[u.id] = u; });
       }
       let total = 0;
       (lines ?? []).forEach(l => {
-        const ing = l.ingredient_id ? ingMap[l.ingredient_id] : null;
-        if (!ing) return;
-        const lineUnit = l.unit_id ? unitMap[l.unit_id] : null;
-        const baseUnit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
-        const sameType = lineUnit && baseUnit && lineUnit.unit_type === baseUnit.unit_type;
-        const unitFactor = sameType ? Number(lineUnit?.factor_to_base ?? 1) : 1;
-        const baseFactor = Number(ing.purchase_to_base_factor ?? 1) || 1;
-        const price = Number(ing.price ?? 0);
-        const cost = computeLineCost(Number(l.quantity) || 0, unitFactor, baseFactor, price);
-        total += applyAdjustment(cost, Number(l.cost_adjust_pct) || 0);
+        total += computeRecipeLineAdjustedCost({ line: l as any, ingMap, unitMap });
       });
       // Zero cost is a soft warning, NOT a blocking reason.
       const costPerYieldUnit = yq > 0 ? total / yq : 0;
