@@ -186,8 +186,8 @@ export default function IngredientDetail() {
                       {usageUnit ? withArchivedSuffix(usageUnit.name_en, usageUnit.is_active) : '—'}
                     </Field>
                     <Field label={t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}>
-                      {unitCost != null && usageUnit
-                        ? `${unitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${ing.currency} / ${usageUnit.name_en}`
+                      {unitCost != null
+                        ? `${unitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${ing.currency}`
                         : '—'}
                     </Field>
                   </>
