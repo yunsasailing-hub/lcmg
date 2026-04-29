@@ -144,9 +144,6 @@ export default function IngredientDetail() {
                 {withArchivedSuffix(type?.name_en ?? t(`recipes.ingredients.typeLabel.${ing.ingredient_type}`), type?.is_active)}
               </Field>
               <Field label={t('recipes.ingredients.fields.category')}>{withArchivedSuffix(cat?.name_en, cat?.is_active)}</Field>
-              <Field label={t('recipes.ingredients.fields.baseUnit')}>
-                {withArchivedSuffix(unit?.name_en ?? null, unit?.is_active)}
-              </Field>
             </div>
           </CardContent>
         </Card>
