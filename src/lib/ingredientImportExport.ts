@@ -35,6 +35,9 @@ export const COLUMNS = {
   active: 'Active',
   price: 'Price',
   currency: 'Currency',
+  conversionEnabled: 'Conversion Enabled',
+  conversionQty: 'Conversion Qty',
+  conversionUnit: 'Conversion Unit',
 } as const;
 
 /**
@@ -53,6 +56,9 @@ const HEADER_ALIASES: Record<keyof typeof COLUMNS, string[]> = {
   active: ['active', 'is active', 'enabled', 'status'],
   price: ['price', 'unit price', 'cost'],
   currency: ['currency', 'ccy'],
+  conversionEnabled: ['conversion enabled', 'conversion_enabled', 'conv enabled'],
+  conversionQty: ['conversion qty', 'conversion_qty', 'conversion quantity', 'conv qty'],
+  conversionUnit: ['conversion unit', 'conversion_unit', 'conv unit'],
 };
 
 export const EXPORT_HEADER_ORDER = [
@@ -66,6 +72,9 @@ export const EXPORT_HEADER_ORDER = [
   COLUMNS.active,
   COLUMNS.price,
   COLUMNS.currency,
+  COLUMNS.conversionEnabled,
+  COLUMNS.conversionQty,
+  COLUMNS.conversionUnit,
 ] as const;
 
 // ---------- Types ----------
@@ -109,6 +118,9 @@ export interface ParsedIngredientPayload {
   notes: string | null;
   price: number | null;
   currency: CurrencyCode;
+  conversion_enabled: boolean;
+  conversion_qty: number | null;
+  conversion_unit_id: string | null;
 }
 
 export interface MasterLists {
