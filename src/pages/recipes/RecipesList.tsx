@@ -26,6 +26,7 @@ import { useRecipeCategories } from '@/hooks/useIngredients';
 import {
   useRecipes, useArchiveRecipe, useRecipeTypes,
   RECIPE_DEPARTMENTS,
+  useRecipesTotalCosts,
   type Recipe,
 } from '@/hooks/useRecipes';
 import { useRecipePrimaryImages } from '@/hooks/useRecipeMedia';
@@ -34,6 +35,15 @@ import { toast } from '@/hooks/use-toast';
 const formatDate = (iso?: string | null) => {
   if (!iso) return '—';
   try { return new Date(iso).toLocaleDateString(); } catch { return iso; }
+};
+
+const formatCurrency = (amount: number | null | undefined, currency?: string | null) => {
+  if (amount == null || !Number.isFinite(Number(amount))) return '—';
+  try {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(Number(amount)) + (currency ? ` ${currency}` : '');
+  } catch {
+    return String(amount);
+  }
 };
 
 interface RecipesListProps {
@@ -93,6 +103,7 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
 
   const visibleIds = useMemo(() => filtered.map(r => r.id), [filtered]);
   const { data: thumbMap = {} } = useRecipePrimaryImages(visibleIds);
+  const { data: costMap = {} } = useRecipesTotalCosts(visibleIds);
 
   const handleArchive = async () => {
     if (!archiveTarget) return;
@@ -229,6 +240,9 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
                 <TableHead>{t('recipes.list.cols.type')}</TableHead>
                 <TableHead>{t('recipes.list.cols.department')}</TableHead>
                 <TableHead>{t('recipes.list.cols.branch')}</TableHead>
+                <TableHead className="text-right whitespace-nowrap">{t('recipes.list.cols.ingredientCost') ?? 'Ingredient Cost'}</TableHead>
+                <TableHead className="text-right whitespace-nowrap">{t('recipes.list.cols.sellingPrice') ?? 'Selling Price'}</TableHead>
+                <TableHead className="text-right whitespace-nowrap">{t('recipes.list.cols.foodCostPct') ?? 'Food Cost %'}</TableHead>
                 <TableHead>{t('recipes.list.cols.active')}</TableHead>
                 <TableHead>{t('recipes.list.cols.updated')}</TableHead>
                 <TableHead className="text-right">{t('recipes.list.cols.actions')}</TableHead>
@@ -264,6 +278,26 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
                   <TableCell className="text-sm">
                     {r.branch_id ? branchMap[r.branch_id]?.name ?? '—' : <span className="text-muted-foreground">{t('recipes.list.global')}</span>}
                   </TableCell>
+                  {(() => {
+                    const ingredientCost = costMap[r.id];
+                    const hasCost = ingredientCost != null && Number.isFinite(ingredientCost);
+                    const sp = r.selling_price != null ? Number(r.selling_price) : null;
+                    const hasSelling = sp != null && sp > 0;
+                    const pct = hasCost && hasSelling ? (Number(ingredientCost) / sp!) * 100 : null;
+                    return (
+                      <>
+                        <TableCell className="text-right tabular-nums whitespace-nowrap">
+                          {hasCost ? formatCurrency(Number(ingredientCost), r.currency) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums whitespace-nowrap">
+                          {hasSelling ? formatCurrency(sp!, r.currency) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums whitespace-nowrap">
+                          {pct != null ? `${pct.toFixed(1)}%` : '—'}
+                        </TableCell>
+                      </>
+                    );
+                  })()}
                   <TableCell>
                     <Badge variant={r.is_active ? 'default' : 'secondary'}>
                       {r.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
