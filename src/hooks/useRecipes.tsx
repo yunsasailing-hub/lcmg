@@ -314,6 +314,7 @@ export interface RecipeAsIngredientOption {
   yield_quantity: number | null;
   yield_unit_id: string | null;
   costPerYieldUnit: number; // computed production cost / yield qty
+  totalCost: number;        // total ingredient cost of the recipe
   currency: CurrencyCode;
 }
 
