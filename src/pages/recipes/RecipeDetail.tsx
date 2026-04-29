@@ -289,11 +289,22 @@ export default function RecipeDetail() {
         // Keep legacy 'kind' satisfied (NOT NULL DEFAULT 'dish'); leave as-is when editing.
       };
       if (!isNew) payload.id = id;
+      // Debug aid: confirm Yield Unit is in payload before sending.
+      // eslint-disable-next-line no-console
+      console.debug('[RecipeDetail] save payload yield_unit_id =', payload.yield_unit_id);
       const saved = await upsert.mutateAsync(payload);
       toast({ title: isNew ? t('recipes.list.created') : t('recipes.list.updated') });
       if (isNew) {
         navigate(`/recipes/list/${saved.id}`, { replace: true });
       } else {
+        // Reflect persisted yield_unit_id (and other fields) immediately so the
+        // UI does not appear to revert before refetch settles.
+        if (saved) {
+          setForm(prev => ({
+            ...prev,
+            yield_unit_id: (saved as any).yield_unit_id ?? NONE,
+          }));
+        }
         setEditing(false);
         if (searchParams.get('edit')) {
           searchParams.delete('edit');
