@@ -29,15 +29,15 @@ export const COLUMNS = {
   name: 'Name',
   type: 'Ingredient Type',
   category: 'Ingredient Category',
-  unit: 'Unit',
+  unit: 'Purchase Unit',
   storehouse: 'Storehouse',
   note: 'Note',
   active: 'Active',
-  price: 'Price',
+  price: 'Purchase Cost',
   currency: 'Currency',
   conversionEnabled: 'Conversion Enabled',
-  conversionQty: 'Conversion Qty',
-  conversionUnit: 'Conversion Unit',
+  conversionQty: 'Purchase Unit Contains',
+  conversionUnit: 'Usage Unit',
 } as const;
 
 /**
@@ -50,15 +50,15 @@ const HEADER_ALIASES: Record<keyof typeof COLUMNS, string[]> = {
   name: ['name', 'ingredient name', 'name (en)', 'name_en'],
   type: ['ingredient type', 'type', 'ingredient_type', 'item type'],
   category: ['ingredient category', 'category', 'ingredient_category'],
-  unit: ['unit', 'base unit', 'uom'],
+  unit: ['purchase unit', 'unit', 'base unit', 'uom'],
   storehouse: ['storehouse', 'store house', 'storage', 'warehouse'],
   note: ['note', 'notes', 'remark', 'remarks'],
   active: ['active', 'is active', 'enabled', 'status'],
-  price: ['price', 'unit price', 'cost'],
+  price: ['purchase cost', 'price', 'unit price', 'cost'],
   currency: ['currency', 'ccy'],
   conversionEnabled: ['conversion enabled', 'conversion_enabled', 'conv enabled'],
-  conversionQty: ['conversion qty', 'conversion_qty', 'conversion quantity', 'conv qty'],
-  conversionUnit: ['conversion unit', 'conversion_unit', 'conv unit'],
+  conversionQty: ['purchase unit contains', 'conversion qty', 'conversion_qty', 'conversion quantity', 'conv qty'],
+  conversionUnit: ['usage unit', 'conversion unit', 'conversion_unit', 'conv unit'],
 };
 
 export const EXPORT_HEADER_ORDER = [
