@@ -147,7 +147,8 @@ export default function RecipeDetail() {
       setForm({
         code: recipe.code ?? '',
         name_en: recipe.name_en ?? '',
-        is_active: recipe.is_active,
+        // Explicit boolean — DB value drives the toggle; never default to true on reload.
+        is_active: recipe.is_active === true,
         category_id: recipe.category_id ?? NONE,
         recipe_type_id: recipe.recipe_type_id ?? NONE,
         department: recipe.department ?? NONE,
