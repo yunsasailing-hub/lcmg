@@ -537,9 +537,9 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                   <div className="sm:col-span-12 flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
                     <span>
                       {subRecipe
-                        ? `${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}: ${subRecipe.code ?? '—'} · ${fmt(subRecipe.costPerYieldUnit, currency)}${baseUnit ? ` /${baseUnit.code}` : ''}`
+                        ? `${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}: ${subRecipe.code ?? '—'} · ${fmt(subRecipe.costPerYieldUnit, currency)}`
                         : ing
-                        ? `${t('recipes.lines.ingredientCode')}: ${ing.code ?? '—'} · ${t('recipes.lines.basePrice')}: ${fmt(Number(ing.price ?? 0), currency)}${baseUnit ? ` /${baseUnit.code}` : ''}`
+                        ? `${t('recipes.lines.ingredientCode')}: ${ing.code ?? '—'} · ${t('recipes.lines.basePrice')}: ${fmt(Number(ing.price ?? 0), currency)}`
                         : t('recipes.lines.noIngredientSelected')}
                     </span>
                     <span className="font-medium text-foreground">
