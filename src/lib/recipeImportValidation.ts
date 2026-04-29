@@ -599,10 +599,13 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
       }
     }
 
-    // Recompute ingredient summary error count after orphan marking
+    // Recompute ingredient summary counts after orphan marking
     const ingValid = result.ingredientRows.rows.filter((r) => r.status === 'VALID').length;
+    const ingError = result.ingredientRows.rows.filter((r) => r.status === 'ERROR').length;
+    const ingWarning = result.ingredientRows.rows.filter((r) => r.status === 'WARNING').length;
     result.ingredientRows.valid = ingValid;
-    result.ingredientRows.errors = result.ingredientRows.rows.length - ingValid;
+    result.ingredientRows.errors = ingError;
+    result.ingredientRows.warnings = ingWarning;
     result.ingredientRows.orphanCount = orphanCount;
 
     // Master rows with zero ingredients → WARNING (do not override existing ERROR)
