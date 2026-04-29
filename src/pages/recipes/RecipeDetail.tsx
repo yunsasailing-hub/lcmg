@@ -147,7 +147,8 @@ export default function RecipeDetail() {
       setForm({
         code: recipe.code ?? '',
         name_en: recipe.name_en ?? '',
-        is_active: recipe.is_active,
+        // Explicit boolean — DB value drives the toggle; never default to true on reload.
+        is_active: recipe.is_active === true,
         category_id: recipe.category_id ?? NONE,
         recipe_type_id: recipe.recipe_type_id ?? NONE,
         department: recipe.department ?? NONE,
@@ -271,7 +272,8 @@ export default function RecipeDetail() {
       const payload: any = {
         code: form.code.trim(),
         name_en: form.name_en.trim(),
-        is_active: form.is_active,
+        // Explicit boolean coercion so `false` is never dropped or treated as empty.
+        is_active: form.is_active === true,
         category_id: form.category_id === NONE ? null : form.category_id,
         recipe_type_id: form.recipe_type_id === NONE ? null : form.recipe_type_id,
         department: form.department === NONE ? null : (form.department as RecipeDepartment),
@@ -303,6 +305,7 @@ export default function RecipeDetail() {
           setForm(prev => ({
             ...prev,
             yield_unit_id: (saved as any).yield_unit_id ?? NONE,
+            is_active: (saved as any).is_active === true,
           }));
         }
         setEditing(false);
