@@ -393,8 +393,8 @@ const vi: Translations = {
       cols: {
         ingredient: 'Nguyên liệu',
         qty: 'SL',
-        unit: 'Đ.vị',
-        avgCost: 'Giá TB/đv',
+        unit: 'Đơn vị dùng',
+        avgCost: 'Đơn giá',
         lineCost: 'Chi phí dòng',
         adjPct: 'Đ.chỉnh %',
         adjusted: 'Đã đ.chỉnh',
