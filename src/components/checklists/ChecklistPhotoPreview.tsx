@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -13,28 +13,14 @@ import { cn } from '@/lib/utils';
  */
 function PhotoLightbox({ src, alt, onClose }: { src: string; alt?: string; onClose: () => void }) {
   useEffect(() => {
-    const stateMarker = { __lightbox: true, ts: Date.now() };
-    window.history.pushState(stateMarker, '');
-    let closedViaPop = false;
-
-    const onPop = () => {
-      closedViaPop = true;
-      onClose();
-    };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-
-    window.addEventListener('popstate', onPop);
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
-      window.removeEventListener('popstate', onPop);
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
-      if (!closedViaPop && window.history.state && (window.history.state as any).__lightbox) {
-        window.history.back();
-      }
     };
   }, [onClose]);
 
@@ -48,8 +34,8 @@ function PhotoLightbox({ src, alt, onClose }: { src: string; alt?: string; onClo
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 9999,
-        background: 'rgba(0,0,0,0.85)',
+        zIndex: 99999,
+        background: 'rgba(0,0,0,0.92)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -59,11 +45,12 @@ function PhotoLightbox({ src, alt, onClose }: { src: string; alt?: string; onClo
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onClose(); }}
-        aria-label="Close image preview"
-        style={{ position: 'fixed', top: 16, right: 16, zIndex: 10000 }}
-        className="rounded-full bg-background/90 text-foreground p-2 shadow-lg hover:bg-background"
+        aria-label="Back to checklist"
+        style={{ position: 'fixed', top: 16, left: 16, zIndex: 100000 }}
+        className="inline-flex items-center gap-2 rounded-full bg-background/90 text-foreground px-4 py-2 text-sm font-medium shadow-lg hover:bg-background"
       >
-        <X className="h-5 w-5" />
+        <ArrowLeft className="h-4 w-4" />
+        Back to checklist
       </button>
       <img
         src={src}
@@ -71,8 +58,8 @@ function PhotoLightbox({ src, alt, onClose }: { src: string; alt?: string; onClo
         onClick={(e) => e.stopPropagation()}
         draggable={false}
         style={{
-          maxWidth: '95vw',
-          maxHeight: '90vh',
+          maxWidth: '96vw',
+          maxHeight: '86vh',
           width: 'auto',
           height: 'auto',
           objectFit: 'contain',
