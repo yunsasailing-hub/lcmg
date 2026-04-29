@@ -348,17 +348,10 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                           <div className="font-medium">
                             {subRecipe ? subRecipe.name_en : (ing?.name_en ?? '—')}
                           </div>
-                          <div className="font-mono text-xs text-muted-foreground">
-                            {subRecipe
-                              ? `${subRecipe.code ?? ''} · ${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}`
-                              : (ing?.code ?? '')}
-                          </div>
-                          {ing && usageUnit && (
+                          {(subRecipe || ing) && (
                             <div className="text-xs text-muted-foreground mt-0.5">
-                              {t('recipes.ingredients.fields.usageUnit', { defaultValue: 'Usage Unit' })}: {usageUnit.name_en}
-                              {' · '}
                               {t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}:{' '}
-                              {fmt(usageUnitCost, currency)} / {usageUnit.code ?? usageUnit.name_en}
+                              {fmt(subRecipe ? (subRecipe.costPerYieldUnit ?? 0) : usageUnitCost, currency)}
                             </div>
                           )}
                         </TableCell>
@@ -544,9 +537,9 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                   <div className="sm:col-span-12 flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
                     <span>
                       {subRecipe
-                        ? `${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}: ${subRecipe.code ?? '—'} · ${fmt(subRecipe.costPerYieldUnit, currency)}${baseUnit ? ` /${baseUnit.code}` : ''}`
+                        ? `${t('recipes.lines.sourceRecipe')} / ${t('recipes.lines.batchRecipe')}: ${subRecipe.code ?? '—'} · ${fmt(subRecipe.costPerYieldUnit, currency)}`
                         : ing
-                        ? `${t('recipes.lines.ingredientCode')}: ${ing.code ?? '—'} · ${t('recipes.lines.basePrice')}: ${fmt(Number(ing.price ?? 0), currency)}${baseUnit ? ` /${baseUnit.code}` : ''}`
+                        ? `${t('recipes.lines.ingredientCode')}: ${ing.code ?? '—'} · ${t('recipes.lines.basePrice')}: ${fmt(Number(ing.price ?? 0), currency)}`
                         : t('recipes.lines.noIngredientSelected')}
                     </span>
                     <span className="font-medium text-foreground">

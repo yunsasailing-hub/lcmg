@@ -414,8 +414,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                           {t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}:{' '}
                           <span className="font-semibold tabular-nums">
                             {new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(previewUnitCost)} {form.currency}
-                          </span>{' '}
-                          / {selectedConversionUnit.name_en}
+                          </span>
                         </p>
                       )}
                     </>
@@ -437,7 +436,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                       </span>{' '}
                       <span className="font-semibold tabular-nums">
                         {form.price
-                          ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(Number(form.price))} ${form.currency} / ${selectedBaseUnit.name_en}`
+                          ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(Number(form.price))} ${form.currency}`
                           : '—'}
                       </span>
                     </div>

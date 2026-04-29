@@ -391,7 +391,7 @@ const en = {
       cols: {
         ingredient: 'Ingredient',
         qty: 'Qty',
-        unit: 'Unit',
+        unit: 'Usage Unit',
         avgCost: 'Unit Cost',
         lineCost: 'Line cost',
         adjPct: 'Adj %',
