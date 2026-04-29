@@ -349,9 +349,11 @@ export default function RecipesIngredients() {
                 <TableHead>{t('recipes.ingredients.cols.name')}</TableHead>
                 <TableHead className="hidden md:table-cell">{t('recipes.ingredients.cols.type')}</TableHead>
                 <TableHead className="hidden md:table-cell">{t('recipes.ingredients.cols.category')}</TableHead>
-                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.cols.unit')}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.fields.purchaseUnitLabel', { defaultValue: 'Purchase Unit' })}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.fields.price', { defaultValue: 'Purchase Cost' })}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.fields.usageUnit', { defaultValue: 'Usage Unit' })}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}</TableHead>
                 <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.cols.storehouse')}</TableHead>
-                <TableHead className="hidden lg:table-cell">{t('recipes.ingredients.cols.price')}</TableHead>
                 <TableHead>{t('recipes.ingredients.cols.status')}</TableHead>
                 <TableHead className="text-right">{t('recipes.ingredients.cols.actions')}</TableHead>
               </TableRow>
@@ -366,6 +368,18 @@ export default function RecipesIngredients() {
                 const typeName = (ing as any).ingredient_type_id
                   ? typeMap[(ing as any).ingredient_type_id]?.name_en
                   : null;
+                const convEnabled = Boolean((ing as any).conversion_enabled);
+                const convUnitId = (ing as any).conversion_unit_id as string | null | undefined;
+                const convQty = Number((ing as any).conversion_qty) || 0;
+                const convUnit = convUnitId ? unitMap[convUnitId] : null;
+                const usageUnit = convEnabled && convUnit ? convUnit : unit;
+                const priceNum = ing.price != null ? Number(ing.price) : null;
+                const unitCostVal =
+                  priceNum == null
+                    ? null
+                    : convEnabled
+                      ? (convQty > 0 ? priceNum / convQty : null)
+                      : priceNum;
                 const onRowClick = () => {
                   if (derived) navigate(`/recipes/list/${(ing as DerivedRow).__recipeId}`);
                   else openView(ing as Ingredient);
@@ -388,12 +402,18 @@ export default function RecipesIngredients() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm">{cat?.name_en ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">{unit?.name_en ?? '—'}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm">{sh?.name ?? '—'}</TableCell>
                     <TableCell className="hidden lg:table-cell text-sm">
-                      {ing.price != null
-                        ? `${Number(ing.price).toLocaleString()} ${ing.currency}`
+                      {priceNum != null
+                        ? `${priceNum.toLocaleString()} ${ing.currency}`
                         : '—'}
                     </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">{usageUnit?.name_en ?? '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">
+                      {unitCostVal != null && usageUnit
+                        ? `${unitCostVal.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${ing.currency} / ${usageUnit.code ?? usageUnit.name_en}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">{sh?.name ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant={ing.is_active ? 'default' : 'secondary'}>
                         {ing.is_active ? t('status.active') : t('status.inactive')}
