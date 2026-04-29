@@ -21,6 +21,7 @@ import {
   type RecipeAsIngredientOption,
 } from '@/hooks/useRecipes';
 import { toast } from '@/hooks/use-toast';
+import { computeConvertedLineCost } from '@/lib/ingredientConversion';
 
 interface Props {
   recipeId: string;
@@ -152,7 +153,36 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
     const lineCost = computeLineCost(line.quantity, unitFactor, baseFactor, purchasePrice);
     const adjusted = applyAdjustment(lineCost, line.cost_adjust_pct);
 
-    return { ing, lineUnit, baseUnit, avgCostPerBaseUnit, lineCost, adjusted, subRecipe: null as RecipeAsIngredientOption | null };
+    // Conversion-layer override: if ingredient has conversion_enabled and the line
+    // uses the conversion unit (or a same-family variant of it), prefer that math.
+    let finalLineCost = lineCost;
+    if (ing && (ing as any).conversion_enabled && lineUnit) {
+      const purchaseUnit = ing.purchase_unit_id ? unitMap[ing.purchase_unit_id] : null;
+      const convUnit = (ing as any).conversion_unit_id ? unitMap[(ing as any).conversion_unit_id] : null;
+      const conv = computeConvertedLineCost({
+        recipeQty: Number(line.quantity) || 0,
+        lineUnitName: lineUnit?.name_en,
+        purchasePrice,
+        purchaseUnitName: purchaseUnit?.name_en,
+        conversionEnabled: true,
+        conversionQty: (ing as any).conversion_qty,
+        conversionUnitName: convUnit?.name_en,
+      });
+      if (conv && !conv.warning) {
+        finalLineCost = conv.lineCost;
+      }
+    }
+    const adjustedFinal = applyAdjustment(finalLineCost, line.cost_adjust_pct);
+
+    return {
+      ing,
+      lineUnit,
+      baseUnit,
+      avgCostPerBaseUnit,
+      lineCost: finalLineCost,
+      adjusted: adjustedFinal,
+      subRecipe: null as RecipeAsIngredientOption | null,
+    };
   };
 
   const total = useMemo(
