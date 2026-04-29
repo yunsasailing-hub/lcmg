@@ -71,6 +71,108 @@ export function useRecipes(includeArchived = false) {
   });
 }
 
+/**
+ * Batch-compute total ingredient cost for many recipes at once.
+ * Mirrors the calculation used on the recipe detail page (see
+ * useRecipeAsIngredientPublication / useRecipesAsIngredient) so the
+ * list-table recap matches the detail-page total exactly.
+ * Display-only — does not mutate any data.
+ */
+export function useRecipesTotalCosts(recipeIds: string[]) {
+  const key = [...recipeIds].sort().join(',');
+  return useQuery({
+    queryKey: ['recipes_total_costs', key],
+    enabled: recipeIds.length > 0,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const ids = recipeIds;
+      const { data: lines } = await supabase
+        .from('recipe_ingredients')
+        .select('recipe_id, ingredient_id, sub_recipe_id, unit_id, quantity, cost_adjust_pct')
+        .in('recipe_id', ids);
+
+      const ingIds = Array.from(new Set((lines ?? []).map(l => l.ingredient_id).filter(Boolean) as string[]));
+      const subIds = Array.from(new Set((lines ?? []).map(l => l.sub_recipe_id).filter(Boolean) as string[]));
+
+      const ingMap: Record<string, any> = {};
+      if (ingIds.length) {
+        const { data: ings } = await supabase
+          .from('ingredients')
+          .select('id, price, purchase_to_base_factor, base_unit_id, purchase_unit_id, conversion_enabled, conversion_qty, conversion_unit_id')
+          .in('id', ingIds);
+        (ings ?? []).forEach(i => { ingMap[i.id] = i; });
+      }
+
+      // Sub-recipe cost-per-yield-unit lookup (one level deep, matches existing logic).
+      const subRecipeMap: Record<string, { yield_unit_id: string | null; costPerYieldUnit: number }> = {};
+      if (subIds.length) {
+        const { data: subRecipes } = await supabase
+          .from('recipes')
+          .select('id, yield_quantity, yield_unit_id')
+          .in('id', subIds);
+        const { data: subLines } = await supabase
+          .from('recipe_ingredients')
+          .select('recipe_id, ingredient_id, sub_recipe_id, unit_id, quantity, cost_adjust_pct')
+          .in('recipe_id', subIds);
+        const subIngIds = Array.from(new Set((subLines ?? []).map(l => l.ingredient_id).filter(Boolean) as string[]));
+        const subIngMap: Record<string, any> = {};
+        if (subIngIds.length) {
+          const { data: ings } = await supabase
+            .from('ingredients')
+            .select('id, price, purchase_to_base_factor, base_unit_id, purchase_unit_id, conversion_enabled, conversion_qty, conversion_unit_id')
+            .in('id', subIngIds);
+          (ings ?? []).forEach(i => { subIngMap[i.id] = i; });
+        }
+        const subUnitIds = Array.from(new Set([
+          ...((subLines ?? []).map(l => l.unit_id).filter(Boolean) as string[]),
+          ...Object.values(subIngMap).map((i: any) => i.base_unit_id).filter(Boolean),
+          ...Object.values(subIngMap).map((i: any) => i.purchase_unit_id).filter(Boolean),
+          ...Object.values(subIngMap).map((i: any) => i.conversion_unit_id).filter(Boolean),
+          ...((subRecipes ?? []).map((r: any) => r.yield_unit_id).filter(Boolean) as string[]),
+        ]));
+        const subUnitMap: Record<string, any> = {};
+        if (subUnitIds.length) {
+          const { data: us } = await supabase
+            .from('recipe_units').select('id, name_en, factor_to_base, unit_type').in('id', subUnitIds);
+          (us ?? []).forEach(u => { subUnitMap[u.id] = u; });
+        }
+        const subTotals: Record<string, number> = {};
+        (subLines ?? []).forEach(l => {
+          subTotals[l.recipe_id] = (subTotals[l.recipe_id] ?? 0) + computeRecipeLineAdjustedCost({ line: l as any, ingMap: subIngMap, unitMap: subUnitMap });
+        });
+        (subRecipes ?? []).forEach((r: any) => {
+          const yq = Number(r.yield_quantity) || 0;
+          subRecipeMap[r.id] = {
+            yield_unit_id: r.yield_unit_id ?? null,
+            costPerYieldUnit: yq > 0 ? (subTotals[r.id] ?? 0) / yq : 0,
+          };
+        });
+      }
+
+      const unitIds = Array.from(new Set([
+        ...((lines ?? []).map(l => l.unit_id).filter(Boolean) as string[]),
+        ...Object.values(ingMap).map((i: any) => i.base_unit_id).filter(Boolean),
+        ...Object.values(ingMap).map((i: any) => i.purchase_unit_id).filter(Boolean),
+        ...Object.values(ingMap).map((i: any) => i.conversion_unit_id).filter(Boolean),
+        ...Object.values(subRecipeMap).map(s => s.yield_unit_id).filter(Boolean) as string[],
+      ]));
+      const unitMap: Record<string, any> = {};
+      if (unitIds.length) {
+        const { data: us } = await supabase
+          .from('recipe_units').select('id, name_en, factor_to_base, unit_type').in('id', unitIds);
+        (us ?? []).forEach(u => { unitMap[u.id] = u; });
+      }
+
+      const totals: Record<string, number> = {};
+      ids.forEach(id => { totals[id] = 0; });
+      (lines ?? []).forEach(l => {
+        totals[l.recipe_id] = (totals[l.recipe_id] ?? 0) + computeRecipeLineAdjustedCost({ line: l as any, ingMap, unitMap, subRecipeMap });
+      });
+      return totals;
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
 export function useRecipe(id: string | undefined) {
   return useQuery({
     queryKey: ['recipe', id],
