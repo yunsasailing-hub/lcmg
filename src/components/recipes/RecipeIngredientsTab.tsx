@@ -315,7 +315,17 @@ export default function RecipeIngredientsTab({ recipeId, currency, sellingPrice,
                           </div>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{l.quantity}</TableCell>
-                        <TableCell>{l.unit_id ? unitMap[l.unit_id]?.name_en ?? '—' : '—'}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const lineU = l.unit_id ? unitMap[l.unit_id] : null;
+                            const baseU = ing?.base_unit_id ? unitMap[ing.base_unit_id] : null;
+                            const label =
+                              lineU?.code ?? lineU?.name_en ??
+                              baseU?.code ?? baseU?.name_en ??
+                              null;
+                            return label || '—';
+                          })()}
+                        </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {fmt(avgCostPerBaseUnit, currency)}
                           {baseUnit ? <span className="ml-1 text-xs text-muted-foreground">/{baseUnit.code}</span> : null}

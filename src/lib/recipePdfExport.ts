@@ -395,6 +395,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
       const ing = line.ingredient_id ? p.ingredientMap[line.ingredient_id] : null;
       const lineUnit = line.unit_id ? p.unitMap[line.unit_id] : null;
       const baseUnit = ing?.base_unit_id ? p.unitMap[ing.base_unit_id] : null;
+      const displayUnit = lineUnit?.code ?? lineUnit?.name_en ?? baseUnit?.code ?? baseUnit?.name_en ?? '';
       const sameType = lineUnit && baseUnit && lineUnit.unit_type === baseUnit.unit_type;
       const unitFactor = sameType ? Number(lineUnit?.factor_to_base ?? 1) : 1;
       const lineCost = computeLineCost(
@@ -404,7 +405,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
         ing?.price ?? 0,
       );
       const adjusted = applyAdjustment(lineCost, Number((line as any).cost_adjust_pct) || 0);
-      return { line, ing, lineUnit, adjusted };
+      return { line, ing, lineUnit, displayUnit, adjusted };
     });
 
   const totalCost = ingRows.reduce((s, r) => s + r.adjusted, 0);
@@ -428,7 +429,7 @@ function buildPrintHtml(p: RecipePdfPayload): string {
             <td>${escapeHtml(r.ing?.name_en ?? '—')}${r.line.prep_note
               ? `<div class="muted small">${escapeHtml(r.line.prep_note)}</div>` : ''}</td>
             <td class="right num">${escapeHtml(r.line.quantity ?? '')}</td>
-            <td>${escapeHtml(r.lineUnit?.code ?? '')}</td>
+            <td>${escapeHtml(r.displayUnit)}</td>
             <td class="right num">${escapeHtml(((r.line as any).cost_adjust_pct ?? 0))}%</td>
             <td class="right num">${escapeHtml(fmtMoney(r.adjusted, recipe.currency))}</td>
           </tr>
