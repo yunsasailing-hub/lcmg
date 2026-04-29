@@ -304,6 +304,7 @@ export default function RecipeDetail() {
           setForm(prev => ({
             ...prev,
             yield_unit_id: (saved as any).yield_unit_id ?? NONE,
+            is_active: (saved as any).is_active === true,
           }));
         }
         setEditing(false);
