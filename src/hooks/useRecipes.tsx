@@ -449,7 +449,7 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
       if (ingIds.length) {
         const { data: ings } = await supabase
           .from('ingredients')
-          .select('id, price, purchase_to_base_factor, base_unit_id')
+          .select('id, price, purchase_to_base_factor, base_unit_id, purchase_unit_id, conversion_enabled, conversion_qty, conversion_unit_id')
           .in('id', ingIds);
         (ings ?? []).forEach(i => { ingMap[i.id] = i; });
       }
@@ -458,12 +458,14 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
       const unitIds = Array.from(new Set([
         ...((lines ?? []).map(l => l.unit_id).filter(Boolean) as string[]),
         ...Object.values(ingMap).map((i: any) => i.base_unit_id).filter(Boolean),
+        ...Object.values(ingMap).map((i: any) => i.purchase_unit_id).filter(Boolean),
+        ...Object.values(ingMap).map((i: any) => i.conversion_unit_id).filter(Boolean),
       ]));
       const unitMap: Record<string, any> = {};
       if (unitIds.length) {
         const { data: us } = await supabase
           .from('recipe_units')
-          .select('id, factor_to_base, unit_type')
+          .select('id, name_en, factor_to_base, unit_type')
           .in('id', unitIds);
         (us ?? []).forEach(u => { unitMap[u.id] = u; });
       }
@@ -472,16 +474,7 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
       // Sub-sub-recipe nesting is intentionally not recursed in this phase (data safety).
       const totals: Record<string, number> = {};
       (lines ?? []).forEach(l => {
-        const ing = l.ingredient_id ? ingMap[l.ingredient_id] : null;
-        if (!ing) return;
-        const lineUnit = l.unit_id ? unitMap[l.unit_id] : null;
-        const baseUnit = ing.base_unit_id ? unitMap[ing.base_unit_id] : null;
-        const sameType = lineUnit && baseUnit && lineUnit.unit_type === baseUnit.unit_type;
-        const unitFactor = sameType ? Number(lineUnit?.factor_to_base ?? 1) : 1;
-        const baseFactor = Number(ing.purchase_to_base_factor ?? 1) || 1;
-        const price = Number(ing.price ?? 0);
-        const cost = computeLineCost(Number(l.quantity) || 0, unitFactor, baseFactor, price);
-        const adj = applyAdjustment(cost, Number(l.cost_adjust_pct) || 0);
+        const adj = computeRecipeLineAdjustedCost({ line: l as any, ingMap, unitMap });
         totals[l.recipe_id] = (totals[l.recipe_id] ?? 0) + adj;
       });
 
@@ -503,6 +496,7 @@ export function useRecipesAsIngredient(excludeRecipeId?: string) {
           yield_quantity: r.yield_quantity ?? null,
           yield_unit_id: r.yield_unit_id ?? null,
           costPerYieldUnit: yq > 0 ? total / yq : 0,
+          totalCost: total,
           currency: (r.currency ?? 'VND') as CurrencyCode,
         });
       }
