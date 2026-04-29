@@ -740,7 +740,6 @@ function TableEditor({
                   </TableCell>
                   <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
                     {fmt(avgCostPerBaseUnit, currency)}
-                    {baseUnit ? <span className="ml-1 text-xs">/{baseUnit.code}</span> : null}
                   </TableCell>
                   <TableCell>
                     <Input
