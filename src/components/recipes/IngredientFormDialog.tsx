@@ -350,7 +350,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label>{t('recipes.ingredients.fields.baseUnit')} *</Label>
+                <Label>{t('recipes.ingredients.fields.purchaseUnitLabel', { defaultValue: 'Purchase Unit' })} *</Label>
                 <SearchableCombobox
                   value={form.base_unit_id}
                   onChange={(value) => set('base_unit_id', value)}
@@ -411,7 +411,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                       </div>
                       {previewUnitCost != null && selectedConversionUnit && (
                         <p className="text-sm">
-                          {t('recipes.ingredients.conversion.calculated', { defaultValue: 'Calculated cost' })}:{' '}
+                          {t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}:{' '}
                           <span className="font-semibold tabular-nums">
                             {new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(previewUnitCost)} {form.currency}
                           </span>{' '}
@@ -420,6 +420,28 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
                       )}
                     </>
                   )}
+                </div>
+              )}
+              {!showConversionSection && selectedBaseUnit && (
+                <div className="sm:col-span-2 rounded-md border bg-muted/20 p-3 text-sm">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <span className="text-muted-foreground">
+                        {t('recipes.ingredients.fields.usageUnit', { defaultValue: 'Usage Unit' })}:
+                      </span>{' '}
+                      <span className="font-medium">{selectedBaseUnit.name_en}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">
+                        {t('recipes.ingredients.fields.unitCost', { defaultValue: 'Unit Cost' })}:
+                      </span>{' '}
+                      <span className="font-semibold tabular-nums">
+                        {form.price
+                          ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(Number(form.price))} ${form.currency} / ${selectedBaseUnit.name_en}`
+                          : '—'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -449,7 +471,7 @@ export default function IngredientFormDialog({ open, onOpenChange, ingredient }:
             <h3 className={sectionTitle}>{t('recipes.ingredients.sections.pricing')}</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <Label>{t('recipes.ingredients.fields.price')}</Label>
+                <Label>{t('recipes.ingredients.fields.price', { defaultValue: 'Purchase Cost' })}</Label>
                 <Input type="number" inputMode="decimal" step="0.01" min="0" value={form.price} onChange={(e) => set('price', e.target.value)} />
               </div>
               <div>
