@@ -62,7 +62,7 @@ export interface IngredientRowCheck {
   ingredientCode: string;
   quantity: number | string; // normalized (number) or original string when invalid
   unit: string;
-  status: Extract<ValidationStatus, 'VALID' | 'ERROR'>;
+  status: ValidationStatus;
   issues: string[];
   issueSummary: string;
   quantityNormalized: boolean; // true when blank quantity defaulted to 0
@@ -74,6 +74,7 @@ export interface IngredientRowsSummary {
   totalVisible: number;
   valid: number;
   errors: number;
+  warnings?: number;
   blankQuantityNormalizedCount: number;
   invalidUnitCount: number;
   blankIngredientCodeCount: number;
@@ -495,6 +496,9 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
 
         const rowNumber = idx + 2;
         const issues: string[] = [];
+        const warnings: string[] = [];
+        // Recipe-as-ingredient codes (e.g. 1012*) are allowed to have missing optional fields.
+        const isRecipeAsIngredient = /^1012/i.test(ingredientCode);
 
         if (!recipeCode) { issues.push('Missing recipe_code'); blankRecipeCode += 1; }
         if (!ingredientCode) { issues.push('Missing ingredient_code'); blankIngCode += 1; }
@@ -519,10 +523,14 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
 
         // Unit check against approved units
         if (!unitRaw) {
-          issues.push('Missing unit');
+          if (isRecipeAsIngredient) {
+            warnings.push('Missing unit (recipe-as-ingredient — will fallback to "—")');
+          } else {
+            warnings.push('Missing unit (will be left blank)');
+          }
           invalidUnit += 1;
         } else if (checkUnits && !approvedSet.has(unitRaw.toLowerCase())) {
-          issues.push(`Unit "${unitRaw}" not in APPROVED_UNITS`);
+          warnings.push(`Unit "${unitRaw}" not in APPROVED_UNITS`);
           invalidUnit += 1;
         }
 
@@ -532,22 +540,24 @@ export async function validateRecipeWorkbook(file: File): Promise<ValidationResu
           ingredientCode,
           quantity,
           unit: unitRaw,
-          status: issues.length ? 'ERROR' : 'VALID',
-          issues,
-          issueSummary: issues.join('; '),
+          status: issues.length ? 'ERROR' : warnings.length ? 'WARNING' : 'VALID',
+          issues: [...issues, ...warnings],
+          issueSummary: [...issues, ...warnings].join('; '),
           quantityNormalized,
           isOrphan: false,
         });
       });
 
-      const validCount = rows.filter((r) => r.status === 'VALID').length;
-      const errorCount = rows.length - validCount;
+      const errorCount = rows.filter((r) => r.status === 'ERROR').length;
+      const warningCount = rows.filter((r) => r.status === 'WARNING').length;
+      const validCount = rows.length - errorCount - warningCount;
 
       result.ingredientRows = {
         evaluated: true,
         totalVisible: rows.length,
         valid: validCount,
         errors: errorCount,
+        warnings: warningCount,
         blankQuantityNormalizedCount: blankQtyNorm,
         invalidUnitCount: invalidUnit,
         blankIngredientCodeCount: blankIngCode,
