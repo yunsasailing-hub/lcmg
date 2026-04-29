@@ -30,6 +30,7 @@ import {
   type ChecklistStatus,
 } from '@/hooks/useChecklists';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
+import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 
 // ─── Status helpers ───
 
@@ -512,9 +513,11 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                     )}
 
                     {c?.photo_url && (
-                      <div>
-                        <img src={c.photo_url} alt="Task photo" className="h-24 w-24 md:h-28 md:w-28 rounded-lg object-cover border" />
-                      </div>
+                      <ChecklistPhotoPreview
+                        imageUrl={c.photo_url}
+                        altText="Task photo"
+                        className="max-w-full md:max-w-md"
+                      />
                     )}
 
                     {c?.comment && (
