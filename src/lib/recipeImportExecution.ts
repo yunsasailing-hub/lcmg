@@ -144,7 +144,9 @@ export async function executeRecipeImport(
     rows.forEach((row, idx) => {
       const rowNumber = idx + 2;
       const v = validIngByRow.get(rowNumber);
-      if (!v || v.status === 'ERROR') return; // skip invalid/orphan
+      // Skip only hard ERROR rows (orphan / blank recipe_code / non-numeric qty).
+      // WARNING rows (e.g. 1012 recipe-as-ingredient with missing optional unit) are imported.
+      if (!v || v.status === 'ERROR') return;
       const code = pick(row, km, ...a.recipe_code);
       const ingCode = pick(row, km, ...a.ingredient_code);
       const qty = typeof v.quantity === 'number' ? v.quantity : Number(pick(row, km, ...a.quantity).replace(/,/g, '.')) || 0;
@@ -205,12 +207,27 @@ export async function executeRecipeImport(
     if (yu) allUnitCodes.add(yu);
   }
 
-  const ingMap = new Map<string, string>(); // lower(code) -> ingredient_id
+  const ingMap = new Map<string, string>(); // lower(code) -> ingredient_id (raw ingredients)
+  const subRecipeMap = new Map<string, string>(); // lower(code) -> recipe_id (recipe-as-ingredient)
   if (allIngCodes.size > 0) {
     const codes = Array.from(allIngCodes);
-    const { data } = await supabase.from('ingredients').select('id, code').in('code', codes);
-    for (const r of data ?? []) {
+    // A) Lookup in raw ingredients first (covers 1010* and any other code).
+    const { data: ingRows } = await supabase.from('ingredients').select('id, code').in('code', codes);
+    for (const r of ingRows ?? []) {
       if (r.code) ingMap.set(String(r.code).toLowerCase(), r.id);
+    }
+    // B) For codes not found, fall back to recipes flagged as use_as_ingredient (covers 1012*).
+    const unresolved = codes.filter((c) => !ingMap.has(c.toLowerCase()));
+    if (unresolved.length > 0) {
+      const { data: recRows } = await supabase
+        .from('recipes')
+        .select('id, code, use_as_ingredient')
+        .in('code', unresolved);
+      for (const r of recRows ?? []) {
+        // Accept any matching recipe code; if use_as_ingredient is false we still link it
+        // so the line is not lost (cost calc handles it via existing logic).
+        if (r.code) subRecipeMap.set(String(r.code).toLowerCase(), r.id);
+      }
     }
   }
   const unitMap = new Map<string, string>(); // lower(code) -> unit id
@@ -342,11 +359,14 @@ export async function executeRecipeImport(
       if (recipeId && ingList.length > 0) {
         const ingPayload = ingList
           .map((i, idx) => {
-            const ingredient_id = i.ingredientCode ? ingMap.get(i.ingredientCode.toLowerCase()) ?? null : null;
+            const codeLower = i.ingredientCode ? i.ingredientCode.toLowerCase() : '';
+            const ingredient_id = codeLower ? ingMap.get(codeLower) ?? null : null;
+            const sub_recipe_id = !ingredient_id && codeLower ? subRecipeMap.get(codeLower) ?? null : null;
             const unit_id = i.unit ? unitMap.get(i.unit.toLowerCase()) ?? null : null;
             return {
               recipe_id: recipeId!,
               ingredient_id,
+              sub_recipe_id,
               unit_id,
               quantity: i.quantity,
               prep_note: i.prepNote,
@@ -354,15 +374,15 @@ export async function executeRecipeImport(
               sort_order: idx,
             };
           })
-          // Skip lines where ingredient_id couldn't be resolved (no FK match in DB)
-          .filter((p) => p.ingredient_id !== null);
+          // Skip lines where neither an ingredient nor a sub-recipe could be resolved.
+          .filter((p) => p.ingredient_id !== null || p.sub_recipe_id !== null);
         if (ingPayload.length > 0) {
           const { error } = await supabase.from('recipe_ingredients').insert(ingPayload);
           if (error) throw error;
           insertedIng = ingPayload.length;
         }
         const skipped = ingList.length - insertedIng;
-        if (skipped > 0) issues.push(`${skipped} ingredient line(s) skipped: ingredient_code not found in database`);
+        if (skipped > 0) issues.push(`${skipped} ingredient line(s) skipped: ingredient_code not found in ingredients or recipes`);
       }
       ingInserted += insertedIng;
 
