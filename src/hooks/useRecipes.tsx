@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { computeConvertedLineCost } from '@/lib/ingredientConversion';
 
 export type Recipe = Database['public']['Tables']['recipes']['Row'] & {
   recipe_type_id?: string | null;
