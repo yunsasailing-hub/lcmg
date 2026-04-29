@@ -273,7 +273,7 @@ export function downloadXlsx(
   for (const t of master.types.filter((x) => x.is_active)) allowed.push(['Type', t.name_en]);
   for (const c of master.categories.filter((x) => x.is_active))
     allowed.push(['Ingredient Category', c.name_en]);
-  for (const u of master.units.filter((x) => x.is_active)) allowed.push(['Unit', u.name_en]);
+  for (const u of master.units.filter((x) => x.is_active)) allowed.push(['Purchase Unit', u.name_en]);
   for (const s of master.storehouses.filter((x) => x.is_active))
     allowed.push(['Storehouse', s.name]);
   for (const cur of CURRENCIES) allowed.push(['Currency', cur]);
