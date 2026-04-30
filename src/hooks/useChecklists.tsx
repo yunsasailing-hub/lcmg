@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { invokeManageRoles } from '@/lib/manageRoles';
 import { todayVN } from '@/lib/timezone';
 import type { Database, Tables, TablesInsert } from '@/integrations/supabase/types';
+import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 
 // Type exports
 export type ChecklistType = Database['public']['Enums']['checklist_type'];
