@@ -335,6 +335,45 @@ function AssetFormDialog({
           <div><Label>{t('maintenance.fields.warrantyDate')}</Label><Input type="date" value={form.warranty_expiry_date} onChange={e => update('warranty_expiry_date', e.target.value)} /></div>
           <div><Label>{t('maintenance.fields.technicianContact')}</Label><Input value={form.technician_contact} onChange={e => update('technician_contact', e.target.value)} /></div>
           <div className="sm:col-span-2">
+            <Label>{t('maintenance.fields.photo', 'Photo')}</Label>
+            <div className="flex items-start gap-3 mt-1">
+              <div className="h-24 w-24 rounded-md border border-border bg-muted/40 overflow-hidden flex items-center justify-center">
+                {form.photo_url ? (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <img src={form.photo_url} className="h-full w-full object-cover" />
+                ) : (
+                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  id="maintenance-photo-input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  onChange={handlePhotoUpload}
+                />
+                <Button
+                  type="button" size="sm" variant="outline"
+                  onClick={() => document.getElementById('maintenance-photo-input')?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                  {form.photo_url
+                    ? t('maintenance.actions.replacePhoto', 'Replace photo')
+                    : t('maintenance.actions.uploadPhoto', 'Upload photo')}
+                </Button>
+                {form.photo_url && (
+                  <Button type="button" size="sm" variant="ghost" onClick={handlePhotoRemove} disabled={uploading}>
+                    <Trash2 className="h-4 w-4 mr-1 text-destructive" />
+                    {t('maintenance.actions.removePhoto', 'Remove photo')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="sm:col-span-2">
             <Label>{t('maintenance.fields.notes')}</Label>
             <Textarea rows={3} value={form.notes} onChange={e => update('notes', e.target.value)} />
           </div>
