@@ -994,7 +994,10 @@ const vi: Translations = {
     deleteTitle: 'Xoá mục sản xuất?',
     deleteConfirm: 'Hành động này sẽ xoá vĩnh viễn mục {{name}} ({{qty}}). Không thể hoàn tác.',
     updateSaved: 'Đã cập nhật',
-    deleted: 'Đã xoá',
+    deleted: 'Đã xoá bản ghi sản xuất',
+    deleteFailed: 'Xoá thất bại — vui lòng thử lại',
+    deleteNotPermitted: 'Bạn chỉ có thể xoá bản ghi của mình trong hôm nay',
+    editNotPermitted: 'Bạn chỉ có thể sửa bản ghi của mình trong hôm nay',
   },
 };
 
