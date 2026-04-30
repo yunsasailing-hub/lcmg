@@ -759,6 +759,7 @@ export default function Maintenance() {
           asset={selected}
           onBack={() => setSelectedId(null)}
           canEdit={canManageAsset(selected)}
+          onArchiveToggle={() => setArchiveTarget(selected)}
           onEdit={() => { setEditing(selected); setFormOpen(true); }}
         />
       ) : (
