@@ -855,6 +855,66 @@ export type Database = {
           },
         ]
       }
+      inventory_control_items: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"] | null
+          id: string
+          ingredient_id: string | null
+          is_active: boolean
+          item_code: string | null
+          item_name: string
+          source_type: Database["public"]["Enums"]["inventory_control_source"]
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          id?: string
+          ingredient_id?: string | null
+          is_active?: boolean
+          item_code?: string | null
+          item_name: string
+          source_type?: Database["public"]["Enums"]["inventory_control_source"]
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          id?: string
+          ingredient_id?: string | null
+          is_active?: boolean
+          item_code?: string | null
+          item_name?: string
+          source_type?: Database["public"]["Enums"]["inventory_control_source"]
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_control_items_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_control_items_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_request_items: {
         Row: {
           actual_stock: number | null
@@ -2269,6 +2329,7 @@ export type Database = {
         | "office"
         | "bakery"
       ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
+      inventory_control_source: "ingredient" | "manual"
       inventory_request_status:
         | "Draft"
         | "Submitted"
@@ -2468,6 +2529,7 @@ export const Constants = {
         "bakery",
       ],
       ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
+      inventory_control_source: ["ingredient", "manual"],
       inventory_request_status: [
         "Draft",
         "Submitted",
