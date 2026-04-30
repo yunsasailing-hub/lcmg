@@ -63,6 +63,7 @@ export default function KitchenProduction() {
   const qc = useQueryClient();
 
   const isManager = hasAnyRole(['owner', 'manager']);
+  const isOwner = hasAnyRole(['owner']);
 
   const { data: branches = [] } = useBranches();
   const { data: units = [] } = useRecipeUnits();
@@ -77,13 +78,10 @@ export default function KitchenProduction() {
         .select('id, code, name_en, yield_unit_id, is_active, show_in_kitchen_production')
         .eq('is_active', true)
         .eq('show_in_kitchen_production', true)
+        .or('code.ilike.1012%,code.ilike.1013%')
         .order('code', { ascending: true });
       if (error) throw error;
       return (data ?? [])
-        .filter((r: any) => {
-          const c = (r.code ?? '').toString();
-          return c.startsWith('1012') || c.startsWith('1013');
-        })
         .map((r: any) => ({
           id: r.id,
           code: r.code ?? '',
@@ -153,10 +151,9 @@ export default function KitchenProduction() {
   const itemOptions = useMemo(
     () => items.map(i => ({
       id: i.id,
-      label: `${i.code} — ${i.name_en}`,
-      sublabel: i.yield_unit_id && unitMap[i.yield_unit_id] ? unitMap[i.yield_unit_id].name_en : undefined,
+      label: `${i.code} — ${i.name_en} — ${i.yield_unit_id && unitMap[i.yield_unit_id] ? unitMap[i.yield_unit_id].name_en : t('kitchenProduction.fields.unitMissing')}`,
     })),
-    [items, unitMap],
+    [items, unitMap, t],
   );
 
   const save = useMutation({
