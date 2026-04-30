@@ -179,7 +179,7 @@ async function enrich(rows: MaintenanceTask[]): Promise<EnrichedMaintenanceTask[
   const tMap = new Map((templates ?? []).map(t => [t.id, t]));
   const bMap = new Map((branches ?? []).map(b => [b.id, b.name]));
   const sMap = new Map((staff ?? []).map(s => [s.user_id, s.full_name]));
-  const tyMap = new Map((types ?? []).map(t => [t.id, t.name]));
+  const tyMap = new Map<string, string>((types ?? []).map(t => [t.id, t.name] as [string, string]));
 
   return rows.map(r => {
     const a = aMap.get(r.asset_id);
