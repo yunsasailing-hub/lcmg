@@ -251,8 +251,11 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             taskId,
             userId: user!.id,
           });
-          const url = await uploadChecklistPhoto(optimized!.file, user!.id);
-          logSaveStep({ step: 'uploadSuccess', url });
+          const { url, path } = await uploadChecklistPhoto(optimized!.file, user!.id, {
+            branchName: (instance as any)?.branch?.name ?? null,
+            scheduledDate: (instance as any)?.scheduled_date ?? null,
+          });
+          logSaveStep({ step: 'uploadSuccess', url, path });
           upsert.mutate({
             instance_id: instanceId,
             task_id: taskId,
