@@ -65,9 +65,15 @@ export function useSaveRecipeServiceInfo() {
 export async function uploadServiceInfoImage(
   recipeId: string,
   file: File,
+  readableName?: string | null,
 ): Promise<{ path: string; publicUrl: string }> {
   // Service-info image -> recipes/step-photos/ in app-files bucket.
-  const result = await uploadToAppFilesBucket(file, 'recipes-step-photos');
+  const result = await uploadToAppFilesBucket(
+    file,
+    'recipes-step-photos',
+    {},
+    readableName ?? null,
+  );
   console.log('[recipe.upload]', {
     bucket: result.bucket,
     path: result.path,
@@ -75,6 +81,7 @@ export async function uploadServiceInfoImage(
     subFolder: 'step-photos',
     recipeId,
     target: 'service_info',
+    readableName: readableName ?? null,
   });
   return { path: result.path, publicUrl: result.publicUrl };
 }

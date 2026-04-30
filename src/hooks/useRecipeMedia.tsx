@@ -103,6 +103,7 @@ export async function uploadRecipeMediaFile(
   recipeId: string,
   file: File,
   subFolder: RecipeUploadSubFolder = 'images',
+  readableName?: string | null,
 ): Promise<{ path: string; publicUrl: string }> {
   const moduleType: AppFilesModuleType =
     subFolder === 'step-photos'
@@ -111,7 +112,7 @@ export async function uploadRecipeMediaFile(
         ? 'recipes-videos'
         : 'recipes-images';
 
-  const result = await uploadToAppFilesBucket(file, moduleType);
+  const result = await uploadToAppFilesBucket(file, moduleType, {}, readableName ?? null);
 
   // Verification log requested by spec.
   console.log('[recipe.upload]', {
@@ -120,6 +121,7 @@ export async function uploadRecipeMediaFile(
     url: result.publicUrl,
     subFolder,
     recipeId,
+    readableName: readableName ?? null,
   });
 
   return { path: result.path, publicUrl: result.publicUrl };

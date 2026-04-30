@@ -23,6 +23,7 @@ import { getImageFromClipboard } from '@/lib/clipboardImage';
 import MediaCollectionField from './MediaCollectionField';
 import MediaCollectionView from './MediaCollectionView';
 import { useMediaCollection } from '@/hooks/useMediaCollection';
+import { useRecipe } from '@/hooks/useRecipes';
 
 interface Props {
   recipeId: string;
@@ -95,6 +96,7 @@ const ReadField = ({ label, value }: { label: string; value: string | null }) =>
 export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
   const { t } = useTranslation();
   const { data: info, isLoading } = useRecipeServiceInfo(recipeId);
+  const { data: recipe } = useRecipe(recipeId);
   const save = useSaveRecipeServiceInfo();
   const mediaConfig = {
     table: 'recipe_service_media' as const,
@@ -128,7 +130,11 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
     try {
       // Remove previous image if any
       if (form.image_storage_path) await deleteServiceInfoImage(form.image_storage_path);
-      const { path, publicUrl } = await uploadServiceInfoImage(recipeId, file);
+      const { path, publicUrl } = await uploadServiceInfoImage(
+        recipeId,
+        file,
+        recipe?.name_en ?? null,
+      );
       update('image_url', publicUrl);
       update('image_storage_path', path);
     } catch (err: any) {
@@ -293,6 +299,7 @@ export default function RecipeServiceInfoTab({ recipeId, canManage }: Props) {
                 recipeIdForBucket={recipeId}
                 config={mediaConfig}
                 items={mediaItems}
+                readableName={recipe?.name_en ?? null}
               />
             </div>
 

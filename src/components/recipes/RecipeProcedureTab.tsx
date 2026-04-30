@@ -14,6 +14,7 @@ import {
   type ProcedureStepInput, type ProcedureType,
 } from '@/hooks/useRecipeProcedures';
 import { uploadRecipeMediaFile } from '@/hooks/useRecipeMedia';
+import { useRecipe } from '@/hooks/useRecipes';
 import { toast } from '@/hooks/use-toast';
 import VideoPreview from './VideoPreview';
 import { parseVideo } from '@/lib/videoEmbed';
@@ -38,6 +39,7 @@ const newKey = () => Math.random().toString(36).slice(2);
 export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
   const { t } = useTranslation();
   const { data: steps = [], isLoading } = useRecipeProcedures(recipeId);
+  const { data: recipe } = useRecipe(recipeId);
   const save = useSaveRecipeProcedures();
 
   const [editing, setEditing] = useState(false);
@@ -182,7 +184,17 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
     setUploadingKey(key);
     try {
       // Step image -> recipes/step-photos/ in app-files bucket.
-      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, 'step-photos');
+      // Filename suffix: "{recipe-name}-step-{NN}".
+      const step = draft.find(s => s._key === key);
+      const baseName = recipe?.name_en ?? null;
+      const stepNum = String(step?.step_number ?? 0).padStart(2, '0');
+      const readableName = baseName ? `${baseName}-step-${stepNum}` : null;
+      const { path, publicUrl } = await uploadRecipeMediaFile(
+        recipeId,
+        file,
+        'step-photos',
+        readableName,
+      );
       patch(key, { image_url: publicUrl, image_storage_path: path });
     } catch (err: any) {
       toast({ title: t('recipes.media.uploadFailed'), description: err?.message, variant: 'destructive' });
@@ -406,6 +418,7 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                       legacyImageUrl={s.image_url}
                       legacyVideoUrl={s.video_url}
                       mode="edit"
+                      stepNumber={s.step_number}
                     />
                   </div>
                 </div>

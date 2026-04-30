@@ -61,12 +61,22 @@ export function useMediaCollection(config: Config) {
 export function useAddMediaImage(config: Config) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { recipeIdForBucket: string; file: File; existingCount: number }) => {
+    mutationFn: async (input: {
+      recipeIdForBucket: string;
+      file: File;
+      existingCount: number;
+      readableName?: string | null;
+    }) => {
       if (input.existingCount >= MEDIA_MAX_PER_KIND) {
         throw new Error('LIMIT_REACHED');
       }
       // Procedure / service step imagery -> recipes/step-photos/ in app-files.
-      const result = await uploadToAppFilesBucket(input.file, 'recipes-step-photos');
+      const result = await uploadToAppFilesBucket(
+        input.file,
+        'recipes-step-photos',
+        {},
+        input.readableName ?? null,
+      );
       console.log('[recipe.upload]', {
         bucket: result.bucket,
         path: result.path,
@@ -74,6 +84,7 @@ export function useAddMediaImage(config: Config) {
         subFolder: 'step-photos',
         recipeId: input.recipeIdForBucket,
         target: config.table,
+        readableName: input.readableName ?? null,
       });
       const { error } = await (supabase as any).from(config.table).insert({
         [config.parentColumn]: config.parentId,

@@ -218,17 +218,34 @@ export function useSubmitChecklist() {
 export async function uploadChecklistPhoto(
   file: File,
   _userId: string,
-  context?: { branchName?: string | null; scheduledDate?: string | null },
+  context?: {
+    branchName?: string | null;
+    scheduledDate?: string | null;
+    /**
+     * Readable suffix for the stored filename. Priority for the caller:
+     *   1. task title (if photo belongs to a task)
+     *   2. checklist template name (general checklist photo)
+     *   3. omit -> falls back to "checklist-photo"
+     */
+    readableName?: string | null;
+  },
 ): Promise<{ url: string; path: string }> {
   const date = context?.scheduledDate ? new Date(context.scheduledDate) : new Date();
   const year = date.getUTCFullYear();
   const month = date.getUTCMonth() + 1;
 
-  const result = await uploadToAppFilesBucket(file, 'checklists', {
-    branchName: context?.branchName ?? undefined,
-    year,
-    month,
-  });
+  const readableName = context?.readableName?.trim() || 'checklist-photo';
+
+  const result = await uploadToAppFilesBucket(
+    file,
+    'checklists',
+    {
+      branchName: context?.branchName ?? undefined,
+      year,
+      month,
+    },
+    readableName,
+  );
 
   // eslint-disable-next-line no-console
   console.log('[checklist.upload.fixed]', {
@@ -238,6 +255,7 @@ export async function uploadChecklistPhoto(
     branch: context?.branchName ?? null,
     year,
     month,
+    readableName,
   });
 
   return { url: result.publicUrl, path: result.path };

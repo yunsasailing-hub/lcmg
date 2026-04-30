@@ -9,6 +9,7 @@ import {
   uploadRecipeMediaFile,
   type RecipeMediaRow,
 } from '@/hooks/useRecipeMedia';
+import { useRecipe } from '@/hooks/useRecipes';
 import { toast } from '@/hooks/use-toast';
 import MediaFrame from './MediaFrame';
 import { getImageFromClipboard } from '@/lib/clipboardImage';
@@ -30,6 +31,7 @@ export default function RecipeMainImageField({ recipeId, canManage }: Props) {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const { data: media = [] } = useRecipeMedia(recipeId);
+  const { data: recipe } = useRecipe(recipeId);
   const add = useAddRecipeMedia();
   const del = useDeleteRecipeMedia();
 
@@ -47,7 +49,13 @@ export default function RecipeMainImageField({ recipeId, canManage }: Props) {
     if (!recipeId) return;
     try {
       // Main recipe image -> recipes/images/ in app-files bucket.
-      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, 'images');
+      // Filename suffix uses the recipe name for readability.
+      const { path, publicUrl } = await uploadRecipeMediaFile(
+        recipeId,
+        file,
+        'images',
+        recipe?.name_en ?? null,
+      );
       await add.mutateAsync({
         recipe_id: recipeId,
         media_type: 'image',

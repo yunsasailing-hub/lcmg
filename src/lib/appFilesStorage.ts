@@ -86,6 +86,31 @@ export function cleanFileName(originalFileName: string): string {
   return cleanExt ? `${cleanName}.${cleanExt}` : cleanName;
 }
 
+/**
+ * Slugify an arbitrary readable name (e.g. an asset, recipe, or task title)
+ * into a filesystem-safe suffix:
+ *
+ *   - lowercase
+ *   - diacritics stripped
+ *   - non-alphanumerics collapsed to single hyphens
+ *   - leading/trailing hyphens trimmed
+ *   - max 60 characters
+ *
+ * Returns an empty string when the input is empty/blank — callers should
+ * fall back to the original filename in that case.
+ */
+export function cleanReadableName(readableName: string | null | undefined): string {
+  if (!readableName) return '';
+  return readableName
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
 /** Random short uuid-like prefix (8 hex chars). Avoids collisions cheaply. */
 function shortUuid(): string {
   // crypto.randomUUID is widely available in modern browsers / Node.
@@ -101,9 +126,25 @@ function shortUuid(): string {
  *   {uuid}_{clean-readable-file-name}.{extension}
  *
  * Example: `8f31c9a2_pizza-margherita.jpg`
+ *
+ * When `readableName` is provided, it is used as the readable suffix
+ * instead of the original file name (the original extension is still
+ * preserved). When omitted, behaviour falls back to the previous
+ * "clean original filename" suffix.
  */
-export function generateStorageFileName(originalFileName: string): string {
-  return `${shortUuid()}_${cleanFileName(originalFileName)}`;
+export function generateStorageFileName(
+  originalFileName: string,
+  readableName?: string | null,
+): string {
+  const slug = cleanReadableName(readableName);
+  if (!slug) {
+    return `${shortUuid()}_${cleanFileName(originalFileName)}`;
+  }
+  // Preserve the original file extension when present.
+  const lastDot = originalFileName.lastIndexOf('.');
+  const rawExt = lastDot > 0 ? originalFileName.slice(lastDot + 1) : '';
+  const cleanExt = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
+  return cleanExt ? `${shortUuid()}_${slug}.${cleanExt}` : `${shortUuid()}_${slug}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,10 +255,19 @@ export async function uploadToAppFilesBucket(
   file: File,
   moduleType: AppFilesModuleType,
   options: BuildStoragePathOptions = {},
+  readableName?: string | null,
 ): Promise<AppFilesUploadResult> {
   const folder = buildStoragePath(moduleType, options);
-  const storedFileName = generateStorageFileName(file.name);
+  const storedFileName = generateStorageFileName(file.name, readableName);
   const path = `${folder}/${storedFileName}`;
+
+  // Verification log requested by spec — covers every module's uploads.
+  // eslint-disable-next-line no-console
+  console.log('[storage.filename]', {
+    readableName: readableName ?? null,
+    finalFileName: storedFileName,
+    fullPath: path,
+  });
 
   const { error } = await supabase.storage
     .from(APP_FILES_BUCKET)

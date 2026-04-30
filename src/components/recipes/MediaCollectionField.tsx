@@ -27,13 +27,20 @@ interface Props {
   };
   items: MediaCollectionRow[];
   disabled?: boolean;
+  /**
+   * Readable suffix for stored filenames (e.g. "pizza-margherita-step-03").
+   * Optional — falls back to the original filename when omitted.
+   */
+  readableName?: string | null;
 }
 
 /**
  * Shared edit-mode editor for an images[] + videos[] collection.
  * Hard cap of 4 per kind, paste support for images, link input for videos.
  */
-export default function MediaCollectionField({ recipeIdForBucket, config, items, disabled }: Props) {
+export default function MediaCollectionField({
+  recipeIdForBucket, config, items, disabled, readableName,
+}: Props) {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [videoDraft, setVideoDraft] = useState('');
@@ -55,7 +62,12 @@ export default function MediaCollectionField({ recipeIdForBucket, config, items,
       return;
     }
     try {
-      await addImage.mutateAsync({ recipeIdForBucket, file, existingCount: images.length });
+      await addImage.mutateAsync({
+        recipeIdForBucket,
+        file,
+        existingCount: images.length,
+        readableName: readableName ?? null,
+      });
     } catch (e: any) {
       toast({
         title: t('recipes.media.uploadFailed'),
