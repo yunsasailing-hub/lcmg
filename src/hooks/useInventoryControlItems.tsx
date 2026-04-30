@@ -49,6 +49,9 @@ export interface UpsertControlItemPayload {
   is_active?: boolean;
   branch_id?: string | null;
   department?: string | null;
+  remarks?: string | null;
+  min_stock?: number | null;
+  recommended_order?: number | null;
 }
 
 export function useUpsertInventoryControlItem() {
@@ -66,6 +69,9 @@ export function useUpsertInventoryControlItem() {
         is_active: p.is_active ?? true,
         branch_id: p.branch_id ?? null,
         department: p.department ?? null,
+        remarks: p.remarks ?? null,
+        min_stock: p.min_stock ?? null,
+        recommended_order: p.recommended_order ?? null,
       };
       if (p.id) {
         const { error } = await supabase

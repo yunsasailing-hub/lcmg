@@ -181,6 +181,13 @@ function ControlItemFormDialog({
   const [branchId, setBranchId] = useState(initial?.branch_id ?? '');
   const [department, setDepartment] = useState<string>(initial?.department ?? '');
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
+  const [remarks, setRemarks] = useState((initial as any)?.remarks ?? '');
+  const [minStock, setMinStock] = useState<string>(
+    (initial as any)?.min_stock != null ? String((initial as any).min_stock) : '',
+  );
+  const [recommendedOrder, setRecommendedOrder] = useState<string>(
+    (initial as any)?.recommended_order != null ? String((initial as any).recommended_order) : '',
+  );
 
   const ingredientOptions = useMemo(
     () => ingredients.map(ing => ({
@@ -214,6 +221,9 @@ function ControlItemFormDialog({
         is_active: isActive,
         branch_id: branchId || null,
         department: department || null,
+        remarks: remarks.trim() || null,
+        min_stock: minStock ? Number(minStock) : null,
+        recommended_order: recommendedOrder ? Number(recommendedOrder) : null,
       });
       toast.success(initial ? 'Item updated' : 'Item added to control list');
       onOpenChange(false);
@@ -296,6 +306,26 @@ function ControlItemFormDialog({
                   {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2">
+            <div>
+              <Label className="text-xs">Remarks (optional)</Label>
+              <Input value={remarks} onChange={e => setRemarks(e.target.value)}
+                placeholder="Brand, packaging, etc." />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Min stock</Label>
+              <Input type="number" inputMode="decimal" value={minStock}
+                onChange={e => setMinStock(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">Recommended order</Label>
+              <Input type="number" inputMode="decimal" value={recommendedOrder}
+                onChange={e => setRecommendedOrder(e.target.value)} />
             </div>
           </div>
 

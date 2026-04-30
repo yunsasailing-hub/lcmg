@@ -14,8 +14,9 @@ import {
   type InventoryRequestStatus, type InventoryRequestWithItems,
 } from '@/hooks/useInventoryRequests';
 import { useAuth } from '@/hooks/useAuth';
-import InventoryRequestForm from './InventoryRequestForm';
+import InventoryWeeklySheet from './InventoryWeeklySheet';
 import { exportRequestsToXlsx } from './inventoryExport';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 const STATUS_BADGE: Record<InventoryRequestStatus, string> = {
@@ -193,12 +194,20 @@ export default function InventoryRequestList({ ownerView = false }: { ownerView?
         </div>
       )}
 
-      <InventoryRequestForm
-        key={editing?.id ?? 'new'}
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        initial={editing}
-      />
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editing ? 'Edit weekly inventory' : 'New weekly inventory'}
+            </DialogTitle>
+          </DialogHeader>
+          <InventoryWeeklySheet
+            key={editing?.id ?? 'new'}
+            initial={editing}
+            onDone={() => setFormOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(null)}>
         <AlertDialogContent>
