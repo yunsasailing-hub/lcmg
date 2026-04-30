@@ -81,6 +81,7 @@ const vi: Translations = {
     management: 'Quản lý',
     more: 'Thêm',
     kitchenProductionShort: 'Sản xuất',
+    systemRepair: 'Sửa chữa hệ thống',
   },
   roles: {
     owner: 'Chủ',
@@ -185,6 +186,7 @@ const vi: Translations = {
     recipes: { title: 'Công thức', subtitle: 'Sách công thức & quản lý chi phí', emptyTitle: 'Chưa có công thức', emptyDesc: 'Công thức sẽ xuất hiện ở đây sau khi thêm.' },
     inventory: { title: 'Kho', subtitle: 'Mức tồn kho & quản lý đơn hàng', emptyTitle: 'Chưa có mặt hàng nào', emptyDesc: 'Các mặt hàng sẽ xuất hiện ở đây sau khi thêm.' },
     maintenance: { title: 'Bảo trì', subtitle: 'Theo dõi thiết bị & phiếu sửa chữa', emptyTitle: 'Không có phiếu bảo trì', emptyDesc: 'Yêu cầu bảo trì sẽ xuất hiện ở đây.' },
+    systemRepair: { title: 'Công cụ sửa chữa hệ thống', subtitle: 'Tiện ích chỉ dành cho Chủ sở hữu để khắc phục sự cố dữ liệu', emptyTitle: 'Không có công cụ', emptyDesc: 'Công cụ sửa chữa chỉ dành cho Chủ sở hữu.' },
     notFound: { code: '404', message: 'Rất tiếc! Không tìm thấy trang', returnHome: 'Về trang chủ' },
   },
   recipes: {
