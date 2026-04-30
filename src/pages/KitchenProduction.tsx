@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChefHat, Save } from 'lucide-react';
+import { ChefHat, Save, Pencil, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,6 +15,13 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
@@ -57,18 +64,22 @@ function todayISO() {
   return `${y}-${m}-${day}`;
 }
 
+const LS_BRANCH = 'kitchenProduction:lastBranch';
+const LS_DEPT = 'kitchenProduction:lastDept';
+
 export default function KitchenProduction() {
   const { t } = useTranslation();
   const { user, profile, hasAnyRole } = useAuth();
   const qc = useQueryClient();
 
   const isOwner = hasAnyRole(['owner']);
+  const isManager = hasAnyRole(['manager']);
+  const isOwnerOrManager = isOwner || isManager;
 
   const { data: branches = [] } = useBranches();
   const { data: units = [] } = useRecipeUnits();
   const unitMap = useMemo(() => Object.fromEntries(units.map(u => [u.id, u])), [units]);
 
-  // Items available for production
   const { data: items = [], isLoading: itemsLoading } = useQuery({
     queryKey: ['kitchen-production-items'],
     queryFn: async (): Promise<ProductionItem[]> => {
@@ -80,24 +91,21 @@ export default function KitchenProduction() {
         .or('code.ilike.1012%,code.ilike.1013%')
         .order('code', { ascending: true });
       if (error) throw error;
-      return (data ?? [])
-        .map((r: any) => ({
-          id: r.id,
-          code: r.code ?? '',
-          name_en: r.name_en ?? '',
-          yield_unit_id: r.yield_unit_id ?? null,
-        }));
+      return (data ?? []).map((r: any) => ({
+        id: r.id,
+        code: r.code ?? '',
+        name_en: r.name_en ?? '',
+        yield_unit_id: r.yield_unit_id ?? null,
+      }));
     },
   });
 
-  // Filters
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterBranch, setFilterBranch] = useState<string>('__all__');
   const [filterDept, setFilterDept] = useState<string>('__all__');
   const [filterType, setFilterType] = useState<string>('__all__');
   const [filterText, setFilterText] = useState<string>('');
 
-  // Logs list
   const { data: logs = [] } = useQuery({
     queryKey: ['kitchen-production-logs'],
     queryFn: async (): Promise<LogRow[]> => {
@@ -125,10 +133,7 @@ export default function KitchenProduction() {
     });
   }, [logs, filterDate, filterBranch, filterDept, filterType, filterText]);
 
-  // Form
-  const defaultDept: Department = (profile?.department as Department) ?? 'kitchen';
-  const defaultBranch = profile?.branch_id ?? (branches[0]?.id ?? '');
-
+  // Form state with persisted defaults
   const [productionDate, setProductionDate] = useState<string>(todayISO());
   const [branchId, setBranchId] = useState<string>('');
   const [department, setDepartment] = useState<Department | ''>('');
@@ -137,12 +142,34 @@ export default function KitchenProduction() {
   const [notes, setNotes] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Hydrate defaults once branches/profile arrive
-  useMemo(() => {
-    if (!branchId && defaultBranch) setBranchId(defaultBranch);
-    if (!department && defaultDept) setDepartment(defaultDept);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultBranch, defaultDept]);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+  const hydratedRef = useRef(false);
+
+  // Hydrate defaults from localStorage / profile once branches load
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    if (branches.length === 0) return;
+    const lsBranch = typeof window !== 'undefined' ? localStorage.getItem(LS_BRANCH) : null;
+    const lsDept = typeof window !== 'undefined' ? localStorage.getItem(LS_DEPT) : null;
+    const branchExists = (id: string | null) => !!id && branches.some(b => b.id === id);
+    const initBranch = branchExists(lsBranch) ? lsBranch! : (branchExists(profile?.branch_id ?? null) ? profile!.branch_id! : (branches[0]?.id ?? ''));
+    const initDept: Department = (lsDept && DEPARTMENTS.includes(lsDept as Department))
+      ? (lsDept as Department)
+      : ((profile?.department as Department) ?? 'kitchen');
+    setBranchId(initBranch);
+    setDepartment(initDept);
+    hydratedRef.current = true;
+  }, [branches, profile]);
+
+  // Persist branch/department selection per user
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (branchId) localStorage.setItem(LS_BRANCH, branchId);
+  }, [branchId]);
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (department) localStorage.setItem(LS_DEPT, department);
+  }, [department]);
 
   const selectedItem = items.find(i => i.id === itemId);
   const selectedItemUnit = selectedItem?.yield_unit_id ? unitMap[selectedItem.yield_unit_id] : null;
@@ -155,6 +182,13 @@ export default function KitchenProduction() {
     [items, unitMap, t],
   );
 
+  const addQty = (n: number) => {
+    const cur = Number(quantity);
+    const base = Number.isFinite(cur) && cur > 0 ? cur : 0;
+    setQuantity(String(base + n));
+    qtyInputRef.current?.focus();
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       const newErrors: Record<string, string> = {};
@@ -162,8 +196,8 @@ export default function KitchenProduction() {
       if (!branchId) newErrors.branch = t('kitchenProduction.errors.branchRequired');
       if (!department) newErrors.dept = t('kitchenProduction.errors.deptRequired');
       if (!itemId || !selectedItem) newErrors.item = t('kitchenProduction.errors.itemRequired');
-      const qty = Number(quantity);
-      if (!quantity.trim() || !Number.isFinite(qty) || qty <= 0) {
+      const qtyN = Number(quantity);
+      if (!quantity.trim() || !Number.isFinite(qtyN) || qtyN <= 0) {
         newErrors.qty = t('kitchenProduction.errors.qtyPositive');
       }
       if (selectedItem) {
@@ -173,9 +207,7 @@ export default function KitchenProduction() {
         }
       }
       setErrors(newErrors);
-      if (Object.keys(newErrors).length > 0) {
-        throw new Error('validation');
-      }
+      if (Object.keys(newErrors).length > 0) throw new Error('validation');
       if (!user) throw new Error('Not authenticated');
 
       const unitLabel = selectedItem?.yield_unit_id && unitMap[selectedItem.yield_unit_id]
@@ -188,11 +220,10 @@ export default function KitchenProduction() {
         department,
         item_code: selectedItem!.code,
         item_name: selectedItem!.name_en,
-        // item_type is auto-set by trigger; provide a placeholder that the trigger overrides
         item_type: selectedItem!.code.startsWith('1013') ? 'MENU_ITEM' : 'BATCH_RECIPE',
         linked_recipe_id: selectedItem!.id,
         linked_recipe_code: selectedItem!.code,
-        quantity_produced: qty,
+        quantity_produced: qtyN,
         unit: unitLabel,
         staff_user_id: user.id,
         staff_name: profile?.full_name ?? profile?.email ?? user.email ?? null,
@@ -205,11 +236,12 @@ export default function KitchenProduction() {
     },
     onSuccess: () => {
       toast({ title: t('kitchenProduction.saved') });
+      // PART 3: keep item, branch, department, date — clear only qty + notes, focus qty
       setQuantity('');
       setNotes('');
-      setItemId('');
       setErrors({});
       qc.invalidateQueries({ queryKey: ['kitchen-production-logs'] });
+      setTimeout(() => qtyInputRef.current?.focus(), 0);
     },
     onError: (e: any) => {
       if (e?.message === 'validation') return;
@@ -217,11 +249,60 @@ export default function KitchenProduction() {
     },
   });
 
-  function qty(v: number) {
+  function fmtQty(v: number) {
     return new Intl.NumberFormat(undefined, { maximumFractionDigits: 3 }).format(v);
   }
 
   const branchMap = useMemo(() => Object.fromEntries(branches.map(b => [b.id, b])), [branches]);
+
+  // Edit / delete state
+  const [editRow, setEditRow] = useState<LogRow | null>(null);
+  const [editQty, setEditQty] = useState<string>('');
+  const [editNotes, setEditNotes] = useState<string>('');
+  const [deleteRow, setDeleteRow] = useState<LogRow | null>(null);
+
+  const canEdit = (row: LogRow) => {
+    if (isOwnerOrManager) return true;
+    if (!user) return false;
+    if (row.created_by !== user.id) return false;
+    return row.production_date === todayISO();
+  };
+  const canDelete = (_row: LogRow) => isOwnerOrManager;
+
+  const updateRow = useMutation({
+    mutationFn: async () => {
+      if (!editRow) return;
+      const qn = Number(editQty);
+      if (!Number.isFinite(qn) || qn <= 0) throw new Error(t('kitchenProduction.errors.qtyPositive'));
+      const { error } = await supabase
+        .from('kitchen_production_logs' as any)
+        .update({ quantity_produced: qn, notes: editNotes.trim() || null } as any)
+        .eq('id', editRow.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: t('kitchenProduction.updateSaved') });
+      setEditRow(null);
+      qc.invalidateQueries({ queryKey: ['kitchen-production-logs'] });
+    },
+    onError: (e: any) => toast({ title: t('kitchenProduction.saveFailed'), description: e?.message, variant: 'destructive' }),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async () => {
+      if (!deleteRow) return;
+      const { error } = await supabase.from('kitchen_production_logs' as any).delete().eq('id', deleteRow.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: t('kitchenProduction.deleted') });
+      setDeleteRow(null);
+      qc.invalidateQueries({ queryKey: ['kitchen-production-logs'] });
+    },
+    onError: (e: any) => toast({ title: t('kitchenProduction.saveFailed'), description: e?.message, variant: 'destructive' }),
+  });
+
+  const unitMissing = !!selectedItem && !selectedItemUnit;
 
   return (
     <AppShell>
@@ -283,7 +364,7 @@ export default function KitchenProduction() {
               {errors.dept && <p className="mt-1 text-xs text-destructive">{errors.dept}</p>}
             </div>
 
-            <div className="sm:col-span-2 lg:col-span-2">
+            <div className="sm:col-span-2 lg:col-span-3">
               <Label>{t('kitchenProduction.fields.item')} *</Label>
               <SearchableCombobox
                 value={itemId}
@@ -293,19 +374,47 @@ export default function KitchenProduction() {
                 searchPlaceholder={t('kitchenProduction.fields.itemPlaceholder')}
                 emptyText={t('kitchenProduction.errors.noItems')}
               />
-              {selectedItem && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {selectedItem.code.startsWith('1013') ? t('kitchenProduction.types.MENU_ITEM') : t('kitchenProduction.types.BATCH_RECIPE')}
-                  <> · {t('kitchenProduction.fields.unit')}: {selectedItemUnit?.name_en ?? t('kitchenProduction.fields.unitMissing')}</>
-                </p>
-              )}
               {errors.item && <p className="mt-1 text-xs text-destructive">{errors.item}</p>}
             </div>
+
+            {/* Auto-filled, read-only fields */}
+            {selectedItem && (
+              <div className="sm:col-span-2 lg:col-span-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 rounded-lg border bg-muted/40 p-3">
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.itemCode')}</Label>
+                  <Input readOnly value={selectedItem.code} className="h-10 font-mono bg-background/60" />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.itemName')}</Label>
+                  <Input readOnly value={selectedItem.name_en} className="h-10 bg-background/60" />
+                </div>
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.unit')}</Label>
+                  <Input readOnly value={selectedItemUnit?.name_en ?? t('kitchenProduction.fields.unitMissing')} className="h-10 bg-background/60" />
+                </div>
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.type')}</Label>
+                  <Input readOnly value={selectedItem.code.startsWith('1013') ? t('kitchenProduction.types.MENU_ITEM') : t('kitchenProduction.types.BATCH_RECIPE')} className="h-10 bg-background/60" />
+                </div>
+                <div className="sm:col-span-2 lg:col-span-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.linkedRecipeCode')}</Label>
+                  <Input readOnly value={selectedItem.code} className="h-10 font-mono bg-background/60" />
+                </div>
+
+                {unitMissing && (
+                  <div className="sm:col-span-2 lg:col-span-4 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{t('kitchenProduction.warnings.unitMissing')}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <Label htmlFor="qty">{t('kitchenProduction.fields.quantity')} *</Label>
               <Input
                 id="qty"
+                ref={qtyInputRef}
                 type="number"
                 inputMode="decimal"
                 min={0}
@@ -314,10 +423,24 @@ export default function KitchenProduction() {
                 value={quantity}
                 onChange={e => setQuantity(e.target.value)}
               />
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[1, 5, 10].map(n => (
+                  <Button
+                    key={n}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3"
+                    onClick={() => addQty(n)}
+                  >
+                    <Plus className="h-3 w-3" /> {n}
+                  </Button>
+                ))}
+              </div>
               {errors.qty && <p className="mt-1 text-xs text-destructive">{errors.qty}</p>}
             </div>
 
-            <div className="sm:col-span-2 lg:col-span-3">
+            <div className="sm:col-span-2 lg:col-span-2">
               <Label htmlFor="notes">{t('kitchenProduction.fields.notes')}</Label>
               <Textarea
                 id="notes"
@@ -350,12 +473,7 @@ export default function KitchenProduction() {
           </div>
 
           <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Input
-              type="date"
-              value={filterDate}
-              onChange={e => setFilterDate(e.target.value)}
-              placeholder={t('kitchenProduction.fields.productionDate')}
-            />
+            <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
             <Select value={filterBranch} onValueChange={setFilterBranch}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -396,35 +514,67 @@ export default function KitchenProduction() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('kitchenProduction.fields.productionDate')}</TableHead>
-                    <TableHead>{t('kitchenProduction.fields.branch')}</TableHead>
-                    <TableHead>{t('kitchenProduction.fields.department')}</TableHead>
-                    <TableHead>{t('kitchenProduction.fields.itemCode')}</TableHead>
-                    <TableHead>{t('kitchenProduction.fields.itemName')}</TableHead>
-                    <TableHead>{t('kitchenProduction.fields.type')}</TableHead>
-                    <TableHead className="text-right">{t('kitchenProduction.fields.quantity')}</TableHead>
-                    <TableHead>{t('kitchenProduction.fields.unit')}</TableHead>
-                    <TableHead>{t('kitchenProduction.fields.staff')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('kitchenProduction.fields.productionDate')}</TableHead>
+                    <TableHead>{t('kitchenProduction.fields.item')}</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">{t('kitchenProduction.fields.quantity')}</TableHead>
+                    <TableHead>{t('kitchenProduction.list.context')}</TableHead>
                     <TableHead>{t('kitchenProduction.fields.notes')}</TableHead>
+                    <TableHead className="w-24 text-right">{t('common.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredLogs.map(l => (
                     <TableRow key={l.id}>
-                      <TableCell className="whitespace-nowrap">{l.production_date}</TableCell>
-                      <TableCell className="whitespace-nowrap">{l.branch_id ? (branchMap[l.branch_id]?.name ?? '—') : '—'}</TableCell>
-                      <TableCell className="whitespace-nowrap">{l.department ?? '—'}</TableCell>
-                      <TableCell className="font-mono text-xs">{l.item_code}</TableCell>
-                      <TableCell>{l.item_name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">
+                      <TableCell className="whitespace-nowrap align-top text-sm">{l.production_date}</TableCell>
+                      <TableCell className="align-top">
+                        <div className="font-medium">{l.item_name}</div>
+                        <div className="font-mono text-xs text-muted-foreground">{l.item_code}</div>
+                        <Badge variant="outline" className="mt-1 text-[10px]">
                           {t(`kitchenProduction.types.${l.item_type}`)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-medium">{qty(Number(l.quantity_produced))}</TableCell>
-                      <TableCell>{l.unit ?? '—'}</TableCell>
-                      <TableCell className="whitespace-nowrap">{l.staff_name ?? '—'}</TableCell>
-                      <TableCell className="max-w-[18rem] truncate" title={l.notes ?? ''}>{l.notes ?? '—'}</TableCell>
+                      <TableCell className="text-right align-top">
+                        <div className="text-base font-semibold">{fmtQty(Number(l.quantity_produced))}</div>
+                        <div className="text-xs text-muted-foreground">{l.unit ?? '—'}</div>
+                      </TableCell>
+                      <TableCell className="align-top text-xs text-muted-foreground">
+                        <div>{l.branch_id ? (branchMap[l.branch_id]?.name ?? '—') : '—'}</div>
+                        <div>{l.department ?? '—'}</div>
+                        <div className="mt-1 opacity-80">{l.staff_name ?? '—'}</div>
+                      </TableCell>
+                      <TableCell className="align-top max-w-[16rem] text-xs text-muted-foreground truncate" title={l.notes ?? ''}>
+                        {l.notes ?? '—'}
+                      </TableCell>
+                      <TableCell className="align-top text-right">
+                        <div className="flex justify-end gap-1">
+                          {canEdit(l) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                setEditRow(l);
+                                setEditQty(String(l.quantity_produced));
+                                setEditNotes(l.notes ?? '');
+                              }}
+                              title={t('common.edit')}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete(l) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteRow(l)}
+                              title={t('common.delete')}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -433,6 +583,70 @@ export default function KitchenProduction() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('kitchenProduction.editTitle')}</DialogTitle>
+          </DialogHeader>
+          {editRow && (
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                <div className="font-medium">{editRow.item_name}</div>
+                <div className="font-mono text-xs text-muted-foreground">{editRow.item_code}</div>
+              </div>
+              <div>
+                <Label htmlFor="edit-qty">{t('kitchenProduction.fields.quantity')}</Label>
+                <Input
+                  id="edit-qty"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  className="h-11"
+                  value={editQty}
+                  onChange={e => setEditQty(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-notes">{t('kitchenProduction.fields.notes')}</Label>
+                <Textarea id="edit-notes" rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditRow(null)}>{t('common.cancel')}</Button>
+            <Button onClick={() => updateRow.mutate()} disabled={updateRow.isPending}>
+              {updateRow.isPending ? t('common.saving') : t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={!!deleteRow} onOpenChange={(o) => !o && setDeleteRow(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('kitchenProduction.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('kitchenProduction.deleteConfirm', {
+                name: deleteRow?.item_name ?? '',
+                qty: deleteRow ? fmtQty(Number(deleteRow.quantity_produced)) : '',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteMut.mutate()}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

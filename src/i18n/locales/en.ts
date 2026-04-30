@@ -956,6 +956,7 @@ const en = {
       itemName: 'Item name',
       staff: 'Staff',
       unitMissing: 'unit missing',
+      linkedRecipeCode: 'Linked recipe code',
     },
     types: {
       MENU_ITEM: 'Menu item',
@@ -969,6 +970,7 @@ const en = {
       anyBranch: 'All branches',
       anyDept: 'All departments',
       searchItem: 'Search item code or name',
+      context: 'Branch / Department',
     },
     errors: {
       dateRequired: 'Production date is required.',
@@ -983,6 +985,14 @@ const en = {
     debug: {
       enabledCount: 'Enabled production recipes found: {{count}}',
     },
+    warnings: {
+      unitMissing: 'Unit missing — please define in recipe',
+    },
+    editTitle: 'Edit production entry',
+    deleteTitle: 'Delete production entry?',
+    deleteConfirm: 'This will permanently delete the entry for {{name}} ({{qty}}). This cannot be undone.',
+    updateSaved: 'Entry updated',
+    deleted: 'Entry deleted',
   },
 };
 
