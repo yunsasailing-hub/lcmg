@@ -185,18 +185,17 @@ function AssetFormDialog({
           // fall back to original if compression fails
         }
       }
-      // Rename file so that `generateStorageFileName` produces
-      //   {uuid}_{clean-asset-name}.{ext}
-      // The asset name is encoded into the filename, not the folder path.
-      const ext = (toUpload.name.split('.').pop() || file.name.split('.').pop() || 'bin').toLowerCase();
-      const renamed = new File([toUpload], `${form.name.trim()}.${ext}`, {
-        type: toUpload.type || file.type,
-      });
-      toUpload = renamed;
-      const result = await uploadToAppFilesBucket(toUpload, 'maintenance', {
-        branchName: branch?.name,
-        category: type?.code || type?.name_en || 'general',
-      });
+      // Asset/equipment name becomes the readable suffix in the filename.
+      // Folder path is `maintenance/{branchCode}/{categoryCode}/`.
+      const result = await uploadToAppFilesBucket(
+        toUpload,
+        'maintenance',
+        {
+          branchName: branch?.name,
+          category: type?.code || type?.name_en || 'general',
+        },
+        form.name.trim(),
+      );
       // Required testing log
       console.log('[maintenance.upload.fixed]', {
         bucket: result.bucket,
