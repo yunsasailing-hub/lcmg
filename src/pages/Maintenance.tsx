@@ -552,10 +552,10 @@ function DetailSection({
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-accent/40 transition-colors"
+            className="w-full flex items-center justify-between gap-2 px-4 py-3.5 text-left hover:bg-accent/40 transition-colors"
           >
-            <span className="flex items-center gap-2 text-sm font-medium">
-              {icon}
+            <span className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
+              {icon ? <span className="text-muted-foreground">{icon}</span> : null}
               {title}
             </span>
             <ChevronDown
@@ -564,7 +564,7 @@ function DetailSection({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="px-4 pb-4 pt-1 border-t">{children}</div>
+          <div className="px-4 pb-4 pt-3 border-t">{children}</div>
         </CollapsibleContent>
       </Collapsible>
     </Card>
