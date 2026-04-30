@@ -399,57 +399,185 @@ function AssetFormDialog({
 }
 
 /* -------------------------- Detail View -------------------------- */
-function AssetDetail({ asset, onBack, canEdit, onEdit }: {
+function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
   asset: EnrichedMaintenanceAsset;
   onBack: () => void;
   canEdit: boolean;
+  onArchiveToggle: () => void;
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
+  const isArchived = asset.status === 'archived';
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" />{t('common.back')}</Button>
-        {canEdit && <Button onClick={onEdit}><Pencil className="h-4 w-4 mr-1" />{t('common.edit')}</Button>}
+    <div className="space-y-3 sm:space-y-4">
+      {/* Top bar */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <Button variant="ghost" size="sm" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-1" />{t('common.back')}
+        </Button>
+        {canEdit && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={onArchiveToggle}>
+              {isArchived
+                ? <><ArchiveRestore className="h-4 w-4 mr-1" />{t('maintenance.actions.restore')}</>
+                : <><Archive className="h-4 w-4 mr-1" />{t('maintenance.actions.archive')}</>}
+            </Button>
+            <Button size="sm" onClick={onEdit}>
+              <Pencil className="h-4 w-4 mr-1" />{t('common.edit')}
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Header card — always visible */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
+            <div className="min-w-0">
               <div className="text-xs font-mono text-muted-foreground">{asset.code}</div>
-              <CardTitle className="text-xl mt-1">{asset.name}</CardTitle>
+              <CardTitle className="text-xl sm:text-2xl mt-1 break-words">{asset.name}</CardTitle>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                {asset.branch_name && (
+                  <Badge variant="secondary" className="font-normal">{asset.branch_name}</Badge>
+                )}
+                <Badge variant="secondary" className="font-normal capitalize">{asset.department}</Badge>
+                {asset.type_name_en && (
+                  <Badge variant="secondary" className="font-normal">{asset.type_name_en}</Badge>
+                )}
+              </div>
             </div>
-            <Badge variant="outline" className={STATUS_BADGE[asset.status]}>{t(`maintenance.status.${asset.status}`)}</Badge>
+            <Badge variant="outline" className={STATUS_BADGE[asset.status]}>
+              {t(`maintenance.status.${asset.status}`)}
+            </Badge>
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-          <Info label={t('maintenance.fields.branch')} value={asset.branch_name} />
-          <Info label={t('maintenance.fields.department')} value={<span className="capitalize">{asset.department}</span>} />
-          <Info label={t('maintenance.fields.type')} value={asset.type_name_en} />
+      </Card>
+
+      {/* Basic Information — default open */}
+      <DetailSection
+        title={t('maintenance.sections.basicInfo', 'Basic Information')}
+        defaultOpen
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <Info label={t('maintenance.fields.location')} value={asset.location} />
           <Info label={t('maintenance.fields.brand')} value={asset.brand} />
           <Info label={t('maintenance.fields.model')} value={asset.model} />
           <Info label={t('maintenance.fields.serialNumber')} value={asset.serial_number} />
-          <Info label={t('maintenance.fields.supplier')} value={asset.supplier_vendor} />
           <Info label={t('maintenance.fields.purchaseDate')} value={fmtDate(asset.purchase_date)} />
           <Info label={t('maintenance.fields.installationDate')} value={fmtDate(asset.installation_date)} />
           <Info label={t('maintenance.fields.warrantyDate')} value={fmtDate(asset.warranty_expiry_date)} />
+          <Info label={t('maintenance.fields.supplier')} value={asset.supplier_vendor} />
           <Info label={t('maintenance.fields.technicianContact')} value={asset.technician_contact} />
-          {asset.notes && <div className="sm:col-span-2"><Info label={t('maintenance.fields.notes')} value={<span className="whitespace-pre-wrap">{asset.notes}</span>} /></div>}
-        </CardContent>
-      </Card>
+          {asset.notes && (
+            <div className="sm:col-span-2">
+              <Info label={t('maintenance.fields.notes')} value={<span className="whitespace-pre-wrap">{asset.notes}</span>} />
+            </div>
+          )}
+        </div>
+      </DetailSection>
 
-      {(['scheduled', 'history', 'repairs', 'photos'] as const).map(k => (
-        <Collapsible key={k}>
-          <CollapsibleTrigger className="w-full text-left rounded-md border bg-card px-4 py-3 text-sm font-medium hover:bg-accent/40">
-            {t(`maintenance.placeholders.${k}`)}
-          </CollapsibleTrigger>
-          <CollapsibleContent className="px-4 py-3 text-sm text-muted-foreground border border-t-0 rounded-b-md">
-            {t('maintenance.placeholders.comingSoon')}
-          </CollapsibleContent>
-        </Collapsible>
-      ))}
+      {/* Scheduled Maintenance — placeholder */}
+      <DetailSection
+        title={t('maintenance.sections.scheduled', 'Scheduled Maintenance')}
+        icon={<CalendarClock className="h-4 w-4" />}
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {t('maintenance.sections.scheduledPlaceholder',
+              'Scheduled maintenance will be managed here in the next step.')}
+          </p>
+          <Button size="sm" variant="outline" disabled>
+            <Plus className="h-4 w-4 mr-1" />
+            {t('maintenance.actions.addSchedule', 'Add Schedule')}
+          </Button>
+        </div>
+      </DetailSection>
+
+      {/* Maintenance History — placeholder */}
+      <DetailSection
+        title={t('maintenance.sections.history', 'Maintenance History')}
+        icon={<History className="h-4 w-4" />}
+      >
+        <p className="text-sm text-muted-foreground">
+          {t('maintenance.sections.historyEmpty', 'No maintenance records yet.')}
+        </p>
+      </DetailSection>
+
+      {/* Repair History — placeholder */}
+      <DetailSection
+        title={t('maintenance.sections.repairs', 'Repair History')}
+        icon={<ShieldAlert className="h-4 w-4" />}
+      >
+        <p className="text-sm text-muted-foreground">
+          {t('maintenance.sections.repairsEmpty', 'No repair records yet.')}
+        </p>
+      </DetailSection>
+
+      {/* Documents / Photos */}
+      <DetailSection
+        title={t('maintenance.sections.documents', 'Documents / Photos')}
+        icon={<FileImage className="h-4 w-4" />}
+      >
+        {asset.photo_url ? (
+          <div className="space-y-2">
+            <div className="rounded-md overflow-hidden border bg-muted/30 inline-block max-w-full">
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <img
+                src={asset.photo_url}
+                className="max-h-64 w-auto object-contain"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t('maintenance.sections.documentsPending',
+                'Additional documents and photos will be connected after storage setup is finalized.')}
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {t('maintenance.sections.documentsPending',
+              'Documents and photos will be connected after storage setup is finalized.')}
+          </p>
+        )}
+      </DetailSection>
     </div>
+  );
+}
+
+function DetailSection({
+  title,
+  icon,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card className="overflow-hidden">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-accent/40 transition-colors"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              {icon}
+              {title}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 pt-1 border-t">{children}</div>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 }
 
