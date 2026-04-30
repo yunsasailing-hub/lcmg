@@ -7,15 +7,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
 import { useAuth } from '@/hooks/useAuth';
 import { useMaintenanceAssets } from '@/hooks/useMaintenance';
 import {
   useUpsertMaintenanceRepair,
   REPAIR_STATUSES,
   REPAIR_SEVERITIES,
+  REPAIR_COST_TYPES,
   type EnrichedMaintenanceRepair,
   type MaintenanceRepairStatus,
   type MaintenanceRepairSeverity,
+  type RepairCostType,
 } from '@/hooks/useMaintenanceRepairs';
 import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 import { optimizeChecklistImage } from '@/lib/imageCompression';
@@ -44,7 +47,7 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
 
   const [form, setForm] = useState(() => buildInitialForm(initial, presetAssetId));
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [uploading, setUploading] = useState<'before' | 'after' | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -55,13 +58,19 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
 
   const update = (k: string, v: any) => setForm(s => ({ ...s, [k]: v }));
 
-  const handlePhotoUpload = async (which: 'before' | 'after', file: File) => {
+  const MAX_PHOTOS = 4;
+
+  const handleAddPhoto = async (file: File) => {
     const asset = assets.find(a => a.id === form.asset_id);
     if (!asset) {
       toast.error('Select equipment before uploading a photo');
       return;
     }
-    setUploading(which);
+    if (form.photos.length >= MAX_PHOTOS) {
+      toast.error(`Up to ${MAX_PHOTOS} photos allowed`);
+      return;
+    }
+    setUploadingPhoto(true);
     try {
       let toUpload = file;
       if (file.type.startsWith('image/')) {
@@ -73,15 +82,28 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
       const res = await uploadToAppFilesBucket(toUpload, 'maintenance', {
         branchName: asset.branch_name ?? undefined,
         category: 'repairs',
-      }, `${asset.code}-${which}-${form.title || 'repair'}`);
-      update(which === 'before' ? 'before_photo_url' : 'after_photo_url', res.publicUrl);
+      }, `${asset.code}-${form.title || 'repair'}-${form.photos.length + 1}`);
+      setForm(s => ({ ...s, photos: [...s.photos, res.publicUrl] }));
       toast.success('Photo uploaded');
     } catch (e: any) {
       toast.error(e?.message ?? 'Upload failed');
     } finally {
-      setUploading(null);
+      setUploadingPhoto(false);
     }
   };
+
+  const handleRemovePhoto = (idx: number) => {
+    setForm(s => ({ ...s, photos: s.photos.filter((_, i) => i !== idx) }));
+  };
+
+  // Auto-suggest cost_type when amount > 0
+  useEffect(() => {
+    const n = Number(form.cost_amount);
+    if (!isNaN(n) && n > 0 && form.cost_type === 'Internal / No Cost') {
+      setForm(s => ({ ...s, cost_type: 'External Service' }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.cost_amount]);
 
   const handleSave = async () => {
     const errs: Record<string, string> = {};
@@ -109,14 +131,17 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
         technician_contact: !reportOnly ? (form.technician_contact?.trim() || null) : null,
         cost_amount: !reportOnly && form.cost_amount !== '' ? Number(form.cost_amount) : null,
         currency: form.currency || 'VND',
+        cost_type: !reportOnly ? form.cost_type : 'Internal / No Cost',
         parts_replaced: !reportOnly ? (form.parts_replaced?.trim() || null) : null,
-        before_photo_url: form.before_photo_url || null,
-        after_photo_url: !reportOnly ? (form.after_photo_url || null) : null,
+        // Keep legacy before/after fields untouched on edit; do not write new values to them.
+        before_photo_url: initial?.before_photo_url ?? null,
+        after_photo_url: initial?.after_photo_url ?? null,
+        photos: form.photos,
         downtime_hours: !reportOnly && form.downtime_hours !== '' ? Number(form.downtime_hours) : null,
         updated_by: profile?.user_id ?? null,
       };
       if (initial?.id) payload.id = initial.id;
-      else payload.reported_by = profile?.user_id ?? null;
+      else payload.reported_by = profile?.user_id ?? null; // Auto-fill on create only
 
       await upsert.mutateAsync(payload);
       toast.success(initial ? 'Repair updated' : 'Repair logged');
@@ -125,6 +150,14 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
       toast.error(e?.message ?? 'Save failed');
     }
   };
+
+  const assetOptions = assets
+    .filter(a => a.status !== 'archived' || a.id === form.asset_id)
+    .map(a => ({
+      id: a.id,
+      label: `${a.code} — ${a.name}`,
+      sublabel: [a.branch_name, a.department].filter(Boolean).join(' · ') || undefined,
+    }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -136,19 +169,24 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
             <Label>Equipment *</Label>
-            <Select
+            <SearchableCombobox
               value={form.asset_id}
-              onValueChange={v => update('asset_id', v)}
+              onChange={v => update('asset_id', v)}
+              options={assetOptions}
+              placeholder="Select equipment"
+              searchPlaceholder="Search by code or name…"
+              emptyText="No equipment found."
               disabled={!!presetAssetId && !initial}
-            >
-              <SelectTrigger><SelectValue placeholder="Select equipment" /></SelectTrigger>
-              <SelectContent>
-                {assets.filter(a => a.status !== 'archived' || a.id === form.asset_id).map(a => (
-                  <SelectItem key={a.id} value={a.id}>{a.code} — {a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
             {errors.asset_id && <p className="text-xs text-destructive mt-1">{errors.asset_id}</p>}
+            {form.asset_id && (() => {
+              const a = assets.find(x => x.id === form.asset_id);
+              return a ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {[a.branch_name, a.department].filter(Boolean).join(' · ')}
+                </p>
+              ) : null;
+            })()}
           </div>
 
           <div className="sm:col-span-2">
@@ -213,6 +251,15 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
               </div>
 
               <div>
+                <Label>Cost type</Label>
+                <Select value={form.cost_type} onValueChange={v => update('cost_type', v as RepairCostType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {REPAIR_COST_TYPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Cost amount</Label>
                 <Input type="number" min={0} step="0.01" value={form.cost_amount} onChange={e => update('cost_amount', e.target.value)} />
               </div>
@@ -233,22 +280,18 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
             </>
           )}
 
-          <PhotoField
-            label="Before photo"
-            url={form.before_photo_url}
-            uploading={uploading === 'before'}
-            onPick={f => handlePhotoUpload('before', f)}
-            onRemove={() => update('before_photo_url', '')}
-          />
-          {!reportOnly && (
-            <PhotoField
-              label="After photo"
-              url={form.after_photo_url}
-              uploading={uploading === 'after'}
-              onPick={f => handlePhotoUpload('after', f)}
-              onRemove={() => update('after_photo_url', '')}
+          <div className="sm:col-span-2">
+            <Label>Photos (up to {MAX_PHOTOS})</Label>
+            <PhotosField
+              photos={form.photos}
+              uploading={uploadingPhoto}
+              max={MAX_PHOTOS}
+              onAdd={handleAddPhoto}
+              onRemove={handleRemovePhoto}
+              legacyBefore={initial?.before_photo_url ?? null}
+              legacyAfter={initial?.after_photo_url ?? null}
             />
-          )}
+          </div>
         </div>
 
         <DialogFooter>
@@ -264,6 +307,7 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
 }
 
 function buildInitialForm(initial: EnrichedMaintenanceRepair | null | undefined, presetAssetId: string | null | undefined) {
+  const photos: string[] = Array.isArray((initial as any)?.photos) ? (initial as any).photos.filter(Boolean) : [];
   return {
     asset_id: initial?.asset_id ?? presetAssetId ?? '',
     title: initial?.title ?? '',
@@ -278,55 +322,93 @@ function buildInitialForm(initial: EnrichedMaintenanceRepair | null | undefined,
     technician_contact: initial?.technician_contact ?? '',
     cost_amount: initial?.cost_amount != null ? String(initial.cost_amount) : '',
     currency: initial?.currency ?? 'VND',
+    cost_type: ((initial as any)?.cost_type ?? 'Internal / No Cost') as RepairCostType,
     parts_replaced: initial?.parts_replaced ?? '',
-    before_photo_url: initial?.before_photo_url ?? '',
-    after_photo_url: initial?.after_photo_url ?? '',
+    photos,
     downtime_hours: initial?.downtime_hours != null ? String(initial.downtime_hours) : '',
   };
 }
 
-function PhotoField({
-  label, url, uploading, onPick, onRemove,
+function PhotosField({
+  photos, uploading, max, onAdd, onRemove, legacyBefore, legacyAfter,
 }: {
-  label: string;
-  url: string;
+  photos: string[];
   uploading: boolean;
-  onPick: (f: File) => void;
-  onRemove: () => void;
+  max: number;
+  onAdd: (f: File) => void;
+  onRemove: (idx: number) => void;
+  legacyBefore: string | null;
+  legacyAfter: string | null;
 }) {
-  const inputId = `repair-${label.replace(/\s+/g, '-').toLowerCase()}`;
+  const inputId = 'repair-photos-input';
+  const canAdd = photos.length < max;
+  const legacy: Array<{ url: string; label: string }> = [];
+  if (legacyBefore) legacy.push({ url: legacyBefore, label: 'Before (legacy)' });
+  if (legacyAfter) legacy.push({ url: legacyAfter, label: 'After (legacy)' });
+
   return (
-    <div>
-      <Label>{label}</Label>
-      <div className="flex items-start gap-3 mt-1">
-        <div className="h-20 w-20 rounded-md border bg-muted/40 overflow-hidden flex items-center justify-center">
-          {url ? (
-            // eslint-disable-next-line jsx-a11y/alt-text
+    <div className="mt-1 space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {photos.map((url, i) => (
+          <div key={i} className="relative h-20 w-20 rounded-md border bg-muted/40 overflow-hidden">
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <img src={url} className="h-full w-full object-cover" />
-          ) : (
-            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-          )}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <input
-            id={inputId}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onPick(f); }}
-          />
-          <Button type="button" size="sm" variant="outline" onClick={() => document.getElementById(inputId)?.click()} disabled={uploading}>
-            {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
-            {url ? 'Replace' : 'Upload'}
-          </Button>
-          {url && (
-            <Button type="button" size="sm" variant="ghost" onClick={onRemove}>
-              <Trash2 className="h-4 w-4 mr-1 text-destructive" />Remove
-            </Button>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={() => onRemove(i)}
+              className="absolute top-1 right-1 rounded-full bg-background/90 border p-0.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+              aria-label="Remove photo"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+        {canAdd && (
+          <>
+            <input
+              id={inputId}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onAdd(f); }}
+            />
+            <button
+              type="button"
+              onClick={() => document.getElementById(inputId)?.click()}
+              disabled={uploading}
+              className="h-20 w-20 rounded-md border border-dashed bg-muted/20 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-muted/40 transition-colors disabled:opacity-50"
+            >
+              {uploading
+                ? <Loader2 className="h-5 w-5 animate-spin" />
+                : <><Upload className="h-5 w-5" /><span className="text-[10px]">Add photo</span></>}
+            </button>
+          </>
+        )}
+        {photos.length === 0 && !canAdd && (
+          <div className="h-20 w-20 rounded-md border bg-muted/20 flex items-center justify-center">
+            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
       </div>
+      <p className="text-[11px] text-muted-foreground">{photos.length}/{max} photos</p>
+
+      {legacy.length > 0 && (
+        <div className="pt-2 border-t">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Previously saved photos</p>
+          <div className="flex flex-wrap gap-2">
+            {legacy.map((p, i) => (
+              <div key={i} className="space-y-1">
+                <div className="h-20 w-20 rounded-md border bg-muted/40 overflow-hidden">
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <img src={p.url} className="h-full w-full object-cover" />
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center">{p.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
