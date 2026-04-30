@@ -21,6 +21,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import AssetTypeSettings from '@/components/maintenance/AssetTypeSettings';
+import SchedulesList from '@/components/maintenance/SchedulesList';
+import ScheduleFormDialog from '@/components/maintenance/ScheduleFormDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
