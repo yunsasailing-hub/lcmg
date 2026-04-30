@@ -5,7 +5,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import StatCard from '@/components/shared/StatCard';
 import ModuleCard from '@/components/shared/ModuleCard';
 import OverdueChecklistsSummary from '@/components/dashboard/OverdueChecklistsSummary';
-import { Users, Building2, ClipboardCheck, GraduationCap, CookingPot, Package, Wrench, Settings } from 'lucide-react';
+import { Users, Building2, ClipboardCheck, GraduationCap, CookingPot, Package, Wrench, Settings, ChefHat } from 'lucide-react';
 
 export default function Dashboard() {
   const { profile, roles, hasRole } = useAuth();
@@ -45,6 +45,7 @@ export default function Dashboard() {
         <ModuleCard to="/training" icon={GraduationCap} title={t('nav.training')} description={t('dashboard.moduleDescriptions.training')} stat={t('dashboard.moduleStats.pendingShort', { count: 3 })} />
         <ModuleCard to="/checklists" icon={ClipboardCheck} title={t('nav.checklists')} description={t('dashboard.moduleDescriptions.checklists')} stat={t('dashboard.moduleStats.activeShort', { count: 4 })} />
         <ModuleCard to="/recipes" icon={CookingPot} title={t('nav.recipes')} description={t('dashboard.moduleDescriptions.recipes')} stat={t('dashboard.moduleStats.recipesShort', { count: 48 })} />
+        <ModuleCard to="/kitchen-production" icon={ChefHat} title={t('nav.kitchenProduction')} description={t('dashboard.moduleDescriptions.kitchenProduction')} stat={t('dashboard.moduleStats.kitchenProductionToday')} />
         <ModuleCard to="/inventory" icon={Package} title={t('nav.inventory')} description={t('dashboard.moduleDescriptions.inventory')} stat={t('dashboard.moduleStats.lowStockShort', { count: 6 })} />
         <ModuleCard to="/maintenance" icon={Wrench} title={t('nav.maintenance')} description={t('dashboard.moduleDescriptions.maintenance')} stat={t('dashboard.moduleStats.openTicketShort', { count: 1 })} />
         <ModuleCard to="/management" icon={Settings} title={t('nav.management')} description={t('dashboard.moduleDescriptions.management')} stat="" />

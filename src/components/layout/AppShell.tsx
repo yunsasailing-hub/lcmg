@@ -30,6 +30,24 @@ const useNavItems = () => {
   ];
 };
 
+// Mobile bottom nav: prioritize main shortcuts; keep Production visible.
+const useMobileNavItems = () => {
+  const { t } = useTranslation();
+  const primary = [
+    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/checklists', icon: ClipboardCheck, label: t('nav.checklists') },
+    { to: '/recipes', icon: CookingPot, label: t('nav.recipes') },
+    { to: '/kitchen-production', icon: ChefHat, label: t('nav.kitchenProductionShort') },
+  ];
+  const overflow = [
+    { to: '/training', icon: GraduationCap, label: t('nav.training') },
+    { to: '/inventory', icon: Package, label: t('nav.inventory') },
+    { to: '/maintenance', icon: Wrench, label: t('nav.maintenance') },
+    { to: '/management', icon: Settings, label: t('nav.management') },
+  ];
+  return { primary, overflow };
+};
+
 const ROLE_BADGE: Record<string, { color: string }> = {
   owner: { color: 'bg-red-600 text-white' },
   manager: { color: 'bg-orange-500 text-white' },
@@ -138,12 +156,9 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 function MobileNav() {
   const { signOut, profile, roles, user } = useAuth();
   const { t } = useTranslation();
-  const NAV_ITEMS = useNavItems();
+  const { primary: visibleItems, overflow: overflowItems } = useMobileNavItems();
   const location = useLocation();
   const [showMore, setShowMore] = useState(false);
-
-  const visibleItems = NAV_ITEMS.slice(0, 5);
-  const overflowItems = NAV_ITEMS.slice(5);
   const primaryRole = roles[0];
   const badge = primaryRole ? ROLE_BADGE[primaryRole] : null;
   const displayName = profile?.full_name || profile?.email || user?.email || 'User';
