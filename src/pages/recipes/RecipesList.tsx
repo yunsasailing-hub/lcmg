@@ -315,6 +315,11 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
                       {r.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    <Badge variant={r.show_in_kitchen_production === true ? 'default' : 'secondary'}>
+                      {r.show_in_kitchen_production === true ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.updated_at)}</TableCell>
                   <TableCell className="text-right">
                     <Button size="sm" variant="ghost" onClick={() => navigate(`/recipes/list/${r.id}`)} title={t('common.view') as string}>
