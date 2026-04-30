@@ -15,6 +15,7 @@ import Maintenance from "./pages/Maintenance.tsx";
 import SystemRepair from "./pages/SystemRepair.tsx";
 import Management from "./pages/Management.tsx";
 import KitchenProduction from "./pages/KitchenProduction.tsx";
+import Documents from "./pages/Documents.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/system-repair" element={<AuthGuard><SystemRepair /></AuthGuard>} />
             <Route path="/management" element={<AuthGuard><Management /></AuthGuard>} />
             <Route path="/kitchen-production" element={<AuthGuard><KitchenProduction /></AuthGuard>} />
+            <Route path="/documents" element={<AuthGuard><Documents /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
