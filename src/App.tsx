@@ -12,6 +12,7 @@ import Checklists from "./pages/Checklists.tsx";
 import Recipes from "./pages/Recipes.tsx";
 import Inventory from "./pages/Inventory.tsx";
 import Maintenance from "./pages/Maintenance.tsx";
+import SystemRepair from "./pages/SystemRepair.tsx";
 import Management from "./pages/Management.tsx";
 import KitchenProduction from "./pages/KitchenProduction.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/recipes/*" element={<AuthGuard><Recipes /></AuthGuard>} />
             <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
             <Route path="/maintenance" element={<AuthGuard><Maintenance /></AuthGuard>} />
+            <Route path="/system-repair" element={<AuthGuard><SystemRepair /></AuthGuard>} />
             <Route path="/management" element={<AuthGuard><Management /></AuthGuard>} />
             <Route path="/kitchen-production" element={<AuthGuard><KitchenProduction /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
