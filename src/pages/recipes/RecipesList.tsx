@@ -63,6 +63,7 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
   const [deptFilter, setDeptFilter] = useState<string>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all'); // all|yes|not
+  const [productionFilter, setProductionFilter] = useState<string>('all'); // all|yes|no
   const [archiveTarget, setArchiveTarget] = useState<Recipe | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -97,9 +98,11 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
       }
       if (activeFilter === 'yes' && !r.is_active) return false;
       if (activeFilter === 'not' && r.is_active) return false;
+      if (productionFilter === 'yes' && r.show_in_kitchen_production !== true) return false;
+      if (productionFilter === 'no' && r.show_in_kitchen_production === true) return false;
       return true;
     });
-  }, [recipes, kind, includeArchived, search, categoryFilter, typeFilter, deptFilter, branchFilter, activeFilter]);
+  }, [recipes, kind, includeArchived, search, categoryFilter, typeFilter, deptFilter, branchFilter, activeFilter, productionFilter]);
 
   const visibleIds = useMemo(() => filtered.map(r => r.id), [filtered]);
   const { data: thumbMap = {} } = useRecipePrimaryImages(visibleIds);
@@ -166,7 +169,7 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
             <Label htmlFor="arch" className="text-sm">{t('recipes.list.includeArchived')}</Label>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -212,6 +215,14 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
               <SelectItem value="not">{t('recipes.list.activeNot')}</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={productionFilter} onValueChange={setProductionFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('recipes.list.allKitchenProduction')}</SelectItem>
+              <SelectItem value="yes">{t('recipes.list.productionYes')}</SelectItem>
+              <SelectItem value="no">{t('recipes.list.productionNo')}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -230,7 +241,7 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
           )}
         </EmptyState>
       ) : (
-        <div className="rounded-md border">
+        <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -244,6 +255,7 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
                 <TableHead className="text-right whitespace-nowrap">{t('recipes.list.cols.sellingPrice') ?? 'Selling Price'}</TableHead>
                 <TableHead className="text-right whitespace-nowrap">{t('recipes.list.cols.foodCostPct') ?? 'Food Cost %'}</TableHead>
                 <TableHead>{t('recipes.list.cols.active')}</TableHead>
+                <TableHead className="whitespace-nowrap">{t('recipes.list.cols.kitchenProduction')}</TableHead>
                 <TableHead>{t('recipes.list.cols.updated')}</TableHead>
                 <TableHead className="text-right">{t('recipes.list.cols.actions')}</TableHead>
               </TableRow>
@@ -301,6 +313,11 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
                   <TableCell>
                     <Badge variant={r.is_active ? 'default' : 'secondary'}>
                       {r.is_active ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={r.show_in_kitchen_production === true ? 'default' : 'secondary'}>
+                      {r.show_in_kitchen_production === true ? t('recipes.list.productionYes') : t('recipes.list.productionNo')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.updated_at)}</TableCell>

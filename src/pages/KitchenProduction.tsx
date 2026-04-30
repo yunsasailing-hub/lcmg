@@ -62,7 +62,7 @@ export default function KitchenProduction() {
   const { user, profile, hasAnyRole } = useAuth();
   const qc = useQueryClient();
 
-  const isManager = hasAnyRole(['owner', 'manager']);
+  const isOwner = hasAnyRole(['owner']);
 
   const { data: branches = [] } = useBranches();
   const { data: units = [] } = useRecipeUnits();
@@ -77,13 +77,10 @@ export default function KitchenProduction() {
         .select('id, code, name_en, yield_unit_id, is_active, show_in_kitchen_production')
         .eq('is_active', true)
         .eq('show_in_kitchen_production', true)
+        .or('code.ilike.1012%,code.ilike.1013%')
         .order('code', { ascending: true });
       if (error) throw error;
       return (data ?? [])
-        .filter((r: any) => {
-          const c = (r.code ?? '').toString();
-          return c.startsWith('1012') || c.startsWith('1013');
-        })
         .map((r: any) => ({
           id: r.id,
           code: r.code ?? '',
@@ -153,10 +150,9 @@ export default function KitchenProduction() {
   const itemOptions = useMemo(
     () => items.map(i => ({
       id: i.id,
-      label: `${i.code} — ${i.name_en}`,
-      sublabel: i.yield_unit_id && unitMap[i.yield_unit_id] ? unitMap[i.yield_unit_id].name_en : undefined,
+      label: `${i.code} — ${i.name_en} — ${i.yield_unit_id && unitMap[i.yield_unit_id] ? unitMap[i.yield_unit_id].name_en : t('kitchenProduction.fields.unitMissing')}`,
     })),
-    [items, unitMap],
+    [items, unitMap, t],
   );
 
   const save = useMutation({
@@ -239,7 +235,12 @@ export default function KitchenProduction() {
 
           {items.length === 0 && !itemsLoading && (
             <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-              {t('kitchenProduction.errors.noItems')}
+              <div>{t('kitchenProduction.errors.noItems')}</div>
+              {isOwner && (
+                <div className="mt-1 text-xs opacity-80">
+                  {t('kitchenProduction.debug.enabledCount', { count: items.length })}
+                </div>
+              )}
             </div>
           )}
 
@@ -295,7 +296,7 @@ export default function KitchenProduction() {
               {selectedItem && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   {selectedItem.code.startsWith('1013') ? t('kitchenProduction.types.MENU_ITEM') : t('kitchenProduction.types.BATCH_RECIPE')}
-                  {selectedItemUnit && <> · {t('kitchenProduction.fields.unit')}: {selectedItemUnit.name_en}</>}
+                  <> · {t('kitchenProduction.fields.unit')}: {selectedItemUnit?.name_en ?? t('kitchenProduction.fields.unitMissing')}</>
                 </p>
               )}
               {errors.item && <p className="mt-1 text-xs text-destructive">{errors.item}</p>}

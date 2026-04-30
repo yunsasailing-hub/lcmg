@@ -14,6 +14,7 @@ export type Recipe = Database['public']['Tables']['recipes']['Row'] & {
   internal_memo?: string | null;
   updated_by?: string | null;
   use_as_ingredient?: boolean | null;
+  show_in_kitchen_production?: boolean | null;
 };
 export type RecipeInsert = Database['public']['Tables']['recipes']['Insert'] & {
   recipe_type_id?: string | null;
@@ -25,6 +26,7 @@ export type RecipeInsert = Database['public']['Tables']['recipes']['Insert'] & {
   shelf_life?: string | null;
   internal_memo?: string | null;
   use_as_ingredient?: boolean | null;
+  show_in_kitchen_production?: boolean | null;
 };
 export type RecipeStatus = Database['public']['Enums']['recipe_status'];
 export type RecipeDepartment = Database['public']['Enums']['department'];
@@ -215,6 +217,7 @@ export function useUpsertRecipe() {
         qc.invalidateQueries({ queryKey: ['recipes'] }),
         qc.invalidateQueries({ queryKey: ['recipe', data?.id] }),
         qc.invalidateQueries({ queryKey: ['recipe'] }),
+        qc.invalidateQueries({ queryKey: ['kitchen-production-items'] }),
       ]);
     },
   });
