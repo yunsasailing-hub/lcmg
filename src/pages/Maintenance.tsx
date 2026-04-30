@@ -23,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import AssetTypeSettings from '@/components/maintenance/AssetTypeSettings';
 import SchedulesList from '@/components/maintenance/SchedulesList';
 import ScheduleFormDialog from '@/components/maintenance/ScheduleFormDialog';
+import MaintenanceTasksList from '@/components/maintenance/MaintenanceTasksList';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -812,6 +813,7 @@ export default function Maintenance() {
             <TabsTrigger value="dashboard">{t('maintenance.tabs.dashboard')}</TabsTrigger>
             <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>
             <TabsTrigger value="schedules">{t('maintenance.tabs.schedules', 'Schedules')}</TabsTrigger>
+            <TabsTrigger value="tasks">{t('maintenance.tabs.tasks', 'Tasks')}</TabsTrigger>
             {isOwner && (
               <TabsTrigger value="settings">{t('maintenance.tabs.settings')}</TabsTrigger>
             )}
@@ -829,6 +831,9 @@ export default function Maintenance() {
           </TabsContent>
           <TabsContent value="schedules">
             <SchedulesList />
+          </TabsContent>
+          <TabsContent value="tasks">
+            <MaintenanceTasksList />
           </TabsContent>
           {isOwner && (
             <TabsContent value="settings">
