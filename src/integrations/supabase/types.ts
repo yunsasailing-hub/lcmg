@@ -1188,53 +1188,74 @@ export type Database = {
       }
       maintenance_tasks: {
         Row: {
+          additional_photos: string[]
           asset_id: string
           assigned_department: Database["public"]["Enums"]["department"] | null
           assigned_staff_id: string | null
           completed_at: string | null
           completed_by: string | null
+          cost_amount: number | null
+          cost_type: string | null
           created_at: string
           due_date: string
           due_time: string
+          external_company: string | null
+          external_contact: string | null
           id: string
           note: string | null
           photo_url: string | null
           schedule_template_id: string
+          spare_parts: string | null
           status: Database["public"]["Enums"]["maintenance_task_status"]
+          technical_note: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          additional_photos?: string[]
           asset_id: string
           assigned_department?: Database["public"]["Enums"]["department"] | null
           assigned_staff_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
+          cost_amount?: number | null
+          cost_type?: string | null
           created_at?: string
           due_date: string
           due_time?: string
+          external_company?: string | null
+          external_contact?: string | null
           id?: string
           note?: string | null
           photo_url?: string | null
           schedule_template_id: string
+          spare_parts?: string | null
           status?: Database["public"]["Enums"]["maintenance_task_status"]
+          technical_note?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          additional_photos?: string[]
           asset_id?: string
           assigned_department?: Database["public"]["Enums"]["department"] | null
           assigned_staff_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
+          cost_amount?: number | null
+          cost_type?: string | null
           created_at?: string
           due_date?: string
           due_time?: string
+          external_company?: string | null
+          external_contact?: string | null
           id?: string
           note?: string | null
           photo_url?: string | null
           schedule_template_id?: string
+          spare_parts?: string | null
           status?: Database["public"]["Enums"]["maintenance_task_status"]
+          technical_note?: string | null
           title?: string
           updated_at?: string
         }
