@@ -244,6 +244,9 @@ const vi: Translations = {
       allDepartments: 'Tất cả bộ phận',
       allBranches: 'Tất cả chi nhánh',
       allStatuses: 'Tất cả trạng thái',
+      allKitchenProduction: 'Sản xuất bếp: Tất cả',
+      productionYes: 'CÓ',
+      productionNo: 'KHÔNG',
       activeYes: 'CÓ',
       activeNot: 'KHÔNG',
       global: 'Toàn cầu',
@@ -264,6 +267,7 @@ const vi: Translations = {
         sellingPrice: 'Giá bán',
         foodCostPct: 'Tỷ lệ Food Cost',
         active: 'Hoạt động',
+        kitchenProduction: 'Sản xuất bếp',
         updated: 'Cập nhật cuối',
         actions: 'Thao tác',
       },
@@ -953,6 +957,7 @@ const vi: Translations = {
       itemCode: 'Mã món',
       itemName: 'Tên món',
       staff: 'Nhân viên',
+      unitMissing: 'thiếu đơn vị',
     },
     types: {
       MENU_ITEM: 'Món thực đơn',
@@ -975,7 +980,10 @@ const vi: Translations = {
       qtyPositive: 'Số lượng phải lớn hơn 0.',
       invalidCode: 'Mã món phải bắt đầu bằng 1012 hoặc 1013.',
       missingRecipe: 'Không tìm thấy công thức liên kết.',
-      noItems: 'Chưa có món nào được bật cho Sản xuất bếp. Yêu cầu Chủ/Quản lý bật trong biểu mẫu công thức.',
+      noItems: 'Chưa có món sản xuất nào được bật. Bật “Hiện trong Sản xuất bếp” trên công thức đang hoạt động có mã 1012 hoặc 1013.',
+    },
+    debug: {
+      enabledCount: 'Số công thức sản xuất đã bật tìm thấy: {{count}}',
     },
   },
 };
