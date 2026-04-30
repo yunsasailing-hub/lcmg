@@ -802,6 +802,7 @@ export default function Maintenance() {
           asset={selected}
           onBack={() => setSelectedId(null)}
           canEdit={canManageAsset(selected)}
+          canCreate={canCreate && canManageAsset(selected)}
           onArchiveToggle={() => setArchiveTarget(selected)}
           onEdit={() => { setEditing(selected); setFormOpen(true); }}
         />
@@ -810,6 +811,7 @@ export default function Maintenance() {
           <TabsList>
             <TabsTrigger value="dashboard">{t('maintenance.tabs.dashboard')}</TabsTrigger>
             <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>
+            <TabsTrigger value="schedules">{t('maintenance.tabs.schedules', 'Schedules')}</TabsTrigger>
             {isOwner && (
               <TabsTrigger value="settings">{t('maintenance.tabs.settings')}</TabsTrigger>
             )}
