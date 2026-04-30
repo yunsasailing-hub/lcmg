@@ -12,10 +12,12 @@ const KEY = ['maintenance_tasks'];
 export type EnrichedMaintenanceTask = MaintenanceTask & {
   asset_name: string | null;
   asset_code: string | null;
+  asset_type_name: string | null;
   asset_branch_id: string | null;
   asset_branch_name: string | null;
   asset_department: string | null;
   assigned_staff_name: string | null;
+  completed_by_name: string | null;
   note_required: boolean;
   photo_required: boolean;
 };
@@ -152,12 +154,14 @@ async function enrich(rows: MaintenanceTask[]): Promise<EnrichedMaintenanceTask[
   const assetIds = Array.from(new Set(rows.map(r => r.asset_id)));
   const tplIds = Array.from(new Set(rows.map(r => r.schedule_template_id)));
   const staffIds = Array.from(new Set(rows.map(r => r.assigned_staff_id).filter(Boolean) as string[]));
+  const completedByIds = Array.from(new Set(rows.map(r => r.completed_by).filter(Boolean) as string[]));
+  const profileIds = Array.from(new Set([...staffIds, ...completedByIds]));
 
   const [{ data: assets }, { data: templates }, { data: staff }] = await Promise.all([
-    supabase.from('maintenance_assets').select('id, name, code, branch_id, department').in('id', assetIds),
+    supabase.from('maintenance_assets').select('id, name, code, branch_id, department, asset_type_id').in('id', assetIds),
     supabase.from('maintenance_schedule_templates').select('id, note_required, photo_required').in('id', tplIds),
-    staffIds.length
-      ? supabase.from('profiles').select('user_id, full_name').in('user_id', staffIds)
+    profileIds.length
+      ? supabase.from('profiles').select('user_id, full_name').in('user_id', profileIds)
       : Promise.resolve({ data: [] as { user_id: string; full_name: string | null }[] }),
   ]);
 
@@ -166,10 +170,16 @@ async function enrich(rows: MaintenanceTask[]): Promise<EnrichedMaintenanceTask[
     ? await supabase.from('branches').select('id, name').in('id', branchIds)
     : { data: [] as { id: string; name: string }[] };
 
+  const typeIds = Array.from(new Set((assets ?? []).map(a => a.asset_type_id).filter(Boolean)));
+  const { data: types } = typeIds.length
+    ? await supabase.from('maintenance_asset_types').select('id, name').in('id', typeIds)
+    : { data: [] as { id: string; name: string }[] };
+
   const aMap = new Map((assets ?? []).map(a => [a.id, a]));
   const tMap = new Map((templates ?? []).map(t => [t.id, t]));
   const bMap = new Map((branches ?? []).map(b => [b.id, b.name]));
   const sMap = new Map((staff ?? []).map(s => [s.user_id, s.full_name]));
+  const tyMap = new Map<string, string>((types ?? []).map(t => [t.id, t.name] as [string, string]));
 
   return rows.map(r => {
     const a = aMap.get(r.asset_id);
@@ -178,10 +188,12 @@ async function enrich(rows: MaintenanceTask[]): Promise<EnrichedMaintenanceTask[
       ...r,
       asset_name: a?.name ?? null,
       asset_code: a?.code ?? null,
+      asset_type_name: a?.asset_type_id ? tyMap.get(a.asset_type_id) ?? null : null,
       asset_branch_id: a?.branch_id ?? null,
       asset_branch_name: a ? bMap.get(a.branch_id) ?? null : null,
       asset_department: a?.department ?? null,
       assigned_staff_name: r.assigned_staff_id ? sMap.get(r.assigned_staff_id) ?? null : null,
+      completed_by_name: r.completed_by ? sMap.get(r.completed_by) ?? null : null,
       note_required: !!t?.note_required,
       photo_required: !!t?.photo_required,
     };
