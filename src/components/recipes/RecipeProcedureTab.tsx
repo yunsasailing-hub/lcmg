@@ -181,7 +181,8 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
   const handleStepImageUpload = async (key: string, file: File) => {
     setUploadingKey(key);
     try {
-      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file);
+      // Step image -> recipes/step-photos/ in app-files bucket.
+      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, 'step-photos');
       patch(key, { image_url: publicUrl, image_storage_path: path });
     } catch (err: any) {
       toast({ title: t('recipes.media.uploadFailed'), description: err?.message, variant: 'destructive' });
