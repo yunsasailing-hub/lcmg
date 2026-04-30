@@ -208,9 +208,9 @@ export function useSubmitChecklist() {
  * NEW uploads go to the unified `app-files` bucket using path:
  *   checklists/{branchCode}/{year}/{month}/{uuid}_{name}.{ext}
  *
- * IMPORTANT: existing photos remain in the legacy `checklist-photos`
- * bucket and continue to load from their stored URLs unchanged. Only
- * new uploads are written to `app-files`.
+ * IMPORTANT: existing photos remain in the legacy bucket and continue
+ * to load from their stored URLs unchanged. Only new uploads are
+ * written to `app-files`.
  *
  * `context` is optional so callers without instance metadata still
  * work; missing branch/date fall back to "UNK" and the current date.
@@ -231,10 +231,13 @@ export async function uploadChecklistPhoto(
   });
 
   // eslint-disable-next-line no-console
-  console.log('[checklist.upload]', {
+  console.log('[checklist.upload.fixed]', {
     bucket: result.bucket,
     path: result.path,
     url: result.publicUrl,
+    branch: context?.branchName ?? null,
+    year,
+    month,
   });
 
   return { url: result.publicUrl, path: result.path };
