@@ -291,7 +291,7 @@ export default function RecipeDetail() {
         description: form.description.trim() || null,
         internal_memo: form.internal_memo.trim() || null,
         use_as_ingredient: form.use_as_ingredient,
-        show_in_kitchen_production: form.show_in_kitchen_production,
+        show_in_kitchen_production: form.show_in_kitchen_production === true,
         // Keep legacy 'kind' satisfied (NOT NULL DEFAULT 'dish'); leave as-is when editing.
       };
       if (!isNew) payload.id = id;
