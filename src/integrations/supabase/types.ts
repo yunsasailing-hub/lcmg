@@ -1046,12 +1046,14 @@ export type Database = {
           before_photo_url: string | null
           completed_at: string | null
           cost_amount: number | null
+          cost_type: string
           created_at: string
           currency: string
           downtime_hours: number | null
           id: string
           issue_description: string | null
           parts_replaced: string | null
+          photos: string[]
           reported_at: string
           reported_by: string | null
           severity: Database["public"]["Enums"]["maintenance_repair_severity"]
@@ -1070,12 +1072,14 @@ export type Database = {
           before_photo_url?: string | null
           completed_at?: string | null
           cost_amount?: number | null
+          cost_type?: string
           created_at?: string
           currency?: string
           downtime_hours?: number | null
           id?: string
           issue_description?: string | null
           parts_replaced?: string | null
+          photos?: string[]
           reported_at?: string
           reported_by?: string | null
           severity?: Database["public"]["Enums"]["maintenance_repair_severity"]
@@ -1094,12 +1098,14 @@ export type Database = {
           before_photo_url?: string | null
           completed_at?: string | null
           cost_amount?: number | null
+          cost_type?: string
           created_at?: string
           currency?: string
           downtime_hours?: number | null
           id?: string
           issue_description?: string | null
           parts_replaced?: string | null
+          photos?: string[]
           reported_at?: string
           reported_by?: string | null
           severity?: Database["public"]["Enums"]["maintenance_repair_severity"]
@@ -2124,6 +2130,8 @@ export type Database = {
         | "In Progress"
         | "Resolved"
         | "Cancelled"
+        | "Done"
+        | "Archived"
       maintenance_schedule_frequency:
         | "daily"
         | "weekly"
@@ -2316,6 +2324,8 @@ export const Constants = {
         "In Progress",
         "Resolved",
         "Cancelled",
+        "Done",
+        "Archived",
       ],
       maintenance_schedule_frequency: [
         "daily",
