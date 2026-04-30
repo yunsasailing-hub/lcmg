@@ -476,7 +476,7 @@ export default function KitchenProduction() {
             <Button
               size="lg"
               onClick={() => save.mutate()}
-              disabled={save.isPending || items.length === 0}
+              disabled={save.isPending || items.length === 0 || (!!selectedItem && !recipeDepartment)}
             >
               <Save className="h-4 w-4" />
               {save.isPending ? t('common.saving') : t('common.save')}
