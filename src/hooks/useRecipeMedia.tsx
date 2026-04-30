@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToAppFilesBucket, type AppFilesModuleType } from '@/lib/appFilesStorage';
+import { APP_FILES_BUCKET } from '@/lib/appFilesStorage';
 
 export type RecipeMediaType = 'image' | 'video_link' | 'web_link' | 'file';
 
@@ -18,6 +19,20 @@ export interface RecipeMediaRow {
 }
 
 export const RECIPE_MEDIA_BUCKET = 'recipe-media';
+
+/**
+ * Determine which bucket a stored path belongs to.
+ * New uploads land under `recipes/...` in `app-files`; everything else is
+ * assumed legacy and lives in `recipe-media`.
+ */
+function bucketForPath(storagePath: string): string {
+  return storagePath.startsWith('recipes/') ? APP_FILES_BUCKET : RECIPE_MEDIA_BUCKET;
+}
+
+/** Remove a stored object from whichever bucket it actually lives in. */
+export async function removeRecipeStorageObject(storagePath: string): Promise<void> {
+  await supabase.storage.from(bucketForPath(storagePath)).remove([storagePath]).catch(() => {});
+}
 
 export function useRecipeMedia(recipeId: string | undefined) {
   return useQuery({
