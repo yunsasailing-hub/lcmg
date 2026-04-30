@@ -202,6 +202,11 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   };
 
   const handlePhoto = async (taskId: string) => {
+    // Resolve task title (preferred) and fall back to template name.
+    const task = tasks?.find(tt => (tt.template_task_id ?? tt.id) === taskId);
+    const taskTitle = (task as any)?.title?.trim?.() || null;
+    const templateTitle = (tpl?.title as string | undefined)?.trim?.() || null;
+    const readableName = taskTitle || templateTitle || null;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -254,6 +259,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           const { url, path } = await uploadChecklistPhoto(optimized!.file, user!.id, {
             branchName: (instance as any)?.branch?.name ?? null,
             scheduledDate: (instance as any)?.scheduled_date ?? null,
+            readableName,
           });
           logSaveStep({ step: 'uploadSuccess', url });
           upsert.mutate({
