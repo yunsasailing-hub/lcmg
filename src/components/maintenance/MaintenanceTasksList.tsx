@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, Trash2, Upload } from 'lucide-react';
 import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -200,6 +202,25 @@ function TaskCompletionDialog({
   const [uploading, setUploading] = useState(false);
   const [attempted, setAttempted] = useState(false);
 
+  // Advanced / Technical Details (all optional)
+  const initialAdv = task as any;
+  const [advOpen, setAdvOpen] = useState(false);
+  const [costAmount, setCostAmount] = useState<string>(
+    initialAdv.cost_amount != null ? String(initialAdv.cost_amount) : '',
+  );
+  const [costType, setCostType] = useState<'Internal' | 'External' | ''>(
+    (initialAdv.cost_type as 'Internal' | 'External' | null) ?? '',
+  );
+  const [externalCompany, setExternalCompany] = useState<string>(initialAdv.external_company ?? '');
+  const [externalContact, setExternalContact] = useState<string>(initialAdv.external_contact ?? '');
+  const [spareParts, setSpareParts] = useState<string>(initialAdv.spare_parts ?? '');
+  const [technicalNote, setTechnicalNote] = useState<string>(initialAdv.technical_note ?? '');
+  const [additionalPhotos, setAdditionalPhotos] = useState<string[]>(
+    Array.isArray(initialAdv.additional_photos) ? initialAdv.additional_photos : [],
+  );
+  const [uploadingExtra, setUploadingExtra] = useState(false);
+  const MAX_EXTRA_PHOTOS = 4;
+
   const isDone = task.status === 'Done';
   const noteMissing = task.note_required && !note.trim();
   const photoMissing = task.photo_required && !photoUrl;
@@ -221,6 +242,26 @@ function TaskCompletionDialog({
     }
   };
 
+  const handleUploadExtra = async (file: File) => {
+    if (additionalPhotos.length >= MAX_EXTRA_PHOTOS) {
+      toast.error(`Up to ${MAX_EXTRA_PHOTOS} additional photos allowed`);
+      return;
+    }
+    setUploadingExtra(true);
+    try {
+      const res = await uploadToAppFilesBucket(file, 'maintenance', {
+        branchName: task.asset_branch_name ?? undefined,
+        category: task.asset_department ?? undefined,
+        assetOrEquipment: task.asset_code ?? task.asset_name ?? undefined,
+      });
+      setAdditionalPhotos(prev => [...prev, res.publicUrl]);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Upload failed');
+    } finally {
+      setUploadingExtra(false);
+    }
+  };
+
   const handleComplete = async () => {
     setAttempted(true);
     if (noteMissing) {
@@ -236,7 +277,20 @@ function TaskCompletionDialog({
       return;
     }
     try {
-      await complete.mutateAsync({ id: task.id, note, photo_url: photoUrl, user_id: profile.user_id });
+      const costNum = costAmount.trim() === '' ? null : Number(costAmount);
+      await complete.mutateAsync({
+        id: task.id,
+        note,
+        photo_url: photoUrl,
+        user_id: profile.user_id,
+        cost_amount: costNum != null && !isNaN(costNum) ? costNum : null,
+        cost_type: costType || null,
+        external_company: externalCompany,
+        external_contact: externalContact,
+        spare_parts: spareParts,
+        technical_note: technicalNote,
+        additional_photos: additionalPhotos,
+      });
       toast.success('Maintenance task completed');
       onOpenChange(false);
     } catch (e: any) {
@@ -328,6 +382,101 @@ function TaskCompletionDialog({
               )}
             </div>
           )}
+
+          {/* Advanced / Technical Details (optional) */}
+          <Collapsible open={advOpen} onOpenChange={setAdvOpen} className="rounded-md border">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition"
+              >
+                <span>Advanced / Technical Details (optional)</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${advOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-3 pb-3 pt-1 space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <Label className="text-xs">Cost amount</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={costAmount}
+                    disabled={isDone}
+                    onChange={e => setCostAmount(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Cost type</Label>
+                  <Select
+                    value={costType || undefined}
+                    onValueChange={v => setCostType(v as 'Internal' | 'External')}
+                    disabled={isDone}
+                  >
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Internal">Internal</SelectItem>
+                      <SelectItem value="External">External</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">External company</Label>
+                  <Input value={externalCompany} disabled={isDone} onChange={e => setExternalCompany(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">External contact</Label>
+                  <Input value={externalContact} disabled={isDone} onChange={e => setExternalContact(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Spare parts used</Label>
+                <Input value={spareParts} disabled={isDone} onChange={e => setSpareParts(e.target.value)} placeholder="e.g. 1x filter, 2x gasket" />
+              </div>
+              <div>
+                <Label className="text-xs">Technical note</Label>
+                <Textarea rows={2} value={technicalNote} disabled={isDone} onChange={e => setTechnicalNote(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Additional photos (up to {MAX_EXTRA_PHOTOS})</Label>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {additionalPhotos.map((url, i) => (
+                    <div key={`${url}-${i}`} className="relative h-16 w-16 rounded border bg-muted/40 overflow-hidden">
+                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                      <img src={url} className="h-full w-full object-cover" />
+                      {!isDone && (
+                        <button
+                          type="button"
+                          onClick={() => setAdditionalPhotos(prev => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-0.5 right-0.5 rounded-full bg-background/90 border p-0.5 hover:bg-destructive hover:text-destructive-foreground transition"
+                          aria-label="Remove"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {!isDone && additionalPhotos.length < MAX_EXTRA_PHOTOS && (
+                    <label className="h-16 w-16 rounded border border-dashed flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/40 cursor-pointer transition">
+                      {uploadingExtra
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <><Upload className="h-4 w-4" /><span className="text-[9px] mt-0.5">Add</span></>}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        hidden
+                        onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void handleUploadExtra(f); }}
+                      />
+                    </label>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">{additionalPhotos.length}/{MAX_EXTRA_PHOTOS}</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         <DialogFooter>
