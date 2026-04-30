@@ -156,6 +156,11 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
                     {r.asset_code ? `${r.asset_code} — ` : ''}{r.asset_name ?? '—'}
                   </div>
                   <div className="text-sm font-semibold truncate mt-0.5">{r.title}</div>
+                  {r.reported_by_name && (
+                    <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                      Reported by: {r.reported_by_name}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <Badge variant="outline" className={STATUS_BADGE[r.status]}>{r.status}</Badge>
