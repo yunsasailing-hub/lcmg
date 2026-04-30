@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Loader2, Search, Plus, Pencil, Archive, Wrench, Camera, User, Calendar, Banknote } from 'lucide-react';
+import { Loader2, Search, Plus, Pencil, Archive, Wrench, User, Calendar, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
