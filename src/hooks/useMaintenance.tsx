@@ -6,10 +6,13 @@ export type MaintenanceAsset = Database['public']['Tables']['maintenance_assets'
 export type MaintenanceAssetInsert = Database['public']['Tables']['maintenance_assets']['Insert'];
 export type MaintenanceAssetUpdate = Database['public']['Tables']['maintenance_assets']['Update'];
 export type MaintenanceAssetType = Database['public']['Tables']['maintenance_asset_types']['Row'];
+export type MaintenanceAssetTypeInsert = Database['public']['Tables']['maintenance_asset_types']['Insert'];
+export type MaintenanceAssetTypeUpdate = Database['public']['Tables']['maintenance_asset_types']['Update'];
 export type MaintenanceStatus = Database['public']['Enums']['maintenance_asset_status'];
 
 const ASSETS_KEY = ['maintenance_assets'];
 const TYPES_KEY = ['maintenance_asset_types'];
+const TYPES_ALL_KEY = ['maintenance_asset_types', 'all'];
 
 export function useMaintenanceAssetTypes() {
   return useQuery({
@@ -23,6 +26,88 @@ export function useMaintenanceAssetTypes() {
         .order('name_en');
       if (error) throw error;
       return data as MaintenanceAssetType[];
+    },
+  });
+}
+
+export function useMaintenanceAssetTypesAll() {
+  return useQuery({
+    queryKey: TYPES_ALL_KEY,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('maintenance_asset_types')
+        .select('*')
+        .order('sort_order')
+        .order('name_en');
+      if (error) throw error;
+      return data as MaintenanceAssetType[];
+    },
+  });
+}
+
+export function useUpsertMaintenanceAssetType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: MaintenanceAssetTypeInsert & { id?: string }) => {
+      const { id, ...rest } = payload;
+      if (id) {
+        const { data, error } = await supabase
+          .from('maintenance_asset_types')
+          .update(rest as MaintenanceAssetTypeUpdate)
+          .eq('id', id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase
+        .from('maintenance_asset_types')
+        .insert(rest as MaintenanceAssetTypeInsert)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TYPES_KEY });
+      qc.invalidateQueries({ queryKey: TYPES_ALL_KEY });
+    },
+  });
+}
+
+export function useToggleMaintenanceAssetType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { data, error } = await supabase
+        .from('maintenance_asset_types')
+        .update({ is_active })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TYPES_KEY });
+      qc.invalidateQueries({ queryKey: TYPES_ALL_KEY });
+    },
+  });
+}
+
+export function useMaintenanceAssetTypeUsage() {
+  return useQuery({
+    queryKey: ['maintenance_asset_type_usage'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('maintenance_assets')
+        .select('asset_type_id');
+      if (error) throw error;
+      const map = new Map<string, number>();
+      (data ?? []).forEach((r: any) => {
+        if (r.asset_type_id) map.set(r.asset_type_id, (map.get(r.asset_type_id) ?? 0) + 1);
+      });
+      return map;
     },
   });
 }
