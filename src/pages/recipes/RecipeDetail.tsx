@@ -59,6 +59,7 @@ interface FormState {
   description: string;
   internal_memo: string;
   use_as_ingredient: boolean;
+  show_in_kitchen_production: boolean;
 }
 
 const EMPTY: FormState = {
@@ -79,6 +80,7 @@ const EMPTY: FormState = {
   description: '',
   internal_memo: '',
   use_as_ingredient: false,
+  show_in_kitchen_production: false,
 };
 
 /** Compact info chip used in the consultation header strip. Hides itself when value is empty. */
@@ -163,6 +165,7 @@ export default function RecipeDetail() {
         description: recipe.description ?? '',
         internal_memo: recipe.internal_memo ?? '',
         use_as_ingredient: (recipe as any).use_as_ingredient ?? false,
+        show_in_kitchen_production: (recipe as any).show_in_kitchen_production === true,
       });
     }
   }, [recipe, isNew]);
@@ -288,6 +291,7 @@ export default function RecipeDetail() {
         description: form.description.trim() || null,
         internal_memo: form.internal_memo.trim() || null,
         use_as_ingredient: form.use_as_ingredient,
+        show_in_kitchen_production: form.show_in_kitchen_production,
         // Keep legacy 'kind' satisfied (NOT NULL DEFAULT 'dish'); leave as-is when editing.
       };
       if (!isNew) payload.id = id;
