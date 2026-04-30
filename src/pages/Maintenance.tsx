@@ -477,14 +477,26 @@ function AssetDetail({ asset, onBack, canEdit, canCreate, onArchiveToggle, onEdi
         icon={<CalendarClock className="h-4 w-4" />}
       >
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {t('maintenance.sections.scheduledPlaceholder',
-              'Scheduled maintenance will be managed here in the next step.')}
-          </p>
-          <Button size="sm" variant="outline" disabled>
-            <Plus className="h-4 w-4 mr-1" />
-            {t('maintenance.actions.addSchedule', 'Add Schedule')}
-          </Button>
+          {canCreate && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setScheduleOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t('maintenance.actions.addSchedule', 'Add Schedule')}
+              </Button>
+            </div>
+          )}
+          <SchedulesList
+            filterByAssetId={asset.id}
+            presetAssetId={asset.id}
+            hideHeaderAdd
+          />
+          {scheduleOpen && (
+            <ScheduleFormDialog
+              open={scheduleOpen}
+              onOpenChange={setScheduleOpen}
+              presetAssetId={asset.id}
+            />
+          )}
         </div>
       </DetailSection>
 
