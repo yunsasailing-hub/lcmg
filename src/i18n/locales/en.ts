@@ -961,6 +961,7 @@ const en = {
       unitMissing: 'unit missing',
       linkedRecipeCode: 'Linked recipe code',
       deptMissing: 'department missing',
+      selectedItem: 'Selected item',
     },
     types: {
       MENU_ITEM: 'Menu item',
