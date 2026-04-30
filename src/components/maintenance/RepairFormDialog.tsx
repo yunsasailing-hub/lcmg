@@ -187,6 +187,16 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
                 </p>
               ) : null;
             })()}
+            {initial && (initial.reported_by_name || initial.reported_at) && (
+              <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
+                {initial.reported_by_name && (
+                  <div>Reported by: {initial.reported_by_name}</div>
+                )}
+                {initial.reported_at && (
+                  <div>Reported at: {new Date(initial.reported_at).toLocaleString()}</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="sm:col-span-2">
