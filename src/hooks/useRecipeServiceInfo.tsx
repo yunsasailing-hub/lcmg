@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { RECIPE_MEDIA_BUCKET, removeRecipeStorageObject } from '@/hooks/useRecipeMedia';
+import { removeRecipeStorageObject } from '@/hooks/useRecipeMedia';
 import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 
 export interface RecipeServiceInfoRow {
