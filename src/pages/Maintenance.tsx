@@ -402,15 +402,17 @@ function AssetFormDialog({
 }
 
 /* -------------------------- Detail View -------------------------- */
-function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
+function AssetDetail({ asset, onBack, canEdit, canCreate, onArchiveToggle, onEdit }: {
   asset: EnrichedMaintenanceAsset;
   onBack: () => void;
   canEdit: boolean;
+  canCreate: boolean;
   onArchiveToggle: () => void;
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
   const isArchived = asset.status === 'archived';
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   return (
     <div className="space-y-3 sm:space-y-4">
