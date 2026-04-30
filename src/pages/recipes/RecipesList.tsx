@@ -317,7 +317,7 @@ export default function RecipesList({ kind }: RecipesListProps = {}) {
                   </TableCell>
                   <TableCell>
                     <Badge variant={r.show_in_kitchen_production === true ? 'default' : 'secondary'}>
-                      {r.show_in_kitchen_production === true ? t('recipes.list.activeYes') : t('recipes.list.activeNot')}
+                      {r.show_in_kitchen_production === true ? t('recipes.list.productionYes') : t('recipes.list.productionNo')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(r.updated_at)}</TableCell>
