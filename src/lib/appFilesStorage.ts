@@ -140,7 +140,7 @@ export interface BuildStoragePathOptions {
  *
  *   documents/{branchCode}/{documentType}/
  *   checklists/{branchCode}/{year}/{month}/
- *   maintenance/{branchCode}/{category}/{assetOrEquipment}/
+ *   maintenance/{branchCode}/{category}/
  *   recipes/images/
  *   recipes/videos/
  *   recipes/step-photos/
@@ -167,7 +167,10 @@ export function buildStoragePath(
       return `checklists/${branchCode}/${year}/${month}`;
     }
     case 'maintenance':
-      return `maintenance/${branchCode}/${slug(options.category, 'general')}/${slug(options.assetOrEquipment, 'unassigned')}`;
+      // Asset/equipment name is intentionally NOT part of the folder path —
+      // callers should encode it into the filename instead. This keeps the
+      // folder tree shallow and grouped by category only.
+      return `maintenance/${branchCode}/${slug(options.category, 'general')}`;
     case 'recipes-images':
       return 'recipes/images';
     case 'recipes-videos':
