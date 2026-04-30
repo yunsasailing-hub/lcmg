@@ -72,11 +72,11 @@ export default function KitchenProduction() {
   const { data: items = [], isLoading: itemsLoading } = useQuery({
     queryKey: ['kitchen-production-items'],
     queryFn: async (): Promise<ProductionItem[]> => {
-      const { data, error } = await supabase
-        .from('recipes')
-        .select('id, code, name_en, yield_unit_id, is_active, show_in_kitchen_production' as any)
+      const { data, error } = await (supabase
+        .from('recipes') as any)
+        .select('id, code, name_en, yield_unit_id, is_active, show_in_kitchen_production')
         .eq('is_active', true)
-        .eq('show_in_kitchen_production' as any, true)
+        .eq('show_in_kitchen_production', true)
         .order('code', { ascending: true });
       if (error) throw error;
       return (data ?? [])
