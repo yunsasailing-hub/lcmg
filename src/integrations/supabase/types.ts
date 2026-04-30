@@ -1105,6 +1105,60 @@ export type Database = {
           },
         ]
       }
+      maintenance_tasks: {
+        Row: {
+          asset_id: string
+          assigned_department: Database["public"]["Enums"]["department"] | null
+          assigned_staff_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          due_date: string
+          due_time: string
+          id: string
+          note: string | null
+          photo_url: string | null
+          schedule_template_id: string
+          status: Database["public"]["Enums"]["maintenance_task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          asset_id: string
+          assigned_department?: Database["public"]["Enums"]["department"] | null
+          assigned_staff_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          due_date: string
+          due_time?: string
+          id?: string
+          note?: string | null
+          photo_url?: string | null
+          schedule_template_id: string
+          status?: Database["public"]["Enums"]["maintenance_task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          asset_id?: string
+          assigned_department?: Database["public"]["Enums"]["department"] | null
+          assigned_staff_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          due_date?: string
+          due_time?: string
+          id?: string
+          note?: string | null
+          photo_url?: string | null
+          schedule_template_id?: string
+          status?: Database["public"]["Enums"]["maintenance_task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           checklist_notices_enabled: boolean
@@ -1996,6 +2050,7 @@ export type Database = {
         | "every_90_days"
         | "custom_interval"
       maintenance_schedule_status: "active" | "inactive" | "archived"
+      maintenance_task_status: "Pending" | "Done" | "Overdue"
       note_requirement: "none" | "optional" | "mandatory"
       notification_priority: "normal" | "high" | "critical"
       notification_status: "unread" | "read" | "archived"
@@ -2182,6 +2237,7 @@ export const Constants = {
         "custom_interval",
       ],
       maintenance_schedule_status: ["active", "inactive", "archived"],
+      maintenance_task_status: ["Pending", "Done", "Overdue"],
       note_requirement: ["none", "optional", "mandatory"],
       notification_priority: ["normal", "high", "critical"],
       notification_status: ["unread", "read", "archived"],
