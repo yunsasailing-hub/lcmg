@@ -235,6 +235,13 @@ export interface CompleteTaskPayload {
   note?: string | null;
   photo_url?: string | null;
   user_id: string;
+  cost_amount?: number | null;
+  cost_type?: 'Internal' | 'External' | null;
+  external_company?: string | null;
+  external_contact?: string | null;
+  spare_parts?: string | null;
+  technical_note?: string | null;
+  additional_photos?: string[] | null;
 }
 
 export function useCompleteMaintenanceTask() {
@@ -249,6 +256,13 @@ export function useCompleteMaintenanceTask() {
           photo_url: p.photo_url || null,
           completed_by: p.user_id,
           completed_at: new Date().toISOString(),
+          cost_amount: p.cost_amount ?? null,
+          cost_type: p.cost_type ?? null,
+          external_company: p.external_company?.trim() || null,
+          external_contact: p.external_contact?.trim() || null,
+          spare_parts: p.spare_parts?.trim() || null,
+          technical_note: p.technical_note?.trim() || null,
+          additional_photos: p.additional_photos ?? [],
         })
         .eq('id', p.id)
         .select()
