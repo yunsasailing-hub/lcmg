@@ -18,6 +18,7 @@ import {
   useRecipeMedia, useAddRecipeMedia, useDeleteRecipeMedia, useUpdateRecipeMedia,
   uploadRecipeMediaFile, type RecipeMediaRow,
 } from '@/hooks/useRecipeMedia';
+import { useRecipe } from '@/hooks/useRecipes';
 import { toast } from '@/hooks/use-toast';
 import VideoPreview from './VideoPreview';
 import { normalizeStoredVideoUrl } from '@/lib/videoEmbed';
@@ -35,6 +36,7 @@ const isValidUrl = (s: string) => {
 export default function RecipeMediaTab({ recipeId, canManage }: Props) {
   const { t } = useTranslation();
   const { data: media = [], isLoading } = useRecipeMedia(recipeId);
+  const { data: recipe } = useRecipe(recipeId);
   const add = useAddRecipeMedia();
   const update = useUpdateRecipeMedia();
   const del = useDeleteRecipeMedia();
@@ -105,7 +107,12 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
     setUploading(true);
     try {
       // Main recipe image -> recipes/images/ in app-files bucket.
-      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, 'images');
+      const { path, publicUrl } = await uploadRecipeMediaFile(
+        recipeId,
+        file,
+        'images',
+        recipe?.name_en ?? null,
+      );
       await add.mutateAsync({
         recipe_id: recipeId,
         media_type: 'image',
@@ -132,7 +139,16 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
       // Generic file uploads: route videos to recipes/videos/, anything
       // else falls back to recipes/images/ (no dedicated docs folder yet).
       const sub = file.type.startsWith('video/') ? 'videos' : 'images';
-      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, sub);
+      // Build readable suffix:
+      //   videos    -> "{recipe-name}-video-{NN}"
+      //   non-video -> "{recipe-name}"
+      const baseName = recipe?.name_en ?? null;
+      let readableName: string | null = baseName;
+      if (sub === 'videos' && baseName) {
+        const videoIndex = String(files.length + 1).padStart(2, '0');
+        readableName = `${baseName}-video-${videoIndex}`;
+      }
+      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, sub, readableName);
       await add.mutateAsync({
         recipe_id: recipeId,
         media_type: 'file',
