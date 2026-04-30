@@ -958,6 +958,7 @@ const vi: Translations = {
       itemName: 'Tên món',
       staff: 'Nhân viên',
       unitMissing: 'thiếu đơn vị',
+      linkedRecipeCode: 'Mã công thức liên kết',
     },
     types: {
       MENU_ITEM: 'Món thực đơn',
@@ -971,6 +972,7 @@ const vi: Translations = {
       anyBranch: 'Tất cả chi nhánh',
       anyDept: 'Tất cả bộ phận',
       searchItem: 'Tìm mã hoặc tên món',
+      context: 'Chi nhánh / Bộ phận',
     },
     errors: {
       dateRequired: 'Bắt buộc nhập ngày sản xuất.',
@@ -985,6 +987,14 @@ const vi: Translations = {
     debug: {
       enabledCount: 'Số công thức sản xuất đã bật tìm thấy: {{count}}',
     },
+    warnings: {
+      unitMissing: 'Thiếu đơn vị — vui lòng thiết lập trong công thức',
+    },
+    editTitle: 'Sửa mục sản xuất',
+    deleteTitle: 'Xoá mục sản xuất?',
+    deleteConfirm: 'Hành động này sẽ xoá vĩnh viễn mục {{name}} ({{qty}}). Không thể hoàn tác.',
+    updateSaved: 'Đã cập nhật',
+    deleted: 'Đã xoá',
   },
 };
 
