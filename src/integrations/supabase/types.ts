@@ -1037,6 +1037,81 @@ export type Database = {
           },
         ]
       }
+      maintenance_repairs: {
+        Row: {
+          action_taken: string | null
+          after_photo_url: string | null
+          asset_id: string
+          assigned_to: string | null
+          before_photo_url: string | null
+          completed_at: string | null
+          cost_amount: number | null
+          created_at: string
+          currency: string
+          downtime_hours: number | null
+          id: string
+          issue_description: string | null
+          parts_replaced: string | null
+          reported_at: string
+          reported_by: string | null
+          severity: Database["public"]["Enums"]["maintenance_repair_severity"]
+          status: Database["public"]["Enums"]["maintenance_repair_status"]
+          technician_contact: string | null
+          technician_name: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          after_photo_url?: string | null
+          asset_id: string
+          assigned_to?: string | null
+          before_photo_url?: string | null
+          completed_at?: string | null
+          cost_amount?: number | null
+          created_at?: string
+          currency?: string
+          downtime_hours?: number | null
+          id?: string
+          issue_description?: string | null
+          parts_replaced?: string | null
+          reported_at?: string
+          reported_by?: string | null
+          severity?: Database["public"]["Enums"]["maintenance_repair_severity"]
+          status?: Database["public"]["Enums"]["maintenance_repair_status"]
+          technician_contact?: string | null
+          technician_name?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          after_photo_url?: string | null
+          asset_id?: string
+          assigned_to?: string | null
+          before_photo_url?: string | null
+          completed_at?: string | null
+          cost_amount?: number | null
+          created_at?: string
+          currency?: string
+          downtime_hours?: number | null
+          id?: string
+          issue_description?: string | null
+          parts_replaced?: string | null
+          reported_at?: string
+          reported_by?: string | null
+          severity?: Database["public"]["Enums"]["maintenance_repair_severity"]
+          status?: Database["public"]["Enums"]["maintenance_repair_status"]
+          technician_contact?: string | null
+          technician_name?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       maintenance_schedule_templates: {
         Row: {
           archived_at: string | null
@@ -2043,6 +2118,12 @@ export type Database = {
         | "bakery"
       ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
       maintenance_asset_status: "active" | "inactive" | "archived"
+      maintenance_repair_severity: "Low" | "Medium" | "High" | "Critical"
+      maintenance_repair_status:
+        | "Reported"
+        | "In Progress"
+        | "Resolved"
+        | "Cancelled"
       maintenance_schedule_frequency:
         | "daily"
         | "weekly"
@@ -2229,6 +2310,13 @@ export const Constants = {
       ],
       ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
       maintenance_asset_status: ["active", "inactive", "archived"],
+      maintenance_repair_severity: ["Low", "Medium", "High", "Critical"],
+      maintenance_repair_status: [
+        "Reported",
+        "In Progress",
+        "Resolved",
+        "Cancelled",
+      ],
       maintenance_schedule_frequency: [
         "daily",
         "weekly",
