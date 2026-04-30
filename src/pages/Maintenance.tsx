@@ -24,6 +24,8 @@ import AssetTypeSettings from '@/components/maintenance/AssetTypeSettings';
 import SchedulesList from '@/components/maintenance/SchedulesList';
 import ScheduleFormDialog from '@/components/maintenance/ScheduleFormDialog';
 import MaintenanceTasksList from '@/components/maintenance/MaintenanceTasksList';
+import RepairsList from '@/components/maintenance/RepairsList';
+import RepairFormDialog from '@/components/maintenance/RepairFormDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -414,6 +416,9 @@ function AssetDetail({ asset, onBack, canEdit, canCreate, onArchiveToggle, onEdi
   const { t } = useTranslation();
   const isArchived = asset.status === 'archived';
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [repairOpen, setRepairOpen] = useState(false);
+  const { hasRole } = useAuth();
+  const canManageRepairs = hasRole('owner') || hasRole('manager');
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -516,9 +521,27 @@ function AssetDetail({ asset, onBack, canEdit, canCreate, onArchiveToggle, onEdi
         title={t('maintenance.sections.repairs', 'Repair History')}
         icon={<ShieldAlert className="h-4 w-4" />}
       >
-        <p className="text-sm text-muted-foreground">
-          {t('maintenance.sections.repairsEmpty', 'No repair records yet.')}
-        </p>
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setRepairOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              {canManageRepairs ? 'New Repair' : 'Report Issue'}
+            </Button>
+          </div>
+          <RepairsList
+            filterByAssetId={asset.id}
+            presetAssetId={asset.id}
+            hideHeaderAdd
+          />
+          {repairOpen && (
+            <RepairFormDialog
+              open={repairOpen}
+              onOpenChange={setRepairOpen}
+              presetAssetId={asset.id}
+              reportOnly={!canManageRepairs}
+            />
+          )}
+        </div>
       </DetailSection>
 
       {/* Documents / Photos */}
@@ -814,6 +837,7 @@ export default function Maintenance() {
             <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>
             <TabsTrigger value="schedules">{t('maintenance.tabs.schedules', 'Schedules')}</TabsTrigger>
             <TabsTrigger value="tasks">{t('maintenance.tabs.tasks', 'Tasks')}</TabsTrigger>
+            <TabsTrigger value="repairs">{t('maintenance.tabs.repairs', 'Repairs')}</TabsTrigger>
             {isOwner && (
               <TabsTrigger value="settings">{t('maintenance.tabs.settings')}</TabsTrigger>
             )}
@@ -834,6 +858,9 @@ export default function Maintenance() {
           </TabsContent>
           <TabsContent value="tasks">
             <MaintenanceTasksList />
+          </TabsContent>
+          <TabsContent value="repairs">
+            <RepairsList />
           </TabsContent>
           {isOwner && (
             <TabsContent value="settings">
