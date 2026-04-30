@@ -1777,6 +1777,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      maintenance_asset_type_usage_count: {
+        Args: { _type_id: string }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "owner" | "manager" | "staff"

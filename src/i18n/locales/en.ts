@@ -1007,7 +1007,7 @@ const en = {
     editNotPermitted: 'You can only edit your own records from today',
   },
   maintenance: {
-    tabs: { dashboard: 'Dashboard', list: 'Equipment & Areas' },
+    tabs: { dashboard: 'Dashboard', list: 'Equipment & Areas', settings: 'Settings' },
     dashboard: {
       activeTotal: 'Active Equipment / Areas',
       archivedTotal: 'Archived',
@@ -1060,6 +1060,33 @@ const en = {
       repairs: 'Repair History',
       photos: 'Photos / Documents',
       comingSoon: 'Coming in a future phase.',
+    },
+    settings: {
+      title: 'Maintenance Settings',
+      types: {
+        title: 'Asset Types',
+        description: 'Manage the list of equipment / area types used across the Maintenance module.',
+        addNew: 'Add Type',
+        newTitle: 'New Asset Type',
+        editTitle: 'Edit Asset Type',
+        empty: 'No asset types yet.',
+        usedBy_one: 'Used by {{count}} item',
+        usedBy_other: 'Used by {{count}} items',
+        usedBy: 'Used by {{count}} items',
+        notUsed: 'Not in use',
+        deleteHint: 'Types in use cannot be deleted. Deactivate them instead — they stay linked to existing equipment but no longer appear when adding new equipment.',
+        cols: { name: 'Name', usage: 'Usage', status: 'Status', createdAt: 'Created at' },
+        status: { active: 'Active', inactive: 'Inactive' },
+        actions: { activate: 'Activate', deactivate: 'Deactivate' },
+        fields: { name: 'Name (English)', nameVi: 'Name (Vietnamese)' },
+        errors: { nameRequired: 'Name is required' },
+        toasts: {
+          created: 'Asset type created',
+          updated: 'Asset type updated',
+          activated: 'Asset type activated',
+          deactivated: 'Asset type deactivated',
+        },
+      },
     },
   },
 };

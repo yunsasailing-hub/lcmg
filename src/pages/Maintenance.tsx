@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import AssetTypeSettings from '@/components/maintenance/AssetTypeSettings';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -518,6 +519,9 @@ export default function Maintenance() {
           <TabsList>
             <TabsTrigger value="dashboard">{t('maintenance.tabs.dashboard')}</TabsTrigger>
             <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>
+            {isOwner && (
+              <TabsTrigger value="settings">{t('maintenance.tabs.settings')}</TabsTrigger>
+            )}
           </TabsList>
           <TabsContent value="dashboard"><MaintenanceDashboard assets={assets} /></TabsContent>
           <TabsContent value="list">
@@ -530,6 +534,11 @@ export default function Maintenance() {
               isOwner={isOwner}
             />
           </TabsContent>
+          {isOwner && (
+            <TabsContent value="settings">
+              <AssetTypeSettings canManage={isOwner} />
+            </TabsContent>
+          )}
         </Tabs>
       )}
 
