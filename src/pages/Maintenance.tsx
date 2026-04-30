@@ -464,22 +464,7 @@ function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
         title={t('maintenance.sections.basicInfo', 'Basic Information')}
         defaultOpen
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-          <Info label={t('maintenance.fields.location')} value={asset.location} />
-          <Info label={t('maintenance.fields.brand')} value={asset.brand} />
-          <Info label={t('maintenance.fields.model')} value={asset.model} />
-          <Info label={t('maintenance.fields.serialNumber')} value={asset.serial_number} />
-          <Info label={t('maintenance.fields.purchaseDate')} value={fmtDate(asset.purchase_date)} />
-          <Info label={t('maintenance.fields.installationDate')} value={fmtDate(asset.installation_date)} />
-          <Info label={t('maintenance.fields.warrantyDate')} value={fmtDate(asset.warranty_expiry_date)} />
-          <Info label={t('maintenance.fields.supplier')} value={asset.supplier_vendor} />
-          <Info label={t('maintenance.fields.technicianContact')} value={asset.technician_contact} />
-          {asset.notes && (
-            <div className="sm:col-span-2">
-              <Info label={t('maintenance.fields.notes')} value={<span className="whitespace-pre-wrap">{asset.notes}</span>} />
-            </div>
-          )}
-        </div>
+        <BasicInfoGrid asset={asset} />
       </DetailSection>
 
       {/* Scheduled Maintenance — placeholder */}
