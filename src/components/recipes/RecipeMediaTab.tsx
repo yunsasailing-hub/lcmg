@@ -104,7 +104,8 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
     if (!file) return;
     setUploading(true);
     try {
-      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file);
+      // Main recipe image -> recipes/images/ in app-files bucket.
+      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, 'images');
       await add.mutateAsync({
         recipe_id: recipeId,
         media_type: 'image',
@@ -128,7 +129,10 @@ export default function RecipeMediaTab({ recipeId, canManage }: Props) {
     if (!file) return;
     setUploading(true);
     try {
-      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file);
+      // Generic file uploads: route videos to recipes/videos/, anything
+      // else falls back to recipes/images/ (no dedicated docs folder yet).
+      const sub = file.type.startsWith('video/') ? 'videos' : 'images';
+      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, sub);
       await add.mutateAsync({
         recipe_id: recipeId,
         media_type: 'file',
