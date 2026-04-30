@@ -33,6 +33,7 @@ import { uploadToAppFilesBucket, APP_FILES_BUCKET } from '@/lib/appFilesStorage'
 import { optimizeChecklistImage } from '@/lib/imageCompression';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, Trash2, Image as ImageIcon, ChevronDown, CalendarClock, History, ShieldAlert, FileImage } from 'lucide-react';
+import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 
 type Department = Database['public']['Enums']['department'];
 const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
@@ -437,19 +438,23 @@ function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
             <div className="min-w-0">
               <div className="text-xs font-mono text-muted-foreground">{asset.code}</div>
               <CardTitle className="text-xl sm:text-2xl mt-1 break-words">{asset.name}</CardTitle>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                {asset.branch_name && (
-                  <Badge variant="secondary" className="font-normal">{asset.branch_name}</Badge>
-                )}
-                <Badge variant="secondary" className="font-normal capitalize">{asset.department}</Badge>
-                {asset.type_name_en && (
-                  <Badge variant="secondary" className="font-normal">{asset.type_name_en}</Badge>
-                )}
-              </div>
+              {(asset.branch_name || asset.department) && (
+                <div className="mt-1.5 text-xs text-muted-foreground">
+                  {asset.branch_name ?? '—'}
+                  {asset.department ? <> · <span className="capitalize">{asset.department}</span></> : null}
+                </div>
+              )}
             </div>
-            <Badge variant="outline" className={STATUS_BADGE[asset.status]}>
-              {t(`maintenance.status.${asset.status}`)}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+              {asset.type_name_en && (
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                  {asset.type_name_en}
+                </Badge>
+              )}
+              <Badge variant="outline" className={STATUS_BADGE[asset.status]}>
+                {t(`maintenance.status.${asset.status}`)}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -459,22 +464,7 @@ function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
         title={t('maintenance.sections.basicInfo', 'Basic Information')}
         defaultOpen
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-          <Info label={t('maintenance.fields.location')} value={asset.location} />
-          <Info label={t('maintenance.fields.brand')} value={asset.brand} />
-          <Info label={t('maintenance.fields.model')} value={asset.model} />
-          <Info label={t('maintenance.fields.serialNumber')} value={asset.serial_number} />
-          <Info label={t('maintenance.fields.purchaseDate')} value={fmtDate(asset.purchase_date)} />
-          <Info label={t('maintenance.fields.installationDate')} value={fmtDate(asset.installation_date)} />
-          <Info label={t('maintenance.fields.warrantyDate')} value={fmtDate(asset.warranty_expiry_date)} />
-          <Info label={t('maintenance.fields.supplier')} value={asset.supplier_vendor} />
-          <Info label={t('maintenance.fields.technicianContact')} value={asset.technician_contact} />
-          {asset.notes && (
-            <div className="sm:col-span-2">
-              <Info label={t('maintenance.fields.notes')} value={<span className="whitespace-pre-wrap">{asset.notes}</span>} />
-            </div>
-          )}
-        </div>
+        <BasicInfoGrid asset={asset} />
       </DetailSection>
 
       {/* Scheduled Maintenance — placeholder */}
@@ -521,11 +511,11 @@ function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
       >
         {asset.photo_url ? (
           <div className="space-y-2">
-            <div className="rounded-md overflow-hidden border bg-muted/30 inline-block max-w-full">
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <img
-                src={asset.photo_url}
-                className="max-h-64 w-auto object-contain"
+            <div className="max-w-md">
+              <ChecklistPhotoPreview
+                imageUrl={asset.photo_url}
+                altText={asset.name}
+                className="[&_img]:max-h-[340px] [&_img]:md:max-h-[380px]"
               />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -562,10 +552,10 @@ function DetailSection({
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-accent/40 transition-colors"
+            className="w-full flex items-center justify-between gap-2 px-4 py-3.5 text-left hover:bg-accent/40 transition-colors"
           >
-            <span className="flex items-center gap-2 text-sm font-medium">
-              {icon}
+            <span className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
+              {icon ? <span className="text-muted-foreground">{icon}</span> : null}
               {title}
             </span>
             <ChevronDown
@@ -574,7 +564,7 @@ function DetailSection({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="px-4 pb-4 pt-1 border-t">{children}</div>
+          <div className="px-4 pb-4 pt-3 border-t">{children}</div>
         </CollapsibleContent>
       </Collapsible>
     </Card>
@@ -586,6 +576,43 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
     <div>
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-0.5">{value || <span className="text-muted-foreground">—</span>}</div>
+    </div>
+  );
+}
+
+function BasicInfoGrid({ asset }: { asset: EnrichedMaintenanceAsset }) {
+  const { t } = useTranslation();
+  const rows: Array<{ label: string; value: React.ReactNode }> = [];
+  const push = (label: string, value: any) => {
+    if (value === null || value === undefined) return;
+    if (typeof value === 'string' && value.trim() === '') return;
+    rows.push({ label, value });
+  };
+  push(t('maintenance.fields.location'), asset.location);
+  push(t('maintenance.fields.brand'), asset.brand);
+  push(t('maintenance.fields.model'), asset.model);
+  push(t('maintenance.fields.serialNumber'), asset.serial_number);
+  if (asset.purchase_date) push(t('maintenance.fields.purchaseDate'), fmtDate(asset.purchase_date));
+  if (asset.installation_date) push(t('maintenance.fields.installationDate'), fmtDate(asset.installation_date));
+  if (asset.warranty_expiry_date) push(t('maintenance.fields.warrantyDate'), fmtDate(asset.warranty_expiry_date));
+  push(t('maintenance.fields.supplier'), asset.supplier_vendor);
+  push(t('maintenance.fields.technicianContact'), asset.technician_contact);
+
+  if (rows.length === 0 && !asset.notes) {
+    return <p className="text-sm text-muted-foreground">—</p>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+      {rows.map(r => <Info key={r.label} label={r.label} value={r.value} />)}
+      {asset.notes && (
+        <div className="sm:col-span-2">
+          <Info
+            label={t('maintenance.fields.notes')}
+            value={<span className="whitespace-pre-wrap">{asset.notes}</span>}
+          />
+        </div>
+      )}
     </div>
   );
 }
