@@ -198,7 +198,7 @@ export function useDeleteRecipeMedia() {
   return useMutation({
     mutationFn: async (input: { id: string; recipe_id: string; storage_path?: string | null }) => {
       if (input.storage_path) {
-        await supabase.storage.from(RECIPE_MEDIA_BUCKET).remove([input.storage_path]).catch(() => {});
+        await removeRecipeStorageObject(input.storage_path);
       }
       const { error } = await (supabase as any)
         .from('recipe_media').delete().eq('id', input.id);
