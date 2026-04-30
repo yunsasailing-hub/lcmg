@@ -963,6 +963,7 @@ const vi: Translations = {
       unitMissing: 'thiếu đơn vị',
       linkedRecipeCode: 'Mã công thức liên kết',
       deptMissing: 'thiếu bộ phận',
+      selectedItem: 'Món đã chọn',
     },
     types: {
       MENU_ITEM: 'Món thực đơn',
