@@ -511,11 +511,11 @@ function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
       >
         {asset.photo_url ? (
           <div className="space-y-2">
-            <div className="rounded-md overflow-hidden border bg-muted/30 inline-block max-w-full">
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <img
-                src={asset.photo_url}
-                className="max-h-64 w-auto object-contain"
+            <div className="max-w-md">
+              <ChecklistPhotoPreview
+                imageUrl={asset.photo_url}
+                altText={asset.name}
+                className="[&_img]:max-h-[340px] [&_img]:md:max-h-[380px]"
               />
             </div>
             <p className="text-xs text-muted-foreground">
