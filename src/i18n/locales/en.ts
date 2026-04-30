@@ -1006,6 +1006,62 @@ const en = {
     deleteNotPermitted: 'You can only delete your own records from today',
     editNotPermitted: 'You can only edit your own records from today',
   },
+  maintenance: {
+    tabs: { dashboard: 'Dashboard', list: 'Equipment & Areas' },
+    dashboard: {
+      activeTotal: 'Active Equipment / Areas',
+      archivedTotal: 'Archived',
+      byBranch: 'By Branch',
+      byDepartment: 'By Department',
+      recent: 'Recently Added',
+    },
+    list: {
+      searchPlaceholder: 'Search by name or code…',
+      activeAndInactive: 'Active + Inactive',
+      emptyTitle: 'No equipment found',
+      emptyDesc: 'Try changing the filters or add a new equipment / area.',
+    },
+    actions: { addAsset: 'Add Equipment / Area', archive: 'Archive', restore: 'Restore' },
+    status: { active: 'Active', inactive: 'Inactive', archived: 'Archived' },
+    fields: {
+      code: 'Code', name: 'Name', branch: 'Branch', department: 'Department',
+      type: 'Type', status: 'Status', location: 'Location', brand: 'Brand',
+      model: 'Model', serialNumber: 'Serial Number', purchaseDate: 'Purchase Date',
+      installationDate: 'Installation Date', warrantyDate: 'Warranty Expiry',
+      supplier: 'Supplier / Vendor', technicianContact: 'Technician Contact',
+      notes: 'Notes', lastUpdated: 'Last updated',
+    },
+    helpers: { code: 'Use a clear code, for example: B26-BAR-CM-001 for Bottega26 Bar Coffee Machine 1.' },
+    form: { newTitle: 'New Equipment / Area', editTitle: 'Edit Equipment / Area' },
+    errors: {
+      codeRequired: 'Code is required',
+      nameRequired: 'Name is required',
+      branchRequired: 'Branch is required',
+      departmentRequired: 'Department is required',
+      typeRequired: 'Type is required',
+      statusRequired: 'Status is required',
+      codeExists: 'This equipment code already exists. Please use a different code.',
+    },
+    confirm: {
+      archiveTitle: 'Archive this equipment?',
+      archiveDesc: 'It will be hidden from default lists but can be restored later.',
+      restoreTitle: 'Restore this equipment?',
+      restoreDesc: 'It will become visible again in default lists.',
+    },
+    toasts: {
+      created: 'Equipment created',
+      updated: 'Equipment updated',
+      archived: 'Equipment archived',
+      restored: 'Equipment restored',
+    },
+    placeholders: {
+      scheduled: 'Scheduled Maintenance',
+      history: 'Maintenance History',
+      repairs: 'Repair History',
+      photos: 'Photos / Documents',
+      comingSoon: 'Coming in a future phase.',
+    },
+  },
 };
 
 export default en;
