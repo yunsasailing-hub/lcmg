@@ -46,7 +46,8 @@ export default function RecipeMainImageField({ recipeId, canManage }: Props) {
   const uploadAndAttach = async (file: File) => {
     if (!recipeId) return;
     try {
-      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file);
+      // Main recipe image -> recipes/images/ in app-files bucket.
+      const { path, publicUrl } = await uploadRecipeMediaFile(recipeId, file, 'images');
       await add.mutateAsync({
         recipe_id: recipeId,
         media_type: 'image',

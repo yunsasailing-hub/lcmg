@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { RECIPE_MEDIA_BUCKET } from '@/hooks/useRecipeMedia';
+import { removeRecipeStorageObject } from '@/hooks/useRecipeMedia';
+import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 
 /**
  * Generic media-collection hook used by:
@@ -64,18 +65,21 @@ export function useAddMediaImage(config: Config) {
       if (input.existingCount >= MEDIA_MAX_PER_KIND) {
         throw new Error('LIMIT_REACHED');
       }
-      const ext = input.file.name.split('.').pop()?.toLowerCase() ?? 'bin';
-      const key = `${input.recipeIdForBucket}/multi/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from(RECIPE_MEDIA_BUCKET)
-        .upload(key, input.file, { upsert: false, contentType: input.file.type || undefined });
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from(RECIPE_MEDIA_BUCKET).getPublicUrl(key);
+      // Procedure / service step imagery -> recipes/step-photos/ in app-files.
+      const result = await uploadToAppFilesBucket(input.file, 'recipes-step-photos');
+      console.log('[recipe.upload]', {
+        bucket: result.bucket,
+        path: result.path,
+        url: result.publicUrl,
+        subFolder: 'step-photos',
+        recipeId: input.recipeIdForBucket,
+        target: config.table,
+      });
       const { error } = await (supabase as any).from(config.table).insert({
         [config.parentColumn]: config.parentId,
         kind: 'image',
-        url: pub.publicUrl,
-        storage_path: key,
+        url: result.publicUrl,
+        storage_path: result.path,
         sort_order: input.existingCount,
       });
       if (error) throw error;
@@ -108,7 +112,8 @@ export function useDeleteMedia(config: Config) {
   return useMutation({
     mutationFn: async (item: { id: string; storage_path: string | null }) => {
       if (item.storage_path) {
-        await supabase.storage.from(RECIPE_MEDIA_BUCKET).remove([item.storage_path]).catch(() => {});
+        // Bucket-aware removal so legacy `recipe-media` rows still clean up.
+        await removeRecipeStorageObject(item.storage_path);
       }
       const { error } = await (supabase as any).from(config.table).delete().eq('id', item.id);
       if (error) throw error;

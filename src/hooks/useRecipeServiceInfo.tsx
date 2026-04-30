@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { RECIPE_MEDIA_BUCKET } from '@/hooks/useRecipeMedia';
+import { removeRecipeStorageObject } from '@/hooks/useRecipeMedia';
+import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 
 export interface RecipeServiceInfoRow {
   id: string;
@@ -65,16 +66,20 @@ export async function uploadServiceInfoImage(
   recipeId: string,
   file: File,
 ): Promise<{ path: string; publicUrl: string }> {
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
-  const key = `${recipeId}/service/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage
-    .from(RECIPE_MEDIA_BUCKET)
-    .upload(key, file, { upsert: false, contentType: file.type || undefined });
-  if (error) throw error;
-  const { data } = supabase.storage.from(RECIPE_MEDIA_BUCKET).getPublicUrl(key);
-  return { path: key, publicUrl: data.publicUrl };
+  // Service-info image -> recipes/step-photos/ in app-files bucket.
+  const result = await uploadToAppFilesBucket(file, 'recipes-step-photos');
+  console.log('[recipe.upload]', {
+    bucket: result.bucket,
+    path: result.path,
+    url: result.publicUrl,
+    subFolder: 'step-photos',
+    recipeId,
+    target: 'service_info',
+  });
+  return { path: result.path, publicUrl: result.publicUrl };
 }
 
 export async function deleteServiceInfoImage(path: string): Promise<void> {
-  await supabase.storage.from(RECIPE_MEDIA_BUCKET).remove([path]).catch(() => {});
+  // Bucket-aware so legacy `recipe-media` paths still clean up.
+  await removeRecipeStorageObject(path);
 }
