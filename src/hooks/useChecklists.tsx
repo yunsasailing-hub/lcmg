@@ -880,6 +880,25 @@ export function useCreateAssignment() {
         console.log('[NoteRequiredDebug] template tasks =', templateTasksForDebug);
       }
 
+      // Pre-check: block only if an ACTIVE instance exists for the same template + user + date.
+      // Active = pending | late | escalated. Completed/verified instances do NOT block re-assignment.
+      const { data: activeExisting, error: activeCheckError } = await supabase
+        .from('checklist_instances')
+        .select('id, status')
+        .eq('template_id', assignment.template_id)
+        .eq('assigned_to', assignment.assigned_to)
+        .eq('scheduled_date', assignment.start_date)
+        .in('status', ['pending', 'late', 'escalated'])
+        .limit(1);
+
+      if (activeCheckError) {
+        console.error('Active assignment check failed:', activeCheckError);
+        throw activeCheckError;
+      }
+      if (activeExisting && activeExisting.length > 0) {
+        throw new Error('Checklist already in progress for this user today.');
+      }
+
       const { data: createdAssignment, error: assignmentError } = await supabase
         .from('checklist_assignments')
         .insert(normalizedAssignment)
@@ -920,7 +939,13 @@ export function useCreateAssignment() {
         .select('id')
         .maybeSingle();
 
-      if (firstInstanceError && firstInstanceError.code !== '23505') {
+      if (firstInstanceError && firstInstanceError.code === '23505') {
+        // Should be rare now (partial unique index only covers active statuses),
+        // but keep a friendly message in case a race created an active instance.
+        await supabase.from('checklist_assignments').delete().eq('id', createdAssignment.id);
+        throw new Error('Checklist already in progress for this user today.');
+      }
+      if (firstInstanceError) {
         console.error('First instance creation failed:', firstInstanceError);
         await supabase.from('checklist_assignments').delete().eq('id', createdAssignment.id);
         throw firstInstanceError;
