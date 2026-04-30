@@ -827,6 +827,9 @@ export default function Maintenance() {
               isOwner={isOwner}
             />
           </TabsContent>
+          <TabsContent value="schedules">
+            <SchedulesList />
+          </TabsContent>
           {isOwner && (
             <TabsContent value="settings">
               <AssetTypeSettings canManage={isOwner} />
