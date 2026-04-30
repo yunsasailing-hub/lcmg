@@ -866,6 +866,9 @@ export type Database = {
           is_active: boolean
           item_code: string | null
           item_name: string
+          min_stock: number | null
+          recommended_order: number | null
+          remarks: string | null
           source_type: Database["public"]["Enums"]["inventory_control_source"]
           unit: string | null
           updated_at: string
@@ -880,6 +883,9 @@ export type Database = {
           is_active?: boolean
           item_code?: string | null
           item_name: string
+          min_stock?: number | null
+          recommended_order?: number | null
+          remarks?: string | null
           source_type?: Database["public"]["Enums"]["inventory_control_source"]
           unit?: string | null
           updated_at?: string
@@ -894,6 +900,9 @@ export type Database = {
           is_active?: boolean
           item_code?: string | null
           item_name?: string
+          min_stock?: number | null
+          recommended_order?: number | null
+          remarks?: string | null
           source_type?: Database["public"]["Enums"]["inventory_control_source"]
           unit?: string | null
           updated_at?: string
