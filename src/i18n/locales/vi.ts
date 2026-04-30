@@ -80,6 +80,7 @@ const vi: Translations = {
     maintenance: 'Bảo trì',
     management: 'Quản lý',
     more: 'Thêm',
+    kitchenProductionShort: 'Sản xuất',
   },
   roles: {
     owner: 'Chủ',
@@ -168,6 +169,7 @@ const vi: Translations = {
       inventory: 'Mức tồn kho & đơn hàng',
       maintenance: 'Thiết bị & sửa chữa',
       management: 'Đội ngũ, chi nhánh & cài đặt',
+      kitchenProduction: 'Báo cáo món bếp đã sản xuất',
     },
     moduleStats: {
       pendingShort: '{{count}} đang chờ',
@@ -175,6 +177,7 @@ const vi: Translations = {
       recipesShort: '{{count}} công thức',
       lowStockShort: '{{count}} sắp hết',
       openTicketShort: '{{count}} phiếu mở',
+      kitchenProductionToday: 'Sản xuất hôm nay',
     },
   },
   pages: {
