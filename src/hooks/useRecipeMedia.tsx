@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadToAppFilesBucket, type AppFilesModuleType } from '@/lib/appFilesStorage';
 
 export type RecipeMediaType = 'image' | 'video_link' | 'web_link' | 'file';
 
@@ -65,18 +66,48 @@ export function useRecipePrimaryImages(recipeIds: string[]) {
   });
 }
 
+/**
+ * Upload a recipe media file to the unified `app-files` bucket.
+ *
+ * NEW uploads go to `app-files` under one of:
+ *   - recipes/images/        (main recipe images & generic files)
+ *   - recipes/step-photos/   (per-step / procedure / service media)
+ *   - recipes/videos/        (uploaded video files; video LINKS are stored as URLs only)
+ *
+ * IMPORTANT: existing rows that point at the legacy `recipe-media` bucket
+ * keep working — display logic loads them straight from their stored URL.
+ * Only NEW uploads are routed through here.
+ *
+ * `recipeId` is intentionally accepted for API compatibility with old
+ * callers but is no longer encoded into the storage path; the file name
+ * carries the readable suffix instead.
+ */
+export type RecipeUploadSubFolder = 'images' | 'step-photos' | 'videos';
+
 export async function uploadRecipeMediaFile(
   recipeId: string,
   file: File,
+  subFolder: RecipeUploadSubFolder = 'images',
 ): Promise<{ path: string; publicUrl: string }> {
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
-  const key = `${recipeId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage
-    .from(RECIPE_MEDIA_BUCKET)
-    .upload(key, file, { upsert: false, contentType: file.type || undefined });
-  if (error) throw error;
-  const { data } = supabase.storage.from(RECIPE_MEDIA_BUCKET).getPublicUrl(key);
-  return { path: key, publicUrl: data.publicUrl };
+  const moduleType: AppFilesModuleType =
+    subFolder === 'step-photos'
+      ? 'recipes-step-photos'
+      : subFolder === 'videos'
+        ? 'recipes-videos'
+        : 'recipes-images';
+
+  const result = await uploadToAppFilesBucket(file, moduleType);
+
+  // Verification log requested by spec.
+  console.log('[recipe.upload]', {
+    bucket: result.bucket,
+    path: result.path,
+    url: result.publicUrl,
+    subFolder,
+    recipeId,
+  });
+
+  return { path: result.path, publicUrl: result.publicUrl };
 }
 
 export function useAddRecipeMedia() {
