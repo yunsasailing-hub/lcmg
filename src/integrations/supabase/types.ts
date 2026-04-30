@@ -855,6 +855,131 @@ export type Database = {
           },
         ]
       }
+      inventory_request_items: {
+        Row: {
+          actual_stock: number | null
+          approved_qty: number | null
+          created_at: string
+          id: string
+          ingredient_id: string | null
+          item_code: string | null
+          item_name: string
+          note: string | null
+          request_id: string
+          requested_qty: number | null
+          sort_order: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_stock?: number | null
+          approved_qty?: number | null
+          created_at?: string
+          id?: string
+          ingredient_id?: string | null
+          item_code?: string | null
+          item_name: string
+          note?: string | null
+          request_id: string
+          requested_qty?: number | null
+          sort_order?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_stock?: number | null
+          approved_qty?: number | null
+          created_at?: string
+          id?: string
+          ingredient_id?: string | null
+          item_code?: string | null
+          item_name?: string
+          note?: string | null
+          request_id?: string
+          requested_qty?: number | null
+          sort_order?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_request_items_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_request_items_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_requests: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"]
+          id: string
+          notes: string | null
+          rejection_note: string | null
+          request_date: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_name: string | null
+          staff_user_id: string | null
+          status: Database["public"]["Enums"]["inventory_request_status"]
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department: Database["public"]["Enums"]["department"]
+          id?: string
+          notes?: string | null
+          rejection_note?: string | null
+          request_date?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_name?: string | null
+          staff_user_id?: string | null
+          status?: Database["public"]["Enums"]["inventory_request_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"]
+          id?: string
+          notes?: string | null
+          rejection_note?: string | null
+          request_date?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_name?: string | null
+          staff_user_id?: string | null
+          status?: Database["public"]["Enums"]["inventory_request_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kitchen_production_logs: {
         Row: {
           branch_id: string | null
@@ -2144,6 +2269,11 @@ export type Database = {
         | "office"
         | "bakery"
       ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
+      inventory_request_status:
+        | "Draft"
+        | "Submitted"
+        | "Owner Confirmed"
+        | "Rejected"
       maintenance_asset_status: "active" | "inactive" | "archived"
       maintenance_repair_severity: "Low" | "Medium" | "High" | "Critical"
       maintenance_repair_status:
@@ -2338,6 +2468,12 @@ export const Constants = {
         "bakery",
       ],
       ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
+      inventory_request_status: [
+        "Draft",
+        "Submitted",
+        "Owner Confirmed",
+        "Rejected",
+      ],
       maintenance_asset_status: ["active", "inactive", "archived"],
       maintenance_repair_severity: ["Low", "Medium", "High", "Critical"],
       maintenance_repair_status: [
