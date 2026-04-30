@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranches } from '@/hooks/useChecklists';
 import { useRecipeUnits } from '@/hooks/useIngredients';
@@ -267,39 +268,64 @@ export default function KitchenProduction() {
     if (row.created_by !== user.id) return false;
     return row.production_date === todayISO();
   };
-  const canDelete = (_row: LogRow) => isOwnerOrManager;
+  const canDelete = (row: LogRow) => {
+    if (isOwnerOrManager) return true;
+    if (!user) return false;
+    if (row.created_by !== user.id) return false;
+    return row.production_date === todayISO();
+  };
 
   const updateRow = useMutation({
-    mutationFn: async () => {
-      if (!editRow) return;
+    mutationFn: async (row: LogRow) => {
       const qn = Number(editQty);
       if (!Number.isFinite(qn) || qn <= 0) throw new Error(t('kitchenProduction.errors.qtyPositive'));
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('kitchen_production_logs' as any)
-        .update({ quantity_produced: qn, notes: editNotes.trim() || null } as any)
-        .eq('id', editRow.id);
+        .update({ quantity_produced: qn, notes: editNotes.trim() || null } as any, { count: 'exact' })
+        .eq('id', row.id)
+        .select('id');
       if (error) throw error;
+      if (count === 0) throw new Error('not_permitted');
     },
     onSuccess: () => {
       toast({ title: t('kitchenProduction.updateSaved') });
       setEditRow(null);
       qc.invalidateQueries({ queryKey: ['kitchen-production-logs'] });
     },
-    onError: (e: any) => toast({ title: t('kitchenProduction.saveFailed'), description: e?.message, variant: 'destructive' }),
+    onError: (e: any) => {
+      console.error('[KitchenProduction] update failed', e);
+      toast({ title: t('kitchenProduction.saveFailed'), description: e?.message, variant: 'destructive' });
+    },
   });
 
   const deleteMut = useMutation({
-    mutationFn: async () => {
-      if (!deleteRow) return;
-      const { error } = await supabase.from('kitchen_production_logs' as any).delete().eq('id', deleteRow.id);
+    mutationFn: async (row: LogRow) => {
+      const { data, error } = await supabase
+        .from('kitchen_production_logs' as any)
+        .delete()
+        .eq('id', row.id)
+        .select('id');
       if (error) throw error;
+      if (!data || (data as any[]).length === 0) {
+        throw new Error('not_permitted');
+      }
     },
     onSuccess: () => {
       toast({ title: t('kitchenProduction.deleted') });
       setDeleteRow(null);
       qc.invalidateQueries({ queryKey: ['kitchen-production-logs'] });
     },
-    onError: (e: any) => toast({ title: t('kitchenProduction.saveFailed'), description: e?.message, variant: 'destructive' }),
+    onError: (e: any) => {
+      console.error('[KitchenProduction] delete failed', e);
+      toast({
+        title: t('kitchenProduction.deleteFailed'),
+        description: e?.message === 'not_permitted'
+          ? t('kitchenProduction.deleteNotPermitted')
+          : e?.message,
+        variant: 'destructive',
+      });
+      setDeleteRow(null);
+    },
   });
 
   const unitMissing = !!selectedItem && !selectedItemUnit;
