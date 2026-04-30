@@ -99,10 +99,14 @@ export default function ScheduleFormDialog({ open, onOpenChange, initial, preset
       if (!n || n <= 0) errs.custom_interval_days = 'Custom interval must be > 0';
     }
     if (!form.assigned_staff_id && !form.assigned_department) {
-      errs.assignment = 'Assign to a staff member or a department';
+      errs.assignment = 'Assign at least a staff member or a department';
     }
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      const first = errs.title || errs.asset_id || errs.custom_interval_days || errs.due_time || errs.assignment;
+      if (first) toast.error(first);
+      return;
+    }
 
     try {
       const payload: any = {
@@ -275,7 +279,7 @@ export default function ScheduleFormDialog({ open, onOpenChange, initial, preset
           </div>
         </Section>
 
-        <Section title="Completion Requirements">
+        <Section title="Completion Requirements" defaultOpen={!initial}>
           <div className="space-y-3">
             <div className="flex items-center justify-between rounded-md border px-3 py-2">
               <div>
