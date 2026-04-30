@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Apple, Hammer, ArrowLeft, Info, ClipboardList, ShieldCheck,
+  Apple, Hammer, ArrowLeft, Info, ClipboardList, ShieldCheck, ListChecks,
 } from 'lucide-react';
 import InventoryRequestList from '@/components/inventory/InventoryRequestList';
 import InventoryOwnerReview from '@/components/inventory/InventoryOwnerReview';
+import InventoryControlList from '@/components/inventory/InventoryControlList';
 import { useAuth } from '@/hooks/useAuth';
 
 type View = 'dashboard' | 'consumable';
@@ -88,12 +89,16 @@ function ConsumableView({ onBack }: { onBack: () => void }) {
           <TabsList>
             <TabsTrigger value="requests"><ClipboardList className="h-4 w-4 mr-1" />All requests</TabsTrigger>
             <TabsTrigger value="review"><ShieldCheck className="h-4 w-4 mr-1" />Owner review</TabsTrigger>
+            <TabsTrigger value="control"><ListChecks className="h-4 w-4 mr-1" />Control list</TabsTrigger>
           </TabsList>
           <TabsContent value="requests" className="mt-3">
             <InventoryRequestList />
           </TabsContent>
           <TabsContent value="review" className="mt-3">
             <InventoryOwnerReview />
+          </TabsContent>
+          <TabsContent value="control" className="mt-3">
+            <InventoryControlList />
           </TabsContent>
         </Tabs>
       ) : (
