@@ -573,7 +573,7 @@ export default function KitchenProduction() {
                       </TableCell>
                       <TableCell className="align-top text-right">
                         <div className="flex justify-end gap-1">
-                          {canEdit(l) && (
+                          {canEdit(l) ? (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -587,8 +587,21 @@ export default function KitchenProduction() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
+                          ) : (
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span tabIndex={0}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-40" disabled>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('kitchenProduction.editNotPermitted')}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
-                          {canDelete(l) && (
+                          {canDelete(l) ? (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -598,6 +611,19 @@ export default function KitchenProduction() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                          ) : (
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span tabIndex={0}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-40" disabled>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('kitchenProduction.deleteNotPermitted')}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           )}
                         </div>
                       </TableCell>
@@ -643,7 +669,10 @@ export default function KitchenProduction() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditRow(null)}>{t('common.cancel')}</Button>
-            <Button onClick={() => updateRow.mutate()} disabled={updateRow.isPending}>
+            <Button
+              onClick={() => editRow && updateRow.mutate(editRow)}
+              disabled={updateRow.isPending || !editRow}
+            >
               {updateRow.isPending ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
@@ -666,7 +695,11 @@ export default function KitchenProduction() {
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteMut.mutate()}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteRow) deleteMut.mutate(deleteRow);
+              }}
+              disabled={deleteMut.isPending}
             >
               {t('common.delete')}
             </AlertDialogAction>
