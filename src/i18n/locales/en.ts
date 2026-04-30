@@ -242,6 +242,9 @@ const en = {
       allDepartments: 'All departments',
       allBranches: 'All branches',
       allStatuses: 'All statuses',
+      allKitchenProduction: 'Kitchen Production: All',
+      productionYes: 'YES',
+      productionNo: 'NO',
       activeYes: 'YES',
       activeNot: 'NOT',
       global: 'Global',
@@ -262,6 +265,7 @@ const en = {
         sellingPrice: 'Selling Price',
         foodCostPct: 'Food Cost %',
         active: 'Active',
+        kitchenProduction: 'Kitchen Production',
         updated: 'Last Updated',
         actions: 'Actions',
       },
@@ -951,6 +955,7 @@ const en = {
       itemCode: 'Item code',
       itemName: 'Item name',
       staff: 'Staff',
+      unitMissing: 'unit missing',
     },
     types: {
       MENU_ITEM: 'Menu item',
@@ -973,7 +978,10 @@ const en = {
       qtyPositive: 'Quantity must be greater than 0.',
       invalidCode: 'Item code must start with 1012 or 1013.',
       missingRecipe: 'Linked recipe could not be found.',
-      noItems: 'No items are enabled for Kitchen Production yet. Ask Owner/Manager to enable items in the recipe form.',
+      noItems: 'No production items enabled yet. Enable ‘Show in Kitchen Production’ on active recipes with code 1012 or 1013.',
+    },
+    debug: {
+      enabledCount: 'Enabled production recipes found: {{count}}',
     },
   },
 };
