@@ -45,6 +45,8 @@ export interface UpsertRequestPayload {
   items: Array<{
     id?: string;
     ingredient_id?: string | null;
+    inventory_control_item_id?: string | null;
+    source_type?: 'ingredient' | 'manual';
     item_code?: string | null;
     item_name: string;
     unit?: string | null;
@@ -113,6 +115,8 @@ export function useUpsertInventoryRequest() {
         const rows = p.items.map((it, i) => ({
           request_id: requestId!,
           ingredient_id: it.ingredient_id ?? null,
+          inventory_control_item_id: it.inventory_control_item_id ?? null,
+          source_type: it.source_type ?? 'ingredient',
           item_code: it.item_code ?? null,
           item_name: it.item_name,
           unit: it.unit ?? null,
