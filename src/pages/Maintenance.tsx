@@ -148,10 +148,76 @@ function AssetFormDialog({
     supplier_vendor: initial?.supplier_vendor ?? '',
     technician_contact: initial?.technician_contact ?? '',
     notes: initial?.notes ?? '',
+    photo_url: initial?.photo_url ?? '',
+    photo_storage_path: initial?.photo_storage_path ?? '',
   }));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
 
   const update = (k: string, v: any) => setForm(s => ({ ...s, [k]: v }));
+
+  // ---------------------------------------------------------------
+  // Maintenance photo upload — uses unified `app-files` bucket.
+  // Path: maintenance/{branchCode}/{categoryCode}/{assetSlug}/
+  // ---------------------------------------------------------------
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!form.branch_id || !form.asset_type_id || !form.name.trim()) {
+      toast.error(t('maintenance.errors.photoNeedsBranchTypeName',
+        'Select branch, type and name before uploading photo'));
+      return;
+    }
+    const branch = branches.find(b => b.id === form.branch_id);
+    const type = types.find(tt => tt.id === form.asset_type_id);
+    setUploading(true);
+    try {
+      // Compress images; non-image files (rare here) upload as-is.
+      let toUpload: File = file;
+      if (file.type.startsWith('image/')) {
+        try {
+          const optimized = await optimizeChecklistImage(file);
+          toUpload = optimized.file;
+        } catch {
+          // fall back to original if compression fails
+        }
+      }
+      const result = await uploadToAppFilesBucket(toUpload, 'maintenance', {
+        branchName: branch?.name,
+        category: type?.code || type?.name_en || 'general',
+        assetOrEquipment: form.name.trim(),
+      });
+      // Required testing log
+      console.log('[maintenance.upload]', {
+        bucket: result.bucket,
+        path: result.path,
+        publicUrl: result.publicUrl,
+        branch: branch?.name,
+        category: type?.code || type?.name_en,
+        asset: form.name.trim(),
+      });
+      // Best-effort cleanup of any previously attached photo for this draft
+      if (form.photo_storage_path) {
+        await supabase.storage.from(APP_FILES_BUCKET)
+          .remove([form.photo_storage_path]).catch(() => {});
+      }
+      setForm(s => ({ ...s, photo_url: result.publicUrl, photo_storage_path: result.path }));
+      toast.success(t('maintenance.toasts.photoUploaded', 'Photo uploaded'));
+    } catch (err: any) {
+      toast.error(err?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    if (form.photo_storage_path) {
+      await supabase.storage.from(APP_FILES_BUCKET)
+        .remove([form.photo_storage_path]).catch(() => {});
+    }
+    setForm(s => ({ ...s, photo_url: '', photo_storage_path: '' }));
+  };
 
   const handleSave = async () => {
     const errs: Record<string, string> = {};
@@ -179,6 +245,8 @@ function AssetFormDialog({
         supplier_vendor: form.supplier_vendor || null,
         technician_contact: form.technician_contact || null,
         notes: form.notes || null,
+        photo_url: form.photo_url || null,
+        photo_storage_path: form.photo_storage_path || null,
         archived_at: form.status === 'archived' ? (initial?.archived_at ?? new Date().toISOString()) : null,
       };
       if (initial?.id) payload.id = initial.id;
