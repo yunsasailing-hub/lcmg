@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   LayoutDashboard, GraduationCap, ClipboardCheck, CookingPot,
-  Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal, ChefHat,
+  Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal, ChefHat, LifeBuoy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -18,7 +18,8 @@ import NotificationCenter from '@/components/notifications/NotificationCenter';
 
 const useNavItems = () => {
   const { t } = useTranslation();
-  return [
+  const { hasRole } = useAuth();
+  const items = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/training', icon: GraduationCap, label: t('nav.training') },
     { to: '/checklists', icon: ClipboardCheck, label: t('nav.checklists') },
@@ -28,11 +29,16 @@ const useNavItems = () => {
     { to: '/maintenance', icon: Wrench, label: t('nav.maintenance') },
     { to: '/management', icon: Settings, label: t('nav.management') },
   ];
+  if (hasRole('owner')) {
+    items.push({ to: '/system-repair', icon: LifeBuoy, label: t('nav.systemRepair') });
+  }
+  return items;
 };
 
 // Mobile bottom nav: prioritize main shortcuts; keep Production visible.
 const useMobileNavItems = () => {
   const { t } = useTranslation();
+  const { hasRole } = useAuth();
   const primary = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/checklists', icon: ClipboardCheck, label: t('nav.checklists') },
@@ -45,6 +51,9 @@ const useMobileNavItems = () => {
     { to: '/maintenance', icon: Wrench, label: t('nav.maintenance') },
     { to: '/management', icon: Settings, label: t('nav.management') },
   ];
+  if (hasRole('owner')) {
+    overflow.push({ to: '/system-repair', icon: LifeBuoy, label: t('nav.systemRepair') });
+  }
   return { primary, overflow };
 };
 

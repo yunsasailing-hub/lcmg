@@ -805,6 +805,128 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance_asset_types: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name_en: string
+          name_vi: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_en: string
+          name_vi?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name_en?: string
+          name_vi?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      maintenance_assets: {
+        Row: {
+          archived_at: string | null
+          asset_type_id: string
+          branch_id: string
+          brand: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"]
+          id: string
+          installation_date: string | null
+          location: string | null
+          model: string | null
+          name: string
+          notes: string | null
+          photo_storage_path: string | null
+          photo_url: string | null
+          purchase_date: string | null
+          serial_number: string | null
+          status: Database["public"]["Enums"]["maintenance_asset_status"]
+          supplier_vendor: string | null
+          technician_contact: string | null
+          updated_at: string
+          updated_by: string | null
+          warranty_expiry_date: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          asset_type_id: string
+          branch_id: string
+          brand?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          department: Database["public"]["Enums"]["department"]
+          id?: string
+          installation_date?: string | null
+          location?: string | null
+          model?: string | null
+          name: string
+          notes?: string | null
+          photo_storage_path?: string | null
+          photo_url?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["maintenance_asset_status"]
+          supplier_vendor?: string | null
+          technician_contact?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          warranty_expiry_date?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          asset_type_id?: string
+          branch_id?: string
+          brand?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"]
+          id?: string
+          installation_date?: string | null
+          location?: string | null
+          model?: string | null
+          name?: string
+          notes?: string | null
+          photo_storage_path?: string | null
+          photo_url?: string | null
+          purchase_date?: string | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["maintenance_asset_status"]
+          supplier_vendor?: string | null
+          technician_contact?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          warranty_expiry_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_assets_asset_type_id_fkey"
+            columns: ["asset_type_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_asset_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_settings: {
         Row: {
           checklist_notices_enabled: boolean
@@ -1684,6 +1806,7 @@ export type Database = {
         | "office"
         | "bakery"
       ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
+      maintenance_asset_status: "active" | "inactive" | "archived"
       note_requirement: "none" | "optional" | "mandatory"
       notification_priority: "normal" | "high" | "critical"
       notification_status: "unread" | "read" | "archived"
@@ -1861,6 +1984,7 @@ export const Constants = {
         "bakery",
       ],
       ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
+      maintenance_asset_status: ["active", "inactive", "archived"],
       note_requirement: ["none", "optional", "mandatory"],
       notification_priority: ["normal", "high", "critical"],
       notification_status: ["unread", "read", "archived"],

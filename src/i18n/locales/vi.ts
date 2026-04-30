@@ -81,6 +81,7 @@ const vi: Translations = {
     management: 'Quản lý',
     more: 'Thêm',
     kitchenProductionShort: 'Sản xuất',
+    systemRepair: 'Sửa chữa hệ thống',
   },
   roles: {
     owner: 'Chủ',
@@ -185,6 +186,7 @@ const vi: Translations = {
     recipes: { title: 'Công thức', subtitle: 'Sách công thức & quản lý chi phí', emptyTitle: 'Chưa có công thức', emptyDesc: 'Công thức sẽ xuất hiện ở đây sau khi thêm.' },
     inventory: { title: 'Kho', subtitle: 'Mức tồn kho & quản lý đơn hàng', emptyTitle: 'Chưa có mặt hàng nào', emptyDesc: 'Các mặt hàng sẽ xuất hiện ở đây sau khi thêm.' },
     maintenance: { title: 'Bảo trì', subtitle: 'Theo dõi thiết bị & phiếu sửa chữa', emptyTitle: 'Không có phiếu bảo trì', emptyDesc: 'Yêu cầu bảo trì sẽ xuất hiện ở đây.' },
+    systemRepair: { title: 'Công cụ sửa chữa hệ thống', subtitle: 'Tiện ích chỉ dành cho Chủ sở hữu để khắc phục sự cố dữ liệu', emptyTitle: 'Không có công cụ', emptyDesc: 'Công cụ sửa chữa chỉ dành cho Chủ sở hữu.' },
     notFound: { code: '404', message: 'Rất tiếc! Không tìm thấy trang', returnHome: 'Về trang chủ' },
   },
   recipes: {
@@ -1005,6 +1007,62 @@ const vi: Translations = {
     deleteFailed: 'Xoá thất bại — vui lòng thử lại',
     deleteNotPermitted: 'Bạn chỉ có thể xoá bản ghi của mình trong hôm nay',
     editNotPermitted: 'Bạn chỉ có thể sửa bản ghi của mình trong hôm nay',
+  },
+  maintenance: {
+    tabs: { dashboard: 'Tổng quan', list: 'Thiết bị & Khu vực' },
+    dashboard: {
+      activeTotal: 'Thiết bị / Khu vực đang hoạt động',
+      archivedTotal: 'Đã lưu trữ',
+      byBranch: 'Theo Chi nhánh',
+      byDepartment: 'Theo Bộ phận',
+      recent: 'Mới thêm gần đây',
+    },
+    list: {
+      searchPlaceholder: 'Tìm theo tên hoặc mã…',
+      activeAndInactive: 'Hoạt động + Tạm ngưng',
+      emptyTitle: 'Không tìm thấy thiết bị',
+      emptyDesc: 'Hãy thay đổi bộ lọc hoặc thêm thiết bị / khu vực mới.',
+    },
+    actions: { addAsset: 'Thêm Thiết bị / Khu vực', archive: 'Lưu trữ', restore: 'Khôi phục' },
+    status: { active: 'Hoạt động', inactive: 'Tạm ngưng', archived: 'Đã lưu trữ' },
+    fields: {
+      code: 'Mã', name: 'Tên', branch: 'Chi nhánh', department: 'Bộ phận',
+      type: 'Loại', status: 'Trạng thái', location: 'Vị trí', brand: 'Thương hiệu',
+      model: 'Model', serialNumber: 'Số serial', purchaseDate: 'Ngày mua',
+      installationDate: 'Ngày lắp đặt', warrantyDate: 'Hết hạn bảo hành',
+      supplier: 'Nhà cung cấp', technicianContact: 'Liên hệ kỹ thuật',
+      notes: 'Ghi chú', lastUpdated: 'Cập nhật gần nhất',
+    },
+    helpers: { code: 'Dùng mã rõ ràng, ví dụ: B26-BAR-CM-001 cho Máy pha cà phê 1 tại Bar Bottega26.' },
+    form: { newTitle: 'Thiết bị / Khu vực mới', editTitle: 'Sửa Thiết bị / Khu vực' },
+    errors: {
+      codeRequired: 'Mã là bắt buộc',
+      nameRequired: 'Tên là bắt buộc',
+      branchRequired: 'Chi nhánh là bắt buộc',
+      departmentRequired: 'Bộ phận là bắt buộc',
+      typeRequired: 'Loại là bắt buộc',
+      statusRequired: 'Trạng thái là bắt buộc',
+      codeExists: 'Mã thiết bị này đã tồn tại. Vui lòng dùng mã khác.',
+    },
+    confirm: {
+      archiveTitle: 'Lưu trữ thiết bị này?',
+      archiveDesc: 'Sẽ bị ẩn khỏi danh sách mặc định nhưng có thể khôi phục sau.',
+      restoreTitle: 'Khôi phục thiết bị này?',
+      restoreDesc: 'Sẽ hiển thị lại trong danh sách mặc định.',
+    },
+    toasts: {
+      created: 'Đã tạo thiết bị',
+      updated: 'Đã cập nhật thiết bị',
+      archived: 'Đã lưu trữ thiết bị',
+      restored: 'Đã khôi phục thiết bị',
+    },
+    placeholders: {
+      scheduled: 'Lịch bảo trì',
+      history: 'Lịch sử bảo trì',
+      repairs: 'Lịch sử sửa chữa',
+      photos: 'Hình ảnh / Tài liệu',
+      comingSoon: 'Sẽ có ở giai đoạn sau.',
+    },
   },
 };
 

@@ -79,6 +79,7 @@ const en = {
     management: 'Management',
     more: 'More',
     kitchenProductionShort: 'Production',
+    systemRepair: 'System Repair',
   },
   roles: {
     owner: 'Owner',
@@ -183,6 +184,7 @@ const en = {
     recipes: { title: 'Recipes', subtitle: 'Recipe book & cost management', emptyTitle: 'No recipes yet', emptyDesc: 'Recipes will appear here once added.' },
     inventory: { title: 'Inventory', subtitle: 'Stock levels & order management', emptyTitle: 'No inventory items yet', emptyDesc: 'Inventory items will appear here once added.' },
     maintenance: { title: 'Maintenance', subtitle: 'Equipment tracking & repair tickets', emptyTitle: 'No maintenance tickets', emptyDesc: 'Maintenance requests will appear here.' },
+    systemRepair: { title: 'System Repair Tools', subtitle: 'Owner-only utilities for fixing data issues', emptyTitle: 'No tools available', emptyDesc: 'Repair tools are restricted to owners.' },
     notFound: { code: '404', message: 'Oops! Page not found', returnHome: 'Return to Home' },
   },
   recipes: {
@@ -1003,6 +1005,62 @@ const en = {
     deleteFailed: 'Delete failed — please try again',
     deleteNotPermitted: 'You can only delete your own records from today',
     editNotPermitted: 'You can only edit your own records from today',
+  },
+  maintenance: {
+    tabs: { dashboard: 'Dashboard', list: 'Equipment & Areas' },
+    dashboard: {
+      activeTotal: 'Active Equipment / Areas',
+      archivedTotal: 'Archived',
+      byBranch: 'By Branch',
+      byDepartment: 'By Department',
+      recent: 'Recently Added',
+    },
+    list: {
+      searchPlaceholder: 'Search by name or code…',
+      activeAndInactive: 'Active + Inactive',
+      emptyTitle: 'No equipment found',
+      emptyDesc: 'Try changing the filters or add a new equipment / area.',
+    },
+    actions: { addAsset: 'Add Equipment / Area', archive: 'Archive', restore: 'Restore' },
+    status: { active: 'Active', inactive: 'Inactive', archived: 'Archived' },
+    fields: {
+      code: 'Code', name: 'Name', branch: 'Branch', department: 'Department',
+      type: 'Type', status: 'Status', location: 'Location', brand: 'Brand',
+      model: 'Model', serialNumber: 'Serial Number', purchaseDate: 'Purchase Date',
+      installationDate: 'Installation Date', warrantyDate: 'Warranty Expiry',
+      supplier: 'Supplier / Vendor', technicianContact: 'Technician Contact',
+      notes: 'Notes', lastUpdated: 'Last updated',
+    },
+    helpers: { code: 'Use a clear code, for example: B26-BAR-CM-001 for Bottega26 Bar Coffee Machine 1.' },
+    form: { newTitle: 'New Equipment / Area', editTitle: 'Edit Equipment / Area' },
+    errors: {
+      codeRequired: 'Code is required',
+      nameRequired: 'Name is required',
+      branchRequired: 'Branch is required',
+      departmentRequired: 'Department is required',
+      typeRequired: 'Type is required',
+      statusRequired: 'Status is required',
+      codeExists: 'This equipment code already exists. Please use a different code.',
+    },
+    confirm: {
+      archiveTitle: 'Archive this equipment?',
+      archiveDesc: 'It will be hidden from default lists but can be restored later.',
+      restoreTitle: 'Restore this equipment?',
+      restoreDesc: 'It will become visible again in default lists.',
+    },
+    toasts: {
+      created: 'Equipment created',
+      updated: 'Equipment updated',
+      archived: 'Equipment archived',
+      restored: 'Equipment restored',
+    },
+    placeholders: {
+      scheduled: 'Scheduled Maintenance',
+      history: 'Maintenance History',
+      repairs: 'Repair History',
+      photos: 'Photos / Documents',
+      comingSoon: 'Coming in a future phase.',
+    },
   },
 };
 
