@@ -59,18 +59,22 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
 
   if (!checklists?.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground mb-4">
-          <Circle className="h-7 w-7" />
+      <div className="space-y-6">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground mb-4">
+            <Circle className="h-7 w-7" />
+          </div>
+          <h3 className="text-lg font-heading font-semibold text-foreground">No checklists today</h3>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">You don't have any checklists assigned for today.</p>
         </div>
-        <h3 className="text-lg font-heading font-semibold text-foreground">No checklists today</h3>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">You don't have any checklists assigned for today.</p>
+        <RecentlySubmittedSection />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3">
       {checklists.map(instance => {
         const tpl = instance.template as any;
         const cfg = statusConfig[instance.status as ChecklistStatus];
@@ -110,7 +114,60 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
           </button>
         );
       })}
+      </div>
+      <RecentlySubmittedSection />
     </div>
+  );
+}
+
+// ─── Recently Submitted (view-only, last 24h) ───
+
+function RecentlySubmittedSection() {
+  const { data: items, isLoading } = useRecentlySubmitted();
+  if (isLoading || !items?.length) return null;
+
+  return (
+    <section aria-label="Recently Submitted" className="border-t pt-4">
+      <h3 className="text-sm font-heading font-semibold text-muted-foreground mb-2 px-1">
+        Recently Submitted
+      </h3>
+      <div className="flex flex-col gap-2">
+        {items.map((instance: any) => {
+          const tpl = instance.template as any;
+          const branchName = instance.branch?.name ?? 'Unknown / Legacy';
+          const submittedAt = instance.submitted_at ? formatVN(instance.submitted_at) : null;
+          return (
+            <div
+              key={instance.id}
+              className="flex flex-col gap-1 rounded-lg border bg-muted/30 px-3 py-2 sm:px-4 sm:py-2.5"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <CircleCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                <p className="flex-1 min-w-0 font-heading font-semibold text-sm text-foreground leading-tight truncate">
+                  {tpl?.code ? (
+                    <>
+                      <span className="font-mono text-muted-foreground">{tpl.code}</span>
+                      <span className="text-muted-foreground"> · </span>
+                    </>
+                  ) : null}
+                  {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground pl-6">
+                <span><span className="text-muted-foreground/70">Branch:</span> <span className="text-foreground font-medium">{branchName}</span></span>
+                <span><span className="text-muted-foreground/70">Dept:</span> <span className="text-foreground font-medium capitalize">{instance.department}</span></span>
+                {submittedAt && (
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span className="text-foreground font-medium">Submitted {submittedAt}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
