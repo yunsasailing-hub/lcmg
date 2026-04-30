@@ -745,6 +745,66 @@ export type Database = {
           },
         ]
       }
+      kitchen_production_logs: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"] | null
+          id: string
+          item_code: string
+          item_name: string
+          item_type: string
+          linked_recipe_code: string | null
+          linked_recipe_id: string | null
+          notes: string | null
+          production_date: string
+          quantity_produced: number
+          staff_name: string | null
+          staff_user_id: string | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          id?: string
+          item_code: string
+          item_name: string
+          item_type: string
+          linked_recipe_code?: string | null
+          linked_recipe_id?: string | null
+          notes?: string | null
+          production_date?: string
+          quantity_produced: number
+          staff_name?: string | null
+          staff_user_id?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          id?: string
+          item_code?: string
+          item_name?: string
+          item_type?: string
+          linked_recipe_code?: string | null
+          linked_recipe_id?: string | null
+          notes?: string | null
+          production_date?: string
+          quantity_produced?: number
+          staff_name?: string | null
+          staff_user_id?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           checklist_notices_enabled: boolean
@@ -1380,6 +1440,7 @@ export type Database = {
           recipe_type_id: string | null
           selling_price: number | null
           shelf_life: string | null
+          show_in_kitchen_production: boolean
           status: Database["public"]["Enums"]["recipe_status"]
           updated_at: string
           updated_by: string | null
@@ -1408,6 +1469,7 @@ export type Database = {
           recipe_type_id?: string | null
           selling_price?: number | null
           shelf_life?: string | null
+          show_in_kitchen_production?: boolean
           status?: Database["public"]["Enums"]["recipe_status"]
           updated_at?: string
           updated_by?: string | null
@@ -1436,6 +1498,7 @@ export type Database = {
           recipe_type_id?: string | null
           selling_price?: number | null
           shelf_life?: string | null
+          show_in_kitchen_production?: boolean
           status?: Database["public"]["Enums"]["recipe_status"]
           updated_at?: string
           updated_by?: string | null
