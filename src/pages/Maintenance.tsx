@@ -158,7 +158,9 @@ function AssetFormDialog({
 
   // ---------------------------------------------------------------
   // Maintenance photo upload — uses unified `app-files` bucket.
-  // Path: maintenance/{branchCode}/{categoryCode}/{assetSlug}/
+  // Path: maintenance/{branchCode}/{categoryCode}/
+  // Filename: {uuid}_{clean-asset-name}.{ext} (asset name is in the
+  // filename, NOT in the folder path).
   // ---------------------------------------------------------------
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -186,10 +188,9 @@ function AssetFormDialog({
       const result = await uploadToAppFilesBucket(toUpload, 'maintenance', {
         branchName: branch?.name,
         category: type?.code || type?.name_en || 'general',
-        assetOrEquipment: form.name.trim(),
       });
       // Required testing log
-      console.log('[maintenance.upload]', {
+      console.log('[maintenance.upload.fixed]', {
         bucket: result.bucket,
         path: result.path,
         publicUrl: result.publicUrl,
