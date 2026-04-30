@@ -992,7 +992,10 @@ const en = {
     deleteTitle: 'Delete production entry?',
     deleteConfirm: 'This will permanently delete the entry for {{name}} ({{qty}}). This cannot be undone.',
     updateSaved: 'Entry updated',
-    deleted: 'Entry deleted',
+    deleted: 'Production record deleted',
+    deleteFailed: 'Delete failed — please try again',
+    deleteNotPermitted: 'You can only delete your own records from today',
+    editNotPermitted: 'You can only edit your own records from today',
   },
 };
 
