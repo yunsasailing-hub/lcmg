@@ -369,19 +369,6 @@ export default function KitchenProduction() {
               {errors.branch && <p className="mt-1 text-xs text-destructive">{errors.branch}</p>}
             </div>
 
-            <div>
-              <Label>{t('kitchenProduction.fields.department')} *</Label>
-              <Select value={department} onValueChange={v => setDepartment(v as Department)}>
-                <SelectTrigger className="h-12"><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>
-                  {DEPARTMENTS.map(d => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.dept && <p className="mt-1 text-xs text-destructive">{errors.dept}</p>}
-            </div>
-
             <div className="sm:col-span-2 lg:col-span-3">
               <Label>{t('kitchenProduction.fields.item')} *</Label>
               <SearchableCombobox
