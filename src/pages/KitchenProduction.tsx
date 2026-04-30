@@ -62,7 +62,6 @@ export default function KitchenProduction() {
   const { user, profile, hasAnyRole } = useAuth();
   const qc = useQueryClient();
 
-  const isManager = hasAnyRole(['owner', 'manager']);
   const isOwner = hasAnyRole(['owner']);
 
   const { data: branches = [] } = useBranches();
