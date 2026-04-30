@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote, Smartphone } from 'lucide-react';
+import { Camera, ChevronLeft, CircleCheck, Circle, AlertTriangle, Clock, MessageSquare, Send, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,11 +12,6 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { formatVN } from '@/lib/timezone';
 import { optimizeChecklistImage, ImageTooLargeError } from '@/lib/imageCompression';
-import {
-  saveOptimizedPhotoToDevice,
-  getSaveToDeviceEnabled,
-  setSaveToDeviceEnabled,
-} from '@/lib/saveToDevice';
 import { logSaveStep } from '@/lib/saveDebug';
 import PhotoSaveDebugPanel from './PhotoSaveDebugPanel';
 import {
@@ -132,7 +127,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState<string | null>(null);
-  const [saveToDevice, setSaveToDeviceState] = useState<boolean>(() => getSaveToDeviceEnabled());
 
   const instance = checklists?.find(c => c.id === instanceId);
   const tpl = instance?.template as any;
@@ -235,21 +229,16 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
           step: 'optimizationFailed',
           error: err instanceof Error ? err.message : String(err),
         });
-        if (err instanceof ImageTooLargeError) {
-          toast.dismiss(optimizingToast);
-          logSaveStep({ step: 'final', outcome: 'processingFailed' });
-          toast.error('Photo is too large. Please retake the photo.');
-          setUploading(null);
-          return;
-        }
-        // Non-fatal: fall back to original file.
+        // Non-fatal: fall back to uploading the original file.
         optimized = {
           file,
           width: 0,
           height: 0,
           size: file.size,
         };
-        toast.warning('Could not optimize photo — uploading original.');
+        if (!(err instanceof ImageTooLargeError)) {
+          toast.warning('Could not optimize photo — uploading original.');
+        }
       }
 
       try {
@@ -271,31 +260,8 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             photo_url: url,
           });
           toast.dismiss(uploadingToast);
-
-          // Local device save — only after successful upload.
-          if (getSaveToDeviceEnabled()) {
-            const savingToast = toast.loading('Saving photo to device…');
-            const result = await saveOptimizedPhotoToDevice(optimized!.file, {
-              branch: (instance as any)?.branch_id ?? null,
-              department: instance?.department ?? null,
-              checklistType: instance?.checklist_type ?? null,
-              capturedAt: new Date(),
-            });
-            toast.dismiss(savingToast);
-            if (result.ok === true) {
-              logSaveStep({ step: 'final', outcome: 'uploaded+saved' });
-              toast.success('Photo uploaded and saved on this device.');
-            } else if (result.ok === false && result.reason === 'permission') {
-              logSaveStep({ step: 'final', outcome: 'uploaded+saveFailed' });
-              toast.warning('Photo uploaded to app, but could not be saved on this device.');
-            } else {
-              logSaveStep({ step: 'final', outcome: 'uploaded+saveFailed' });
-              toast.warning('Photo uploaded, but device save failed.');
-            }
-          } else {
-            logSaveStep({ step: 'final', outcome: 'uploaded+saved' });
-            toast.success('Photo uploaded successfully.');
-          }
+          logSaveStep({ step: 'final', outcome: 'uploaded+saved' });
+          toast.success('Photo uploaded.');
         } catch (uploadErr: any) {
           toast.dismiss(uploadingToast);
           logSaveStep({ step: 'uploadFailed', error: uploadErr?.message ?? String(uploadErr) });
@@ -580,30 +546,6 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
                   {(instance as any)?.notes || 'No notes added.'}
                 </p>
               )}
-            </div>
-
-            <div className="rounded-xl border bg-card p-4 md:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
-                    <Label htmlFor="save-to-device" className="text-sm font-medium block">
-                      Save checklist photos to this device
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Photos are uploaded first, then saved locally.
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="save-to-device"
-                  checked={saveToDevice}
-                  onCheckedChange={(v) => {
-                    setSaveToDeviceState(v);
-                    setSaveToDeviceEnabled(v);
-                  }}
-                />
-              </div>
             </div>
 
             <PhotoSaveDebugPanel />
