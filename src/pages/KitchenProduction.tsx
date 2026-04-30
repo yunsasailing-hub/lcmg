@@ -384,50 +384,42 @@ export default function KitchenProduction() {
 
             {/* Auto-filled, read-only fields */}
             {selectedItem && (
-              <div className="sm:col-span-2 lg:col-span-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 rounded-lg border bg-muted/40 p-3">
-                <div>
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.itemCode')}</Label>
-                  <Input readOnly value={selectedItem.code} className="h-10 font-mono bg-background/60" />
+              <div className="sm:col-span-2 lg:col-span-3 rounded-lg border bg-muted/40 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('kitchenProduction.fields.selectedItem')}
                 </div>
-                <div className="sm:col-span-2">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.itemName')}</Label>
-                  <Input readOnly value={selectedItem.name_en} className="h-10 bg-background/60" />
+                <div className="mt-1 font-semibold text-base sm:text-lg break-words">
+                  <span className="font-mono">{selectedItem.code}</span>
+                  <span className="mx-1.5 text-muted-foreground">—</span>
+                  <span>{selectedItem.name_en}</span>
                 </div>
-                <div>
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.unit')}</Label>
-                  <Input readOnly value={selectedItemUnit?.name_en ?? t('kitchenProduction.fields.unitMissing')} className="h-10 bg-background/60" />
+                <div className="mt-1 text-xs sm:text-sm text-muted-foreground">
+                  <span>{selectedItem.code.startsWith('1013') ? t('kitchenProduction.types.MENU_ITEM') : t('kitchenProduction.types.BATCH_RECIPE')}</span>
+                  <span className="mx-1.5">·</span>
+                  <span>{selectedItemUnit?.name_en ?? t('kitchenProduction.fields.unitMissing')}</span>
+                  <span className="mx-1.5">·</span>
+                  <span className={!recipeDepartment ? 'text-destructive' : ''}>
+                    {recipeDepartment ? t(`departments.${recipeDepartment}`, { defaultValue: recipeDepartment }) : t('kitchenProduction.fields.deptMissing')}
+                  </span>
                 </div>
-                <div>
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.type')}</Label>
-                  <Input readOnly value={selectedItem.code.startsWith('1013') ? t('kitchenProduction.types.MENU_ITEM') : t('kitchenProduction.types.BATCH_RECIPE')} className="h-10 bg-background/60" />
-                </div>
-                <div>
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.department')}</Label>
-                  <Input
-                    readOnly
-                    value={recipeDepartment ? t(`departments.${recipeDepartment}`, { defaultValue: recipeDepartment }) : t('kitchenProduction.fields.deptMissing')}
-                    className={`h-10 bg-background/60 ${!recipeDepartment ? 'text-destructive' : ''}`}
-                  />
-                </div>
-                <div className="sm:col-span-2 lg:col-span-2">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.linkedRecipeCode')}</Label>
-                  <Input readOnly value={selectedItem.code} className="h-10 font-mono bg-background/60" />
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {t('kitchenProduction.fields.linkedRecipeCode')}: <span className="font-mono">{selectedItem.code}</span>
                 </div>
 
                 {unitMissing && (
-                  <div className="sm:col-span-2 lg:col-span-4 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                  <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                     <span>{t('kitchenProduction.warnings.unitMissing')}</span>
                   </div>
                 )}
 
                 {!recipeDepartment && (
-                  <div className="sm:col-span-2 lg:col-span-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                     <span>{t('kitchenProduction.warnings.deptMissing')}</span>
                   </div>
                 )}
-                {errors.dept && <p className="sm:col-span-2 lg:col-span-4 text-xs text-destructive">{errors.dept}</p>}
+                {errors.dept && <p className="mt-1 text-xs text-destructive">{errors.dept}</p>}
               </div>
             )}
 
