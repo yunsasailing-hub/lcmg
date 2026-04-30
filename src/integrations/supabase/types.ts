@@ -436,6 +436,116 @@ export type Database = {
           },
         ]
       }
+      document_history: {
+        Row: {
+          action_at: string
+          action_by: string | null
+          action_type: string
+          document_id: string
+          id: string
+          new_file_path: string | null
+          notes: string | null
+          old_file_path: string | null
+        }
+        Insert: {
+          action_at?: string
+          action_by?: string | null
+          action_type: string
+          document_id: string
+          id?: string
+          new_file_path?: string | null
+          notes?: string | null
+          old_file_path?: string | null
+        }
+        Update: {
+          action_at?: string
+          action_by?: string | null
+          action_type?: string
+          document_id?: string
+          id?: string
+          new_file_path?: string | null
+          notes?: string | null
+          old_file_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_history_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "document_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_records: {
+        Row: {
+          branch: string
+          created_at: string
+          created_by: string | null
+          department: string | null
+          document_code: string
+          document_name: string
+          document_type: string
+          expiry_date: string | null
+          file_name: string | null
+          file_path: string | null
+          file_type: string | null
+          id: string
+          issue_date: string | null
+          linked_module: string | null
+          linked_record_id: string | null
+          notes: string | null
+          reminder_days_before_expiry: number | null
+          responsible_person: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          document_code: string
+          document_name: string
+          document_type: string
+          expiry_date?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          id?: string
+          issue_date?: string | null
+          linked_module?: string | null
+          linked_record_id?: string | null
+          notes?: string | null
+          reminder_days_before_expiry?: number | null
+          responsible_person?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          document_code?: string
+          document_name?: string
+          document_type?: string
+          expiry_date?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_type?: string | null
+          id?: string
+          issue_date?: string | null
+          linked_module?: string | null
+          linked_record_id?: string | null
+          notes?: string | null
+          reminder_days_before_expiry?: number | null
+          responsible_person?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       in_app_notifications: {
         Row: {
           archived_at: string | null
