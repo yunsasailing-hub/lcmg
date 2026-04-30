@@ -1,110 +1,563 @@
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
-import { Wrench, Loader2, HelpCircle, Trash2 } from 'lucide-react';
+import { Wrench, Plus, Search, Pencil, Archive, ArchiveRestore, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { useCleanupOrphanPendingChecklists } from '@/hooks/useChecklists';
+import {
+  useMaintenanceAssets, useMaintenanceAssetTypes, useUpsertMaintenanceAsset,
+  useArchiveMaintenanceAsset, useBranchesAll,
+  type EnrichedMaintenanceAsset, type MaintenanceStatus,
+} from '@/hooks/useMaintenance';
+import type { Database } from '@/integrations/supabase/types';
 
-function RepairOrphanChecklists() {
-  const cleanup = useCleanupOrphanPendingChecklists();
-  const handleConfirm = () => {
-    cleanup.mutate(undefined, {
-      onSuccess: (res) => {
-        const i = res.deleted_instances ?? 0;
-        const n = res.deleted_notifications ?? 0;
-        if (i === 0 && n === 0) {
-          toast.success('No orphan pending checklists found.');
-        } else {
-          toast.success(`Cleaned ${i} pending checklist${i === 1 ? '' : 's'} and ${n} related notification${n === 1 ? '' : 's'}.`);
-        }
-      },
-      onError: (err: any) => toast.error(err?.message || 'Repair failed'),
-    });
-  };
+type Department = Database['public']['Enums']['department'];
+const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
+const STATUSES: MaintenanceStatus[] = ['active', 'inactive', 'archived'];
+
+const STATUS_BADGE: Record<MaintenanceStatus, string> = {
+  active: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+  inactive: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+  archived: 'bg-muted text-muted-foreground border-border',
+};
+
+function fmtDate(s?: string | null) {
+  if (!s) return '—';
+  try { return new Date(s).toLocaleDateString(); } catch { return s; }
+}
+
+/* -------------------------- Dashboard -------------------------- */
+function MaintenanceDashboard({ assets }: { assets: EnrichedMaintenanceAsset[] }) {
+  const { t } = useTranslation();
+  const totalActive = assets.filter(a => a.status === 'active').length;
+  const totalArchived = assets.filter(a => a.status === 'archived').length;
+  const byBranch = new Map<string, number>();
+  const byDept = new Map<string, number>();
+  assets.filter(a => a.status !== 'archived').forEach(a => {
+    const b = a.branch_name || t('common.unassigned');
+    byBranch.set(b, (byBranch.get(b) ?? 0) + 1);
+    byDept.set(a.department, (byDept.get(a.department) ?? 0) + 1);
+  });
+  const recent = [...assets].sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  ).slice(0, 5);
 
   return (
-    <div className="rounded-lg border bg-card p-4 max-w-2xl">
-      <div className="flex items-center gap-2">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm" disabled={cleanup.isPending}>
-              {cleanup.isPending
-                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                : <Trash2 className="h-4 w-4 mr-2" />}
-              Repair Orphan Checklists
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Run orphan checklist repair?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Removes pending, late, and overdue checklists whose assignment was deleted or ended,
-                along with their related notifications. Submitted and Done Archive checklists are kept untouched.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirm}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Run Repair
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="About this tool">
-              <HelpCircle className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="text-sm max-w-xs">
-            This tool scans and repairs orphan or inconsistent pending checklist records.
-            Use only when records appear incorrect.
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      <div className="mt-3 text-sm text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">Use when:</p>
-        <ul className="list-disc pl-5 space-y-0.5">
-          <li>a pending checklist remains after assignment removal</li>
-          <li>a checklist appears stuck or duplicated</li>
-          <li>a deleted user leaves orphan checklist records</li>
-          <li>recurring generation created invalid pending records</li>
-        </ul>
-        <p className="italic mt-2">Normally not needed for daily use.</p>
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">{t('maintenance.dashboard.activeTotal')}</CardTitle></CardHeader>
+        <CardContent><div className="text-3xl font-heading font-semibold">{totalActive}</div></CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">{t('maintenance.dashboard.archivedTotal')}</CardTitle></CardHeader>
+        <CardContent><div className="text-3xl font-heading font-semibold">{totalArchived}</div></CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">{t('maintenance.dashboard.byBranch')}</CardTitle></CardHeader>
+        <CardContent className="space-y-1 text-sm">
+          {byBranch.size === 0 ? <p className="text-muted-foreground">—</p> :
+            [...byBranch.entries()].map(([k, v]) => (
+              <div key={k} className="flex justify-between"><span className="truncate">{k}</span><span className="font-semibold">{v}</span></div>
+            ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">{t('maintenance.dashboard.byDepartment')}</CardTitle></CardHeader>
+        <CardContent className="space-y-1 text-sm">
+          {byDept.size === 0 ? <p className="text-muted-foreground">—</p> :
+            [...byDept.entries()].map(([k, v]) => (
+              <div key={k} className="flex justify-between"><span className="capitalize">{k}</span><span className="font-semibold">{v}</span></div>
+            ))}
+        </CardContent>
+      </Card>
+      <Card className="sm:col-span-2 lg:col-span-4">
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">{t('maintenance.dashboard.recent')}</CardTitle></CardHeader>
+        <CardContent>
+          {recent.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : (
+            <ul className="divide-y">
+              {recent.map(a => (
+                <li key={a.id} className="flex items-center justify-between py-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{a.code} — {a.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{a.branch_name ?? '—'} · <span className="capitalize">{a.department}</span></div>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">{fmtDate(a.created_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
+/* -------------------------- Form Dialog -------------------------- */
+function AssetFormDialog({
+  open, onOpenChange, initial, canPickBranch,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  initial?: EnrichedMaintenanceAsset | null;
+  canPickBranch: boolean;
+}) {
+  const { t } = useTranslation();
+  const { profile } = useAuth();
+  const { data: branches = [] } = useBranchesAll();
+  const { data: types = [] } = useMaintenanceAssetTypes();
+  const upsert = useUpsertMaintenanceAsset();
+
+  const defaultBranch = canPickBranch ? '' : (profile?.branch_id ?? '');
+  const [form, setForm] = useState(() => ({
+    code: initial?.code ?? '',
+    name: initial?.name ?? '',
+    branch_id: initial?.branch_id ?? defaultBranch,
+    department: (initial?.department ?? '') as Department | '',
+    asset_type_id: initial?.asset_type_id ?? '',
+    status: (initial?.status ?? 'active') as MaintenanceStatus,
+    location: initial?.location ?? '',
+    brand: initial?.brand ?? '',
+    model: initial?.model ?? '',
+    serial_number: initial?.serial_number ?? '',
+    purchase_date: initial?.purchase_date ?? '',
+    installation_date: initial?.installation_date ?? '',
+    warranty_expiry_date: initial?.warranty_expiry_date ?? '',
+    supplier_vendor: initial?.supplier_vendor ?? '',
+    technician_contact: initial?.technician_contact ?? '',
+    notes: initial?.notes ?? '',
+  }));
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const update = (k: string, v: any) => setForm(s => ({ ...s, [k]: v }));
+
+  const handleSave = async () => {
+    const errs: Record<string, string> = {};
+    if (!form.code.trim()) errs.code = t('maintenance.errors.codeRequired');
+    if (!form.name.trim()) errs.name = t('maintenance.errors.nameRequired');
+    if (!form.branch_id) errs.branch_id = t('maintenance.errors.branchRequired');
+    if (!form.department) errs.department = t('maintenance.errors.departmentRequired');
+    if (!form.asset_type_id) errs.asset_type_id = t('maintenance.errors.typeRequired');
+    if (!form.status) errs.status = t('maintenance.errors.statusRequired');
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    try {
+      const payload: any = {
+        ...form,
+        code: form.code.trim(),
+        name: form.name.trim(),
+        purchase_date: form.purchase_date || null,
+        installation_date: form.installation_date || null,
+        warranty_expiry_date: form.warranty_expiry_date || null,
+        location: form.location || null,
+        brand: form.brand || null,
+        model: form.model || null,
+        serial_number: form.serial_number || null,
+        supplier_vendor: form.supplier_vendor || null,
+        technician_contact: form.technician_contact || null,
+        notes: form.notes || null,
+        archived_at: form.status === 'archived' ? (initial?.archived_at ?? new Date().toISOString()) : null,
+      };
+      if (initial?.id) payload.id = initial.id;
+      else payload.created_by = profile?.user_id;
+      await upsert.mutateAsync(payload);
+      toast.success(initial ? t('maintenance.toasts.updated') : t('maintenance.toasts.created'));
+      onOpenChange(false);
+    } catch (e: any) {
+      const msg = String(e?.message ?? '');
+      if (msg.toLowerCase().includes('duplicate') || msg.includes('maintenance_assets_code_key')) {
+        toast.error(t('maintenance.errors.codeExists'));
+        setErrors(s => ({ ...s, code: t('maintenance.errors.codeExists') }));
+      } else {
+        toast.error(msg || 'Save failed');
+      }
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{initial ? t('maintenance.form.editTitle') : t('maintenance.form.newTitle')}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="sm:col-span-2">
+            <Label>{t('maintenance.fields.code')} *</Label>
+            <Input value={form.code} onChange={e => update('code', e.target.value)} placeholder="B26-BAR-CM-001" />
+            <p className="text-xs text-muted-foreground mt-1">{t('maintenance.helpers.code')}</p>
+            {errors.code && <p className="text-xs text-destructive mt-1">{errors.code}</p>}
+          </div>
+          <div className="sm:col-span-2">
+            <Label>{t('maintenance.fields.name')} *</Label>
+            <Input value={form.name} onChange={e => update('name', e.target.value)} placeholder="Coffee Machine 1" />
+            {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
+          </div>
+          <div>
+            <Label>{t('maintenance.fields.branch')} *</Label>
+            <Select value={form.branch_id} onValueChange={v => update('branch_id', v)} disabled={!canPickBranch}>
+              <SelectTrigger><SelectValue placeholder={t('common.selectPlaceholder')} /></SelectTrigger>
+              <SelectContent>
+                {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {errors.branch_id && <p className="text-xs text-destructive mt-1">{errors.branch_id}</p>}
+          </div>
+          <div>
+            <Label>{t('maintenance.fields.department')} *</Label>
+            <Select value={form.department} onValueChange={v => update('department', v)}>
+              <SelectTrigger><SelectValue placeholder={t('common.selectPlaceholder')} /></SelectTrigger>
+              <SelectContent>
+                {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {errors.department && <p className="text-xs text-destructive mt-1">{errors.department}</p>}
+          </div>
+          <div>
+            <Label>{t('maintenance.fields.type')} *</Label>
+            <Select value={form.asset_type_id} onValueChange={v => update('asset_type_id', v)}>
+              <SelectTrigger><SelectValue placeholder={t('common.selectPlaceholder')} /></SelectTrigger>
+              <SelectContent>
+                {types.map(t2 => <SelectItem key={t2.id} value={t2.id}>{t2.name_en}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {errors.asset_type_id && <p className="text-xs text-destructive mt-1">{errors.asset_type_id}</p>}
+          </div>
+          <div>
+            <Label>{t('maintenance.fields.status')} *</Label>
+            <Select value={form.status} onValueChange={v => update('status', v as MaintenanceStatus)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{t(`maintenance.status.${s}`)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <Label>{t('maintenance.fields.location')}</Label>
+            <Input value={form.location} onChange={e => update('location', e.target.value)} />
+          </div>
+          <div><Label>{t('maintenance.fields.brand')}</Label><Input value={form.brand} onChange={e => update('brand', e.target.value)} /></div>
+          <div><Label>{t('maintenance.fields.model')}</Label><Input value={form.model} onChange={e => update('model', e.target.value)} /></div>
+          <div><Label>{t('maintenance.fields.serialNumber')}</Label><Input value={form.serial_number} onChange={e => update('serial_number', e.target.value)} /></div>
+          <div><Label>{t('maintenance.fields.supplier')}</Label><Input value={form.supplier_vendor} onChange={e => update('supplier_vendor', e.target.value)} /></div>
+          <div><Label>{t('maintenance.fields.purchaseDate')}</Label><Input type="date" value={form.purchase_date} onChange={e => update('purchase_date', e.target.value)} /></div>
+          <div><Label>{t('maintenance.fields.installationDate')}</Label><Input type="date" value={form.installation_date} onChange={e => update('installation_date', e.target.value)} /></div>
+          <div><Label>{t('maintenance.fields.warrantyDate')}</Label><Input type="date" value={form.warranty_expiry_date} onChange={e => update('warranty_expiry_date', e.target.value)} /></div>
+          <div><Label>{t('maintenance.fields.technicianContact')}</Label><Input value={form.technician_contact} onChange={e => update('technician_contact', e.target.value)} /></div>
+          <div className="sm:col-span-2">
+            <Label>{t('maintenance.fields.notes')}</Label>
+            <Textarea rows={3} value={form.notes} onChange={e => update('notes', e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+          <Button onClick={handleSave} disabled={upsert.isPending}>
+            {upsert.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+            {t('common.save')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* -------------------------- Detail View -------------------------- */
+function AssetDetail({ asset, onBack, canEdit, onEdit }: {
+  asset: EnrichedMaintenanceAsset;
+  onBack: () => void;
+  canEdit: boolean;
+  onEdit: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" />{t('common.back')}</Button>
+        {canEdit && <Button onClick={onEdit}><Pencil className="h-4 w-4 mr-1" />{t('common.edit')}</Button>}
+      </div>
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-xs font-mono text-muted-foreground">{asset.code}</div>
+              <CardTitle className="text-xl mt-1">{asset.name}</CardTitle>
+            </div>
+            <Badge variant="outline" className={STATUS_BADGE[asset.status]}>{t(`maintenance.status.${asset.status}`)}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+          <Info label={t('maintenance.fields.branch')} value={asset.branch_name} />
+          <Info label={t('maintenance.fields.department')} value={<span className="capitalize">{asset.department}</span>} />
+          <Info label={t('maintenance.fields.type')} value={asset.type_name_en} />
+          <Info label={t('maintenance.fields.location')} value={asset.location} />
+          <Info label={t('maintenance.fields.brand')} value={asset.brand} />
+          <Info label={t('maintenance.fields.model')} value={asset.model} />
+          <Info label={t('maintenance.fields.serialNumber')} value={asset.serial_number} />
+          <Info label={t('maintenance.fields.supplier')} value={asset.supplier_vendor} />
+          <Info label={t('maintenance.fields.purchaseDate')} value={fmtDate(asset.purchase_date)} />
+          <Info label={t('maintenance.fields.installationDate')} value={fmtDate(asset.installation_date)} />
+          <Info label={t('maintenance.fields.warrantyDate')} value={fmtDate(asset.warranty_expiry_date)} />
+          <Info label={t('maintenance.fields.technicianContact')} value={asset.technician_contact} />
+          {asset.notes && <div className="sm:col-span-2"><Info label={t('maintenance.fields.notes')} value={<span className="whitespace-pre-wrap">{asset.notes}</span>} /></div>}
+        </CardContent>
+      </Card>
+
+      {(['scheduled', 'history', 'repairs', 'photos'] as const).map(k => (
+        <Collapsible key={k}>
+          <CollapsibleTrigger className="w-full text-left rounded-md border bg-card px-4 py-3 text-sm font-medium hover:bg-accent/40">
+            {t(`maintenance.placeholders.${k}`)}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="px-4 py-3 text-sm text-muted-foreground border border-t-0 rounded-b-md">
+            {t('maintenance.placeholders.comingSoon')}
+          </CollapsibleContent>
+        </Collapsible>
+      ))}
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-0.5">{value || <span className="text-muted-foreground">—</span>}</div>
+    </div>
+  );
+}
+
+/* -------------------------- List View -------------------------- */
+function AssetList({
+  assets, onOpen, canManage, onEdit, onArchiveToggle, isOwner,
+}: {
+  assets: EnrichedMaintenanceAsset[];
+  onOpen: (a: EnrichedMaintenanceAsset) => void;
+  canManage: (a: EnrichedMaintenanceAsset) => boolean;
+  onEdit: (a: EnrichedMaintenanceAsset) => void;
+  onArchiveToggle: (a: EnrichedMaintenanceAsset) => void;
+  isOwner: boolean;
+}) {
+  const { t } = useTranslation();
+  const { data: branches = [] } = useBranchesAll();
+  const { data: types = [] } = useMaintenanceAssetTypes();
+  const [search, setSearch] = useState('');
+  const [branchFilter, setBranchFilter] = useState<string>('all');
+  const [deptFilter, setDeptFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('not_archived');
+
+  const filtered = useMemo(() => {
+    return assets.filter(a => {
+      if (statusFilter === 'not_archived' && a.status === 'archived') return false;
+      if (statusFilter !== 'all' && statusFilter !== 'not_archived' && a.status !== statusFilter) return false;
+      if (branchFilter !== 'all' && a.branch_id !== branchFilter) return false;
+      if (deptFilter !== 'all' && a.department !== deptFilter) return false;
+      if (typeFilter !== 'all' && a.asset_type_id !== typeFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        if (!a.code.toLowerCase().includes(q) && !a.name.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [assets, search, branchFilter, deptFilter, typeFilter, statusFilter]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-8" placeholder={t('maintenance.list.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 sm:flex gap-2">
+          <Select value={branchFilter} onValueChange={setBranchFilter}>
+            <SelectTrigger className="sm:w-40"><SelectValue placeholder={t('maintenance.fields.branch')} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('common.all')} {t('maintenance.fields.branch')}</SelectItem>
+              {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={deptFilter} onValueChange={setDeptFilter}>
+            <SelectTrigger className="sm:w-40"><SelectValue placeholder={t('maintenance.fields.department')} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('common.all')} {t('maintenance.fields.department')}</SelectItem>
+              {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="sm:w-40"><SelectValue placeholder={t('maintenance.fields.type')} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('common.all')} {t('maintenance.fields.type')}</SelectItem>
+              {types.map(ty => <SelectItem key={ty.id} value={ty.id}>{ty.name_en}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="sm:w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="not_archived">{t('maintenance.list.activeAndInactive')}</SelectItem>
+              <SelectItem value="all">{t('common.all')}</SelectItem>
+              {STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{t(`maintenance.status.${s}`)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState icon={Wrench} title={t('maintenance.list.emptyTitle')} description={t('maintenance.list.emptyDesc')} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtered.map(a => (
+            <Card key={a.id} className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => onOpen(a)}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-mono text-muted-foreground truncate">{a.code}</div>
+                    <div className="font-semibold truncate">{a.name}</div>
+                  </div>
+                  <Badge variant="outline" className={STATUS_BADGE[a.status]}>{t(`maintenance.status.${a.status}`)}</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <div className="truncate">{a.branch_name ?? '—'} · <span className="capitalize">{a.department}</span></div>
+                  <div className="truncate">{a.type_name_en ?? '—'}{a.location ? ` · ${a.location}` : ''}</div>
+                  <div>{t('maintenance.fields.lastUpdated')}: {fmtDate(a.updated_at)}</div>
+                </div>
+                {canManage(a) && (
+                  <div className="flex gap-1 pt-1" onClick={e => e.stopPropagation()}>
+                    <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" />{t('common.edit')}
+                    </Button>
+                    {(isOwner || a.status !== 'archived') && (
+                      <Button size="sm" variant="outline" onClick={() => onArchiveToggle(a)}>
+                        {a.status === 'archived'
+                          ? <><ArchiveRestore className="h-3.5 w-3.5 mr-1" />{t('maintenance.actions.restore')}</>
+                          : <><Archive className="h-3.5 w-3.5 mr-1" />{t('maintenance.actions.archive')}</>}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------- Page -------------------------- */
 export default function Maintenance() {
   const { t } = useTranslation();
-  const { hasRole } = useAuth();
+  const { hasRole, profile } = useAuth();
   const isOwner = hasRole('owner');
+  const isManager = hasRole('manager');
+  const canCreate = isOwner || isManager;
+
+  const { data: assets = [], isLoading } = useMaintenanceAssets();
+  const archive = useArchiveMaintenanceAsset();
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<EnrichedMaintenanceAsset | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<EnrichedMaintenanceAsset | null>(null);
+
+  const selected = assets.find(a => a.id === selectedId) ?? null;
+
+  const canManageAsset = (a: EnrichedMaintenanceAsset) => {
+    if (isOwner) return true;
+    if (isManager && profile?.branch_id && a.branch_id === profile.branch_id) return true;
+    return false;
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (!archiveTarget) return;
+    try {
+      await archive.mutateAsync({ id: archiveTarget.id, archive: archiveTarget.status !== 'archived' });
+      toast.success(archiveTarget.status === 'archived' ? t('maintenance.toasts.restored') : t('maintenance.toasts.archived'));
+      setArchiveTarget(null);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed');
+    }
+  };
 
   return (
     <AppShell>
-      <PageHeader title={t('pages.maintenance.title')} description={t('pages.maintenance.subtitle')} />
-      {isOwner ? (
-        <section className="space-y-3">
-          <h2 className="font-heading text-lg font-semibold">Repair Tools</h2>
-          <RepairOrphanChecklists />
-        </section>
+      <PageHeader title={t('pages.maintenance.title')} description={t('pages.maintenance.subtitle')}>
+        {canCreate && !selected && (
+          <Button onClick={() => { setEditing(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" />{t('maintenance.actions.addAsset')}
+          </Button>
+        )}
+      </PageHeader>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : selected ? (
+        <AssetDetail
+          asset={selected}
+          onBack={() => setSelectedId(null)}
+          canEdit={canManageAsset(selected)}
+          onEdit={() => { setEditing(selected); setFormOpen(true); }}
+        />
       ) : (
-        <EmptyState icon={Wrench} title={t('pages.maintenance.emptyTitle')} description={t('pages.maintenance.emptyDesc')} />
+        <Tabs defaultValue="dashboard" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="dashboard">{t('maintenance.tabs.dashboard')}</TabsTrigger>
+            <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="dashboard"><MaintenanceDashboard assets={assets} /></TabsContent>
+          <TabsContent value="list">
+            <AssetList
+              assets={assets}
+              onOpen={a => setSelectedId(a.id)}
+              canManage={canManageAsset}
+              onEdit={a => { setEditing(a); setFormOpen(true); }}
+              onArchiveToggle={a => setArchiveTarget(a)}
+              isOwner={isOwner}
+            />
+          </TabsContent>
+        </Tabs>
       )}
+
+      {formOpen && (
+        <AssetFormDialog
+          open={formOpen}
+          onOpenChange={(v) => { setFormOpen(v); if (!v) setEditing(null); }}
+          initial={editing}
+          canPickBranch={isOwner}
+        />
+      )}
+
+      <AlertDialog open={!!archiveTarget} onOpenChange={(v) => !v && setArchiveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {archiveTarget?.status === 'archived' ? t('maintenance.confirm.restoreTitle') : t('maintenance.confirm.archiveTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {archiveTarget?.status === 'archived' ? t('maintenance.confirm.restoreDesc') : t('maintenance.confirm.archiveDesc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchiveConfirm}>{t('common.confirm')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
