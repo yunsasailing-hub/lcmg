@@ -236,7 +236,12 @@ export default function KitchenProduction() {
 
           {items.length === 0 && !itemsLoading && (
             <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-              {t('kitchenProduction.errors.noItems')}
+              <div>{t('kitchenProduction.errors.noItems')}</div>
+              {isOwner && (
+                <div className="mt-1 text-xs opacity-80">
+                  {t('kitchenProduction.debug.enabledCount', { count: items.length })}
+                </div>
+              )}
             </div>
           )}
 
@@ -292,7 +297,7 @@ export default function KitchenProduction() {
               {selectedItem && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   {selectedItem.code.startsWith('1013') ? t('kitchenProduction.types.MENU_ITEM') : t('kitchenProduction.types.BATCH_RECIPE')}
-                  {selectedItemUnit && <> · {t('kitchenProduction.fields.unit')}: {selectedItemUnit.name_en}</>}
+                  <> · {t('kitchenProduction.fields.unit')}: {selectedItemUnit?.name_en ?? t('kitchenProduction.fields.unitMissing')}</>
                 </p>
               )}
               {errors.item && <p className="mt-1 text-xs text-destructive">{errors.item}</p>}
