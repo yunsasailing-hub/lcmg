@@ -310,6 +310,7 @@ export default function RecipeDetail() {
             ...prev,
             yield_unit_id: (saved as any).yield_unit_id ?? NONE,
             is_active: (saved as any).is_active === true,
+            show_in_kitchen_production: (saved as any).show_in_kitchen_production === true,
           }));
         }
         setEditing(false);
