@@ -1009,7 +1009,7 @@ const vi: Translations = {
     editNotPermitted: 'Bạn chỉ có thể sửa bản ghi của mình trong hôm nay',
   },
   maintenance: {
-    tabs: { dashboard: 'Tổng quan', list: 'Thiết bị & Khu vực' },
+    tabs: { dashboard: 'Tổng quan', list: 'Thiết bị & Khu vực', settings: 'Cài đặt' },
     dashboard: {
       activeTotal: 'Thiết bị / Khu vực đang hoạt động',
       archivedTotal: 'Đã lưu trữ',
@@ -1062,6 +1062,33 @@ const vi: Translations = {
       repairs: 'Lịch sử sửa chữa',
       photos: 'Hình ảnh / Tài liệu',
       comingSoon: 'Sẽ có ở giai đoạn sau.',
+    },
+    settings: {
+      title: 'Cài đặt Bảo trì',
+      types: {
+        title: 'Loại Thiết bị',
+        description: 'Quản lý danh sách loại thiết bị / khu vực dùng trong module Bảo trì.',
+        addNew: 'Thêm Loại',
+        newTitle: 'Loại thiết bị mới',
+        editTitle: 'Sửa loại thiết bị',
+        empty: 'Chưa có loại thiết bị nào.',
+        usedBy_one: 'Đang dùng bởi {{count}} mục',
+        usedBy_other: 'Đang dùng bởi {{count}} mục',
+        usedBy: 'Đang dùng bởi {{count}} mục',
+        notUsed: 'Chưa sử dụng',
+        deleteHint: 'Loại đang được sử dụng không thể xóa. Hãy chuyển sang Tạm ngưng — vẫn liên kết với thiết bị hiện có nhưng không hiển thị khi thêm thiết bị mới.',
+        cols: { name: 'Tên', usage: 'Sử dụng', status: 'Trạng thái', createdAt: 'Ngày tạo' },
+        status: { active: 'Hoạt động', inactive: 'Tạm ngưng' },
+        actions: { activate: 'Kích hoạt', deactivate: 'Tạm ngưng' },
+        fields: { name: 'Tên (Tiếng Anh)', nameVi: 'Tên (Tiếng Việt)' },
+        errors: { nameRequired: 'Tên là bắt buộc' },
+        toasts: {
+          created: 'Đã tạo loại thiết bị',
+          updated: 'Đã cập nhật loại thiết bị',
+          activated: 'Đã kích hoạt loại thiết bị',
+          deactivated: 'Đã tạm ngưng loại thiết bị',
+        },
+      },
     },
   },
 };
