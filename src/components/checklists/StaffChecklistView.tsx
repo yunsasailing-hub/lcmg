@@ -255,7 +255,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
             branchName: (instance as any)?.branch?.name ?? null,
             scheduledDate: (instance as any)?.scheduled_date ?? null,
           });
-          logSaveStep({ step: 'uploadSuccess', url, path });
+          logSaveStep({ step: 'uploadSuccess', url });
           upsert.mutate({
             instance_id: instanceId,
             task_id: taskId,
