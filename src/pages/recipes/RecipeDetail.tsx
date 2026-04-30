@@ -437,6 +437,17 @@ export default function RecipeDetail() {
                   </div>
                 )
               )}
+              <div className="flex items-start gap-3 pt-2">
+                <Switch
+                  id="show_in_kitchen_production"
+                  checked={form.show_in_kitchen_production}
+                  onCheckedChange={v => update('show_in_kitchen_production', v)}
+                />
+                <div>
+                  <Label htmlFor="show_in_kitchen_production">{t('recipes.list.fields.showInKitchenProduction')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('recipes.list.fields.showInKitchenProductionHint')}</p>
+                </div>
+              </div>
               {/* Main image lives in Master Info — reuses recipe_media (primary image) */}
               <RecipeMainImageField recipeId={isNew ? undefined : id} canManage={canManage} />
             </Section>
