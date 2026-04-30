@@ -418,6 +418,7 @@ export default function RecipeProcedureTab({ recipeId, canManage }: Props) {
                       legacyImageUrl={s.image_url}
                       legacyVideoUrl={s.video_url}
                       mode="edit"
+                      stepNumber={s.step_number}
                     />
                   </div>
                 </div>
