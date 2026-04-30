@@ -79,6 +79,7 @@ const en = {
     management: 'Management',
     more: 'More',
     kitchenProductionShort: 'Production',
+    systemRepair: 'System Repair',
   },
   roles: {
     owner: 'Owner',
@@ -183,6 +184,7 @@ const en = {
     recipes: { title: 'Recipes', subtitle: 'Recipe book & cost management', emptyTitle: 'No recipes yet', emptyDesc: 'Recipes will appear here once added.' },
     inventory: { title: 'Inventory', subtitle: 'Stock levels & order management', emptyTitle: 'No inventory items yet', emptyDesc: 'Inventory items will appear here once added.' },
     maintenance: { title: 'Maintenance', subtitle: 'Equipment tracking & repair tickets', emptyTitle: 'No maintenance tickets', emptyDesc: 'Maintenance requests will appear here.' },
+    systemRepair: { title: 'System Repair Tools', subtitle: 'Owner-only utilities for fixing data issues', emptyTitle: 'No tools available', emptyDesc: 'Repair tools are restricted to owners.' },
     notFound: { code: '404', message: 'Oops! Page not found', returnHome: 'Return to Home' },
   },
   recipes: {
