@@ -32,6 +32,149 @@ import { supabase } from '@/integrations/supabase/client';
 export const APP_FILES_BUCKET = 'app-files';
 
 // ---------------------------------------------------------------------------
+// Centralized path generator (spec: generateStoragePath)
+// ---------------------------------------------------------------------------
+
+/**
+ * Modules supported by `generateStoragePath`. Mirrors the folder layout
+ * inside the `app-files` bucket.
+ */
+export type StoragePathModule =
+  | 'documents'
+  | 'checklists'
+  | 'maintenance'
+  | 'recipes'
+  | 'staff';
+
+/**
+ * Branch identifier accepted by `generateStoragePath`. Either a canonical
+ * short code (LCL/LCM/B26) or a human branch name — both are normalized
+ * via `getBranchCode`.
+ */
+export type StorageBranchInput = string | null | undefined;
+
+/**
+ * Options for `generateStoragePath`. Different modules use different
+ * combinations of these fields; see the per-module rules below.
+ */
+export interface GenerateStoragePathOptions {
+  /** Required for documents/checklists/maintenance. */
+  branch?: StorageBranchInput;
+  /**
+   * Module sub-type:
+   *  - documents: licenses | contracts | supplier | internal | ...
+   *  - recipes:   images | videos | step-photos
+   *  - staff:     certificates | contracts | training | ...
+   *  - maintenance: equipment slug (e.g. "coffee-machine")
+   */
+  subType?: string;
+  /** Original filename (will be cleaned). Required for most modules. */
+  fileName?: string;
+  /** checklists: human/business checklist code (e.g. CHK-001). */
+  checklistId?: string;
+  /** checklists: defaults to current UTC year. */
+  year?: number | string;
+  /** checklists: defaults to current UTC month (01-12). */
+  month?: number | string;
+  /** recipes: required for images/videos/step-photos. */
+  recipeId?: string;
+  /** recipes (step-photos): step number, formatted as 2-digit string. */
+  stepNumber?: number | string;
+  /** staff: e.g. STF-001. */
+  staffId?: string;
+}
+
+/** Lowercase + replace spaces with underscores + strip path separators. */
+function sanitizeFileName(name: string | undefined | null): string {
+  if (!name) return 'file';
+  const lastSlash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+  const base = lastSlash >= 0 ? name.slice(lastSlash + 1) : name;
+  return base
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9._-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^[_.-]+|[_.-]+$/g, '') || 'file';
+}
+
+/** Lowercase slug used for sub-type segments (no underscores; hyphens). */
+function sanitizeSegment(value: string | number | undefined | null, fallback = 'general'): string {
+  if (value === undefined || value === null || value === '') return fallback;
+  return String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || fallback;
+}
+
+/**
+ * Centralized storage path generator for the `app-files` bucket.
+ *
+ * All modules MUST route their `app-files` uploads through this function so
+ * the folder structure stays consistent. UI code must never accept a manual
+ * path — pass module + metadata only.
+ *
+ * Layouts:
+ *   documents/{BRANCH}/{subType}/{fileName}
+ *   checklists/{BRANCH}/{year}/{month}/{checklistId}_{fileName}
+ *   maintenance/{BRANCH}/{equipment}/{fileName}
+ *   recipes/images/{recipeId}.{ext}
+ *   recipes/videos/{recipeId}.{ext}
+ *   recipes/step-photos/{recipeId}_{stepNumber}.{ext}
+ *   staff/{subType}/{staffId}_{fileName}
+ */
+export function generateStoragePath(
+  module: StoragePathModule,
+  options: GenerateStoragePathOptions = {},
+): string {
+  const branchCode = getBranchCode(options.branch ?? undefined);
+  const cleanName = sanitizeFileName(options.fileName);
+  const ext = (() => {
+    const dot = cleanName.lastIndexOf('.');
+    return dot > 0 ? cleanName.slice(dot + 1) : '';
+  })();
+
+  switch (module) {
+    case 'documents': {
+      const sub = sanitizeSegment(options.subType, 'general');
+      return `documents/${branchCode}/${sub}/${cleanName}`;
+    }
+    case 'checklists': {
+      const now = new Date();
+      const year = String(options.year ?? now.getUTCFullYear());
+      const month = String(options.month ?? (now.getUTCMonth() + 1)).padStart(2, '0');
+      const cid = sanitizeSegment(options.checklistId, 'CHK').toUpperCase();
+      return `checklists/${branchCode}/${year}/${month}/${cid}_${cleanName}`;
+    }
+    case 'maintenance': {
+      const equipment = sanitizeSegment(options.subType, 'general');
+      return `maintenance/${branchCode}/${equipment}/${cleanName}`;
+    }
+    case 'recipes': {
+      const sub = sanitizeSegment(options.subType, 'images');
+      const rid = sanitizeSegment(options.recipeId, 'recipe');
+      const safeExt = ext || (sub === 'videos' ? 'mp4' : 'jpg');
+      if (sub === 'step-photos') {
+        const step = String(options.stepNumber ?? 1).padStart(2, '0');
+        return `recipes/step-photos/${rid}_${step}.${safeExt}`;
+      }
+      // images | videos
+      return `recipes/${sub}/${rid}.${safeExt}`;
+    }
+    case 'staff': {
+      const sub = sanitizeSegment(options.subType, 'certificates');
+      const sid = sanitizeSegment(options.staffId, 'STF').toUpperCase();
+      return `staff/${sub}/${sid}_${cleanName}`;
+    }
+    default:
+      return `misc/${cleanName}`;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Branch codes
 // ---------------------------------------------------------------------------
 
