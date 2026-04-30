@@ -1,9 +1,12 @@
+// Manual items are temporary.
+// Future versions will restrict all items to coded ingredients only.
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -12,16 +15,19 @@ import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranchesAll } from '@/hooks/useMaintenance';
 import {
-  useUpsertInventoryRequest, useIngredientPicker,
+  useUpsertInventoryRequest,
   type InventoryRequestWithItems, type Department, type InventoryRequestStatus,
 } from '@/hooks/useInventoryRequests';
+import { useInventoryControlItems } from '@/hooks/useInventoryControlItems';
 import { toast } from 'sonner';
 
 const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
 
 interface ItemRow {
   id?: string;
+  control_item_id?: string | null;
   ingredient_id?: string | null;
+  source_type: 'ingredient' | 'manual';
   item_code: string;
   item_name: string;
   unit: string;
@@ -30,8 +36,20 @@ interface ItemRow {
   note: string;
 }
 
-function emptyRow(): ItemRow {
-  return { item_code: '', item_name: '', unit: '', actual_stock: '', requested_qty: '', note: '' };
+function emptyControlRow(): ItemRow {
+  return {
+    source_type: 'ingredient',
+    control_item_id: null,
+    item_code: '', item_name: '', unit: '',
+    actual_stock: '', requested_qty: '', note: '',
+  };
+}
+function emptyManualRow(): ItemRow {
+  return {
+    source_type: 'manual',
+    item_code: '', item_name: '', unit: '',
+    actual_stock: '', requested_qty: '', note: '',
+  };
 }
 
 export default function InventoryRequestForm({
@@ -43,7 +61,6 @@ export default function InventoryRequestForm({
 }) {
   const { profile, user } = useAuth();
   const { data: branches = [] } = useBranchesAll();
-  const { data: ingredients = [] } = useIngredientPicker();
   const upsert = useUpsertInventoryRequest();
 
   const [requestDate, setRequestDate] = useState(() =>
@@ -61,7 +78,9 @@ export default function InventoryRequestForm({
     initial?.items?.length
       ? initial.items.map(it => ({
           id: it.id,
+          control_item_id: (it as any).inventory_control_item_id ?? null,
           ingredient_id: it.ingredient_id,
+          source_type: ((it as any).source_type as 'ingredient' | 'manual') ?? 'ingredient',
           item_code: it.item_code ?? '',
           item_name: it.item_name ?? '',
           unit: it.unit ?? '',
@@ -69,8 +88,15 @@ export default function InventoryRequestForm({
           requested_qty: it.requested_qty?.toString() ?? '',
           note: it.note ?? '',
         }))
-      : [emptyRow()],
+      : [emptyControlRow()],
   );
+
+  // Filter the controlled list by selected branch/department
+  const { data: controlItems = [] } = useInventoryControlItems({
+    activeOnly: true,
+    branchId: branchId || null,
+    department: department || null,
+  });
 
   // Reset on open of new
   useEffect(() => {
@@ -80,34 +106,35 @@ export default function InventoryRequestForm({
       setDepartment((profile?.department as Department) ?? '');
       setStaffName(profile?.full_name ?? '');
       setNotes('');
-      setRows([emptyRow()]);
+      setRows([emptyControlRow()]);
     }
   }, [open]); // eslint-disable-line
 
-  const ingredientOptions = useMemo(
-    () => ingredients.map(ing => ({
-      id: ing.id,
-      label: `${ing.code ? ing.code + ' — ' : ''}${ing.name_en}`,
-      sublabel: ing.unit_label || undefined,
+  const controlOptions = useMemo(
+    () => controlItems.map(ci => ({
+      id: ci.id,
+      label: `${ci.item_code ? ci.item_code + ' — ' : ''}${ci.item_name}`,
+      sublabel: [ci.unit, ci.branch_name, ci.department].filter(Boolean).join(' · ') || undefined,
     })),
-    [ingredients],
+    [controlItems],
   );
 
   const updateRow = (idx: number, patch: Partial<ItemRow>) => {
     setRows(prev => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   };
 
-  const pickIngredient = (idx: number, ingredientId: string) => {
-    const ing = ingredients.find(i => i.id === ingredientId);
-    if (!ing) {
-      updateRow(idx, { ingredient_id: null });
+  const pickControlItem = (idx: number, controlItemId: string) => {
+    const ci = controlItems.find(c => c.id === controlItemId);
+    if (!ci) {
+      updateRow(idx, { control_item_id: null });
       return;
     }
     updateRow(idx, {
-      ingredient_id: ing.id,
-      item_code: ing.code ?? '',
-      item_name: ing.name_en,
-      unit: ing.unit_label ?? '',
+      control_item_id: ci.id,
+      ingredient_id: ci.ingredient_id ?? null,
+      item_code: ci.item_code ?? '',
+      item_name: ci.item_name,
+      unit: ci.unit ?? '',
     });
   };
 
@@ -116,6 +143,9 @@ export default function InventoryRequestForm({
     if (!department) return toast.error('Please select a department');
     const validRows = rows.filter(r => r.item_name.trim());
     if (!validRows.length) return toast.error('Add at least one item');
+    // Block save if a controlled row has no selection
+    const unpicked = validRows.find(r => r.source_type === 'ingredient' && !r.control_item_id);
+    if (unpicked) return toast.error('Pick an item from the controlled list, or use "+ Add Custom Item"');
 
     try {
       await upsert.mutateAsync({
@@ -130,7 +160,11 @@ export default function InventoryRequestForm({
         items: validRows.map((r, i) => ({
           id: r.id,
           ingredient_id: r.ingredient_id ?? null,
-          item_code: r.item_code.trim() || null,
+          inventory_control_item_id: r.control_item_id ?? null,
+          source_type: r.source_type,
+          item_code: r.source_type === 'manual'
+            ? (r.item_code.trim() || null) // may be NULL or TEMP code
+            : (r.item_code.trim() || null),
           item_name: r.item_name.trim(),
           unit: r.unit.trim() || null,
           actual_stock: r.actual_stock ? Number(r.actual_stock) : null,
@@ -191,18 +225,38 @@ export default function InventoryRequestForm({
         </div>
 
         <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             <h3 className="text-sm font-semibold">Items</h3>
-            <Button type="button" variant="outline" size="sm" onClick={() => setRows(r => [...r, emptyRow()])}>
-              <Plus className="h-4 w-4 mr-1" /> Add item
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm"
+                onClick={() => setRows(r => [...r, emptyControlRow()])}>
+                <Plus className="h-4 w-4 mr-1" /> Add item
+              </Button>
+              <Button type="button" variant="secondary" size="sm"
+                onClick={() => setRows(r => [...r, emptyManualRow()])}>
+                <Plus className="h-4 w-4 mr-1" /> Add Custom Item
+              </Button>
+            </div>
           </div>
+
+          {(!branchId || !department) && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Select branch and department to load the controlled item list.
+            </p>
+          )}
 
           <div className="space-y-3">
             {rows.map((row, idx) => (
               <div key={idx} className="rounded-lg border p-3 space-y-2 bg-muted/20">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">#{idx + 1}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">#{idx + 1}</span>
+                    {row.source_type === 'manual' && (
+                      <Badge variant="outline" className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                        Manual
+                      </Badge>
+                    )}
+                  </div>
                   {rows.length > 1 && (
                     <Button type="button" variant="ghost" size="sm"
                       onClick={() => setRows(r => r.filter((_, i) => i !== idx))}>
@@ -211,42 +265,55 @@ export default function InventoryRequestForm({
                   )}
                 </div>
 
-                <div>
-                  <Label className="text-xs">Pick from ingredient list (optional)</Label>
-                  <div className="flex gap-2">
-                    <SearchableCombobox
-                      value={row.ingredient_id ?? ''}
-                      onChange={(v) => pickIngredient(idx, v)}
-                      options={ingredientOptions}
-                      placeholder="Search ingredient by code or name"
-                      searchPlaceholder="Type to search…"
-                      emptyText="No ingredient found"
-                      allowNone
-                      noneLabel="— manual entry —"
-                    />
-                    {row.ingredient_id && (
-                      <Button type="button" variant="ghost" size="icon"
-                        onClick={() => updateRow(idx, { ingredient_id: null })}
-                        title="Clear ingredient link">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                {row.source_type === 'ingredient' ? (
+                  <>
+                    <div>
+                      <Label className="text-xs">Pick from controlled list *</Label>
+                      <SearchableCombobox
+                        value={row.control_item_id ?? ''}
+                        onChange={(v) => pickControlItem(idx, v)}
+                        options={controlOptions}
+                        placeholder={controlOptions.length
+                          ? 'Search by code or name'
+                          : 'No active items for this branch/department'}
+                        searchPlaceholder="Type to search…"
+                        emptyText="No item found in the control list"
+                        disabled={controlOptions.length === 0}
+                      />
+                    </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-                  <div className="col-span-1 sm:col-span-2">
-                    <Label className="text-xs">Item code</Label>
-                    <Input value={row.item_code} onChange={e => updateRow(idx, { item_code: e.target.value })} />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Code:</span>{' '}
+                        <span className="font-mono">{row.item_code || '—'}</span>
+                      </div>
+                      <div className="text-xs sm:col-span-2">
+                        <span className="text-muted-foreground">Name:</span>{' '}
+                        <span>{row.item_name || '—'}</span>
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Unit:</span>{' '}
+                        <span>{row.unit || '—'}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="col-span-2 sm:col-span-2">
+                      <Label className="text-xs">Item name *</Label>
+                      <Input value={row.item_name}
+                        onChange={e => updateRow(idx, { item_name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Unit</Label>
+                      <Input value={row.unit}
+                        onChange={e => updateRow(idx, { unit: e.target.value })}
+                        placeholder="kg, pcs…" />
+                    </div>
                   </div>
-                  <div className="col-span-1 sm:col-span-2">
-                    <Label className="text-xs">Item name *</Label>
-                    <Input value={row.item_name} onChange={e => updateRow(idx, { item_name: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Unit</Label>
-                    <Input value={row.unit} onChange={e => updateRow(idx, { unit: e.target.value })} placeholder="kg, pcs…" />
-                  </div>
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs">Actual stock</Label>
                     <Input type="number" inputMode="decimal" value={row.actual_stock}
@@ -257,9 +324,10 @@ export default function InventoryRequestForm({
                     <Input type="number" inputMode="decimal" value={row.requested_qty}
                       onChange={e => updateRow(idx, { requested_qty: e.target.value })} />
                   </div>
-                  <div className="col-span-1 sm:col-span-5">
+                  <div className="col-span-2 sm:col-span-1">
                     <Label className="text-xs">Note</Label>
-                    <Input value={row.note} onChange={e => updateRow(idx, { note: e.target.value })} />
+                    <Input value={row.note}
+                      onChange={e => updateRow(idx, { note: e.target.value })} />
                   </div>
                 </div>
               </div>

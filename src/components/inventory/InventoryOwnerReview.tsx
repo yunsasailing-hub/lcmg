@@ -167,7 +167,14 @@ export default function InventoryOwnerReview() {
                     {reviewing.items.map(it => (
                       <tr key={it.id} className="border-b last:border-0 align-top">
                         <td className="py-1 pr-2">{it.item_code ?? '—'}</td>
-                        <td className="py-1 pr-2">{it.item_name}</td>
+                        <td className="py-1 pr-2">
+                          <span>{it.item_name}</span>
+                          {(it as any).source_type === 'manual' && (
+                            <Badge variant="outline" className="ml-2 bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] px-1 py-0">
+                              Manual
+                            </Badge>
+                          )}
+                        </td>
                         <td className="py-1 pr-2">{it.unit ?? '—'}</td>
                         <td className="py-1 pr-2 text-right">{it.actual_stock ?? '—'}</td>
                         <td className="py-1 pr-2 text-right">{it.requested_qty ?? '—'}</td>
