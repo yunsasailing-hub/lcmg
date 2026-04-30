@@ -438,19 +438,23 @@ function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
             <div className="min-w-0">
               <div className="text-xs font-mono text-muted-foreground">{asset.code}</div>
               <CardTitle className="text-xl sm:text-2xl mt-1 break-words">{asset.name}</CardTitle>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                {asset.branch_name && (
-                  <Badge variant="secondary" className="font-normal">{asset.branch_name}</Badge>
-                )}
-                <Badge variant="secondary" className="font-normal capitalize">{asset.department}</Badge>
-                {asset.type_name_en && (
-                  <Badge variant="secondary" className="font-normal">{asset.type_name_en}</Badge>
-                )}
-              </div>
+              {(asset.branch_name || asset.department) && (
+                <div className="mt-1.5 text-xs text-muted-foreground">
+                  {asset.branch_name ?? '—'}
+                  {asset.department ? <> · <span className="capitalize">{asset.department}</span></> : null}
+                </div>
+              )}
             </div>
-            <Badge variant="outline" className={STATUS_BADGE[asset.status]}>
-              {t(`maintenance.status.${asset.status}`)}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+              {asset.type_name_en && (
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                  {asset.type_name_en}
+                </Badge>
+              )}
+              <Badge variant="outline" className={STATUS_BADGE[asset.status]}>
+                {t(`maintenance.status.${asset.status}`)}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
       </Card>
