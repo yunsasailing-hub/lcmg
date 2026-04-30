@@ -205,13 +205,12 @@ export function useIngredientPicker() {
         .map((d: any) => d.base_unit_id).filter(Boolean)));
       let unitMap = new Map<string, string>();
       if (unitIds.length) {
-        // ingredients reference units table; if it doesn't exist, fail soft.
         try {
           const { data: units } = await supabase
-            .from('units' as any)
-            .select('id, label, code')
-            .in('id', unitIds);
-          (units ?? []).forEach((u: any) => unitMap.set(u.id, u.label || u.code || ''));
+            .from('recipe_units')
+            .select('id, code, name_en')
+            .in('id', unitIds as string[]);
+          (units ?? []).forEach((u: any) => unitMap.set(u.id, u.code || u.name_en || ''));
         } catch { /* ignore */ }
       }
       return (data ?? []).map((d: any) => ({
