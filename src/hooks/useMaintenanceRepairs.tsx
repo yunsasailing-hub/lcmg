@@ -8,8 +8,13 @@ export type MaintenanceRepairUpdate = Database['public']['Tables']['maintenance_
 export type MaintenanceRepairStatus = Database['public']['Enums']['maintenance_repair_status'];
 export type MaintenanceRepairSeverity = Database['public']['Enums']['maintenance_repair_severity'];
 
-export const REPAIR_STATUSES: MaintenanceRepairStatus[] = ['Reported', 'In Progress', 'Resolved', 'Cancelled'];
+// Active statuses presented in the UI. Old values ('Resolved', 'Cancelled') still
+// exist in the enum for back-compatibility but are not offered for new selections.
+export const REPAIR_STATUSES: MaintenanceRepairStatus[] = ['Reported', 'In Progress', 'Done', 'Archived'];
 export const REPAIR_SEVERITIES: MaintenanceRepairSeverity[] = ['Low', 'Medium', 'High', 'Critical'];
+
+export type RepairCostType = 'Internal / No Cost' | 'External Service';
+export const REPAIR_COST_TYPES: RepairCostType[] = ['Internal / No Cost', 'External Service'];
 
 export type EnrichedMaintenanceRepair = MaintenanceRepair & {
   asset_name: string | null;
