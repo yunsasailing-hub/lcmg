@@ -922,12 +922,14 @@ export type Database = {
           created_at: string
           id: string
           ingredient_id: string | null
+          inventory_control_item_id: string | null
           item_code: string | null
           item_name: string
           note: string | null
           request_id: string
           requested_qty: number | null
           sort_order: number
+          source_type: Database["public"]["Enums"]["inventory_control_source"]
           unit: string | null
           updated_at: string
         }
@@ -937,12 +939,14 @@ export type Database = {
           created_at?: string
           id?: string
           ingredient_id?: string | null
+          inventory_control_item_id?: string | null
           item_code?: string | null
           item_name: string
           note?: string | null
           request_id: string
           requested_qty?: number | null
           sort_order?: number
+          source_type?: Database["public"]["Enums"]["inventory_control_source"]
           unit?: string | null
           updated_at?: string
         }
@@ -952,12 +956,14 @@ export type Database = {
           created_at?: string
           id?: string
           ingredient_id?: string | null
+          inventory_control_item_id?: string | null
           item_code?: string | null
           item_name?: string
           note?: string | null
           request_id?: string
           requested_qty?: number | null
           sort_order?: number
+          source_type?: Database["public"]["Enums"]["inventory_control_source"]
           unit?: string | null
           updated_at?: string
         }
@@ -967,6 +973,13 @@ export type Database = {
             columns: ["ingredient_id"]
             isOneToOne: false
             referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_request_items_inventory_control_item_id_fkey"
+            columns: ["inventory_control_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_control_items"
             referencedColumns: ["id"]
           },
           {
