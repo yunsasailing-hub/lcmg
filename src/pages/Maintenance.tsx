@@ -29,6 +29,10 @@ import {
   type EnrichedMaintenanceAsset, type MaintenanceStatus,
 } from '@/hooks/useMaintenance';
 import type { Database } from '@/integrations/supabase/types';
+import { uploadToAppFilesBucket, APP_FILES_BUCKET } from '@/lib/appFilesStorage';
+import { optimizeChecklistImage } from '@/lib/imageCompression';
+import { supabase } from '@/integrations/supabase/client';
+import { Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 
 type Department = Database['public']['Enums']['department'];
 const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
