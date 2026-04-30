@@ -29,6 +29,10 @@ import {
   type EnrichedMaintenanceAsset, type MaintenanceStatus,
 } from '@/hooks/useMaintenance';
 import type { Database } from '@/integrations/supabase/types';
+import { uploadToAppFilesBucket, APP_FILES_BUCKET } from '@/lib/appFilesStorage';
+import { optimizeChecklistImage } from '@/lib/imageCompression';
+import { supabase } from '@/integrations/supabase/client';
+import { Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 
 type Department = Database['public']['Enums']['department'];
 const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
@@ -144,10 +148,76 @@ function AssetFormDialog({
     supplier_vendor: initial?.supplier_vendor ?? '',
     technician_contact: initial?.technician_contact ?? '',
     notes: initial?.notes ?? '',
+    photo_url: initial?.photo_url ?? '',
+    photo_storage_path: initial?.photo_storage_path ?? '',
   }));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
 
   const update = (k: string, v: any) => setForm(s => ({ ...s, [k]: v }));
+
+  // ---------------------------------------------------------------
+  // Maintenance photo upload — uses unified `app-files` bucket.
+  // Path: maintenance/{branchCode}/{categoryCode}/{assetSlug}/
+  // ---------------------------------------------------------------
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!form.branch_id || !form.asset_type_id || !form.name.trim()) {
+      toast.error(t('maintenance.errors.photoNeedsBranchTypeName',
+        'Select branch, type and name before uploading photo'));
+      return;
+    }
+    const branch = branches.find(b => b.id === form.branch_id);
+    const type = types.find(tt => tt.id === form.asset_type_id);
+    setUploading(true);
+    try {
+      // Compress images; non-image files (rare here) upload as-is.
+      let toUpload: File = file;
+      if (file.type.startsWith('image/')) {
+        try {
+          const optimized = await optimizeChecklistImage(file);
+          toUpload = optimized.file;
+        } catch {
+          // fall back to original if compression fails
+        }
+      }
+      const result = await uploadToAppFilesBucket(toUpload, 'maintenance', {
+        branchName: branch?.name,
+        category: type?.code || type?.name_en || 'general',
+        assetOrEquipment: form.name.trim(),
+      });
+      // Required testing log
+      console.log('[maintenance.upload]', {
+        bucket: result.bucket,
+        path: result.path,
+        publicUrl: result.publicUrl,
+        branch: branch?.name,
+        category: type?.code || type?.name_en,
+        asset: form.name.trim(),
+      });
+      // Best-effort cleanup of any previously attached photo for this draft
+      if (form.photo_storage_path) {
+        await supabase.storage.from(APP_FILES_BUCKET)
+          .remove([form.photo_storage_path]).catch(() => {});
+      }
+      setForm(s => ({ ...s, photo_url: result.publicUrl, photo_storage_path: result.path }));
+      toast.success(t('maintenance.toasts.photoUploaded', 'Photo uploaded'));
+    } catch (err: any) {
+      toast.error(err?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    if (form.photo_storage_path) {
+      await supabase.storage.from(APP_FILES_BUCKET)
+        .remove([form.photo_storage_path]).catch(() => {});
+    }
+    setForm(s => ({ ...s, photo_url: '', photo_storage_path: '' }));
+  };
 
   const handleSave = async () => {
     const errs: Record<string, string> = {};
@@ -175,6 +245,8 @@ function AssetFormDialog({
         supplier_vendor: form.supplier_vendor || null,
         technician_contact: form.technician_contact || null,
         notes: form.notes || null,
+        photo_url: form.photo_url || null,
+        photo_storage_path: form.photo_storage_path || null,
         archived_at: form.status === 'archived' ? (initial?.archived_at ?? new Date().toISOString()) : null,
       };
       if (initial?.id) payload.id = initial.id;
@@ -262,6 +334,45 @@ function AssetFormDialog({
           <div><Label>{t('maintenance.fields.installationDate')}</Label><Input type="date" value={form.installation_date} onChange={e => update('installation_date', e.target.value)} /></div>
           <div><Label>{t('maintenance.fields.warrantyDate')}</Label><Input type="date" value={form.warranty_expiry_date} onChange={e => update('warranty_expiry_date', e.target.value)} /></div>
           <div><Label>{t('maintenance.fields.technicianContact')}</Label><Input value={form.technician_contact} onChange={e => update('technician_contact', e.target.value)} /></div>
+          <div className="sm:col-span-2">
+            <Label>{t('maintenance.fields.photo', 'Photo')}</Label>
+            <div className="flex items-start gap-3 mt-1">
+              <div className="h-24 w-24 rounded-md border border-border bg-muted/40 overflow-hidden flex items-center justify-center">
+                {form.photo_url ? (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <img src={form.photo_url} className="h-full w-full object-cover" />
+                ) : (
+                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  id="maintenance-photo-input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  onChange={handlePhotoUpload}
+                />
+                <Button
+                  type="button" size="sm" variant="outline"
+                  onClick={() => document.getElementById('maintenance-photo-input')?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                  {form.photo_url
+                    ? t('maintenance.actions.replacePhoto', 'Replace photo')
+                    : t('maintenance.actions.uploadPhoto', 'Upload photo')}
+                </Button>
+                {form.photo_url && (
+                  <Button type="button" size="sm" variant="ghost" onClick={handlePhotoRemove} disabled={uploading}>
+                    <Trash2 className="h-4 w-4 mr-1 text-destructive" />
+                    {t('maintenance.actions.removePhoto', 'Remove photo')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="sm:col-span-2">
             <Label>{t('maintenance.fields.notes')}</Label>
             <Textarea rows={3} value={form.notes} onChange={e => update('notes', e.target.value)} />
