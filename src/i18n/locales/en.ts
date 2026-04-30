@@ -960,6 +960,7 @@ const en = {
       staff: 'Staff',
       unitMissing: 'unit missing',
       linkedRecipeCode: 'Linked recipe code',
+      deptMissing: 'department missing',
     },
     types: {
       MENU_ITEM: 'Menu item',
@@ -984,12 +985,14 @@ const en = {
       invalidCode: 'Item code must start with 1012 or 1013.',
       missingRecipe: 'Linked recipe could not be found.',
       noItems: 'No production items enabled yet. Enable ‘Show in Kitchen Production’ on active recipes with code 1012 or 1013.',
+      deptMissingRecipe: 'Department missing in recipe — please update recipe setup.',
     },
     debug: {
       enabledCount: 'Enabled production recipes found: {{count}}',
     },
     warnings: {
       unitMissing: 'Unit missing — please define in recipe',
+      deptMissing: 'Department missing in recipe — please update recipe setup',
     },
     editTitle: 'Edit production entry',
     deleteTitle: 'Delete production entry?',

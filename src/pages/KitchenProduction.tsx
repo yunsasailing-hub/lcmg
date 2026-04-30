@@ -39,6 +39,7 @@ interface ProductionItem {
   code: string;
   name_en: string;
   yield_unit_id: string | null;
+  department: Department | null;
 }
 
 interface LogRow {
@@ -66,7 +67,6 @@ function todayISO() {
 }
 
 const LS_BRANCH = 'kitchenProduction:lastBranch';
-const LS_DEPT = 'kitchenProduction:lastDept';
 
 export default function KitchenProduction() {
   const { t } = useTranslation();
@@ -86,7 +86,7 @@ export default function KitchenProduction() {
     queryFn: async (): Promise<ProductionItem[]> => {
       const { data, error } = await (supabase
         .from('recipes') as any)
-        .select('id, code, name_en, yield_unit_id, is_active, show_in_kitchen_production')
+        .select('id, code, name_en, yield_unit_id, department, is_active, show_in_kitchen_production')
         .eq('is_active', true)
         .eq('show_in_kitchen_production', true)
         .or('code.ilike.1012%,code.ilike.1013%')
@@ -97,6 +97,7 @@ export default function KitchenProduction() {
         code: r.code ?? '',
         name_en: r.name_en ?? '',
         yield_unit_id: r.yield_unit_id ?? null,
+        department: (r.department ?? null) as Department | null,
       }));
     },
   });
@@ -137,7 +138,6 @@ export default function KitchenProduction() {
   // Form state with persisted defaults
   const [productionDate, setProductionDate] = useState<string>(todayISO());
   const [branchId, setBranchId] = useState<string>('');
-  const [department, setDepartment] = useState<Department | ''>('');
   const [itemId, setItemId] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -151,14 +151,9 @@ export default function KitchenProduction() {
     if (hydratedRef.current) return;
     if (branches.length === 0) return;
     const lsBranch = typeof window !== 'undefined' ? localStorage.getItem(LS_BRANCH) : null;
-    const lsDept = typeof window !== 'undefined' ? localStorage.getItem(LS_DEPT) : null;
     const branchExists = (id: string | null) => !!id && branches.some(b => b.id === id);
     const initBranch = branchExists(lsBranch) ? lsBranch! : (branchExists(profile?.branch_id ?? null) ? profile!.branch_id! : (branches[0]?.id ?? ''));
-    const initDept: Department = (lsDept && DEPARTMENTS.includes(lsDept as Department))
-      ? (lsDept as Department)
-      : ((profile?.department as Department) ?? 'kitchen');
     setBranchId(initBranch);
-    setDepartment(initDept);
     hydratedRef.current = true;
   }, [branches, profile]);
 
@@ -167,13 +162,10 @@ export default function KitchenProduction() {
     if (!hydratedRef.current) return;
     if (branchId) localStorage.setItem(LS_BRANCH, branchId);
   }, [branchId]);
-  useEffect(() => {
-    if (!hydratedRef.current) return;
-    if (department) localStorage.setItem(LS_DEPT, department);
-  }, [department]);
 
   const selectedItem = items.find(i => i.id === itemId);
   const selectedItemUnit = selectedItem?.yield_unit_id ? unitMap[selectedItem.yield_unit_id] : null;
+  const recipeDepartment: Department | null = selectedItem?.department ?? null;
 
   const itemOptions = useMemo(
     () => items.map(i => ({
@@ -195,8 +187,8 @@ export default function KitchenProduction() {
       const newErrors: Record<string, string> = {};
       if (!productionDate) newErrors.date = t('kitchenProduction.errors.dateRequired');
       if (!branchId) newErrors.branch = t('kitchenProduction.errors.branchRequired');
-      if (!department) newErrors.dept = t('kitchenProduction.errors.deptRequired');
       if (!itemId || !selectedItem) newErrors.item = t('kitchenProduction.errors.itemRequired');
+      if (selectedItem && !recipeDepartment) newErrors.dept = t('kitchenProduction.errors.deptMissingRecipe');
       const qtyN = Number(quantity);
       if (!quantity.trim() || !Number.isFinite(qtyN) || qtyN <= 0) {
         newErrors.qty = t('kitchenProduction.errors.qtyPositive');
@@ -218,7 +210,7 @@ export default function KitchenProduction() {
       const payload = {
         production_date: productionDate,
         branch_id: branchId || null,
-        department,
+        department: recipeDepartment,
         item_code: selectedItem!.code,
         item_name: selectedItem!.name_en,
         item_type: selectedItem!.code.startsWith('1013') ? 'MENU_ITEM' : 'BATCH_RECIPE',
@@ -377,19 +369,6 @@ export default function KitchenProduction() {
               {errors.branch && <p className="mt-1 text-xs text-destructive">{errors.branch}</p>}
             </div>
 
-            <div>
-              <Label>{t('kitchenProduction.fields.department')} *</Label>
-              <Select value={department} onValueChange={v => setDepartment(v as Department)}>
-                <SelectTrigger className="h-12"><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>
-                  {DEPARTMENTS.map(d => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.dept && <p className="mt-1 text-xs text-destructive">{errors.dept}</p>}
-            </div>
-
             <div className="sm:col-span-2 lg:col-span-3">
               <Label>{t('kitchenProduction.fields.item')} *</Label>
               <SearchableCombobox
@@ -422,6 +401,14 @@ export default function KitchenProduction() {
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.type')}</Label>
                   <Input readOnly value={selectedItem.code.startsWith('1013') ? t('kitchenProduction.types.MENU_ITEM') : t('kitchenProduction.types.BATCH_RECIPE')} className="h-10 bg-background/60" />
                 </div>
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.department')}</Label>
+                  <Input
+                    readOnly
+                    value={recipeDepartment ? t(`departments.${recipeDepartment}`, { defaultValue: recipeDepartment }) : t('kitchenProduction.fields.deptMissing')}
+                    className={`h-10 bg-background/60 ${!recipeDepartment ? 'text-destructive' : ''}`}
+                  />
+                </div>
                 <div className="sm:col-span-2 lg:col-span-2">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.linkedRecipeCode')}</Label>
                   <Input readOnly value={selectedItem.code} className="h-10 font-mono bg-background/60" />
@@ -433,6 +420,14 @@ export default function KitchenProduction() {
                     <span>{t('kitchenProduction.warnings.unitMissing')}</span>
                   </div>
                 )}
+
+                {!recipeDepartment && (
+                  <div className="sm:col-span-2 lg:col-span-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{t('kitchenProduction.warnings.deptMissing')}</span>
+                  </div>
+                )}
+                {errors.dept && <p className="sm:col-span-2 lg:col-span-4 text-xs text-destructive">{errors.dept}</p>}
               </div>
             )}
 
@@ -481,7 +476,7 @@ export default function KitchenProduction() {
             <Button
               size="lg"
               onClick={() => save.mutate()}
-              disabled={save.isPending || items.length === 0}
+              disabled={save.isPending || items.length === 0 || (!!selectedItem && !recipeDepartment)}
             >
               <Save className="h-4 w-4" />
               {save.isPending ? t('common.saving') : t('common.save')}

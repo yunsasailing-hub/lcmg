@@ -962,6 +962,7 @@ const vi: Translations = {
       staff: 'Nhân viên',
       unitMissing: 'thiếu đơn vị',
       linkedRecipeCode: 'Mã công thức liên kết',
+      deptMissing: 'thiếu bộ phận',
     },
     types: {
       MENU_ITEM: 'Món thực đơn',
@@ -986,12 +987,14 @@ const vi: Translations = {
       invalidCode: 'Mã món phải bắt đầu bằng 1012 hoặc 1013.',
       missingRecipe: 'Không tìm thấy công thức liên kết.',
       noItems: 'Chưa có món sản xuất nào được bật. Bật “Hiện trong Sản xuất bếp” trên công thức đang hoạt động có mã 1012 hoặc 1013.',
+      deptMissingRecipe: 'Thiếu bộ phận trong công thức — vui lòng cập nhật thiết lập công thức.',
     },
     debug: {
       enabledCount: 'Số công thức sản xuất đã bật tìm thấy: {{count}}',
     },
     warnings: {
       unitMissing: 'Thiếu đơn vị — vui lòng thiết lập trong công thức',
+      deptMissing: 'Thiếu bộ phận trong công thức — vui lòng cập nhật thiết lập công thức',
     },
     editTitle: 'Sửa mục sản xuất',
     deleteTitle: 'Xoá mục sản xuất?',
