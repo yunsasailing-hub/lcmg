@@ -78,6 +78,7 @@ const en = {
     maintenance: 'Maintenance',
     management: 'Management',
     more: 'More',
+    kitchenProductionShort: 'Production',
   },
   roles: {
     owner: 'Owner',
@@ -166,6 +167,7 @@ const en = {
       inventory: 'Stock levels & orders',
       maintenance: 'Equipment & repairs',
       management: 'Team, branches & settings',
+      kitchenProduction: 'Report produced kitchen items',
     },
     moduleStats: {
       pendingShort: '{{count}} pending',
@@ -173,6 +175,7 @@ const en = {
       recipesShort: '{{count}} recipes',
       lowStockShort: '{{count}} low stock',
       openTicketShort: '{{count}} open ticket',
+      kitchenProductionToday: "Today's production",
     },
   },
   pages: {
