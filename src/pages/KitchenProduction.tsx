@@ -39,6 +39,7 @@ interface ProductionItem {
   code: string;
   name_en: string;
   yield_unit_id: string | null;
+  department: Department | null;
 }
 
 interface LogRow {
@@ -66,7 +67,6 @@ function todayISO() {
 }
 
 const LS_BRANCH = 'kitchenProduction:lastBranch';
-const LS_DEPT = 'kitchenProduction:lastDept';
 
 export default function KitchenProduction() {
   const { t } = useTranslation();
@@ -86,7 +86,7 @@ export default function KitchenProduction() {
     queryFn: async (): Promise<ProductionItem[]> => {
       const { data, error } = await (supabase
         .from('recipes') as any)
-        .select('id, code, name_en, yield_unit_id, is_active, show_in_kitchen_production')
+        .select('id, code, name_en, yield_unit_id, department, is_active, show_in_kitchen_production')
         .eq('is_active', true)
         .eq('show_in_kitchen_production', true)
         .or('code.ilike.1012%,code.ilike.1013%')
@@ -97,6 +97,7 @@ export default function KitchenProduction() {
         code: r.code ?? '',
         name_en: r.name_en ?? '',
         yield_unit_id: r.yield_unit_id ?? null,
+        department: (r.department ?? null) as Department | null,
       }));
     },
   });
@@ -137,7 +138,6 @@ export default function KitchenProduction() {
   // Form state with persisted defaults
   const [productionDate, setProductionDate] = useState<string>(todayISO());
   const [branchId, setBranchId] = useState<string>('');
-  const [department, setDepartment] = useState<Department | ''>('');
   const [itemId, setItemId] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -151,14 +151,9 @@ export default function KitchenProduction() {
     if (hydratedRef.current) return;
     if (branches.length === 0) return;
     const lsBranch = typeof window !== 'undefined' ? localStorage.getItem(LS_BRANCH) : null;
-    const lsDept = typeof window !== 'undefined' ? localStorage.getItem(LS_DEPT) : null;
     const branchExists = (id: string | null) => !!id && branches.some(b => b.id === id);
     const initBranch = branchExists(lsBranch) ? lsBranch! : (branchExists(profile?.branch_id ?? null) ? profile!.branch_id! : (branches[0]?.id ?? ''));
-    const initDept: Department = (lsDept && DEPARTMENTS.includes(lsDept as Department))
-      ? (lsDept as Department)
-      : ((profile?.department as Department) ?? 'kitchen');
     setBranchId(initBranch);
-    setDepartment(initDept);
     hydratedRef.current = true;
   }, [branches, profile]);
 
@@ -167,13 +162,10 @@ export default function KitchenProduction() {
     if (!hydratedRef.current) return;
     if (branchId) localStorage.setItem(LS_BRANCH, branchId);
   }, [branchId]);
-  useEffect(() => {
-    if (!hydratedRef.current) return;
-    if (department) localStorage.setItem(LS_DEPT, department);
-  }, [department]);
 
   const selectedItem = items.find(i => i.id === itemId);
   const selectedItemUnit = selectedItem?.yield_unit_id ? unitMap[selectedItem.yield_unit_id] : null;
+  const recipeDepartment: Department | null = selectedItem?.department ?? null;
 
   const itemOptions = useMemo(
     () => items.map(i => ({
@@ -195,8 +187,8 @@ export default function KitchenProduction() {
       const newErrors: Record<string, string> = {};
       if (!productionDate) newErrors.date = t('kitchenProduction.errors.dateRequired');
       if (!branchId) newErrors.branch = t('kitchenProduction.errors.branchRequired');
-      if (!department) newErrors.dept = t('kitchenProduction.errors.deptRequired');
       if (!itemId || !selectedItem) newErrors.item = t('kitchenProduction.errors.itemRequired');
+      if (selectedItem && !recipeDepartment) newErrors.dept = t('kitchenProduction.errors.deptMissingRecipe');
       const qtyN = Number(quantity);
       if (!quantity.trim() || !Number.isFinite(qtyN) || qtyN <= 0) {
         newErrors.qty = t('kitchenProduction.errors.qtyPositive');
@@ -218,7 +210,7 @@ export default function KitchenProduction() {
       const payload = {
         production_date: productionDate,
         branch_id: branchId || null,
-        department,
+        department: recipeDepartment,
         item_code: selectedItem!.code,
         item_name: selectedItem!.name_en,
         item_type: selectedItem!.code.startsWith('1013') ? 'MENU_ITEM' : 'BATCH_RECIPE',
