@@ -580,6 +580,43 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function BasicInfoGrid({ asset }: { asset: EnrichedMaintenanceAsset }) {
+  const { t } = useTranslation();
+  const rows: Array<{ label: string; value: React.ReactNode }> = [];
+  const push = (label: string, value: any) => {
+    if (value === null || value === undefined) return;
+    if (typeof value === 'string' && value.trim() === '') return;
+    rows.push({ label, value });
+  };
+  push(t('maintenance.fields.location'), asset.location);
+  push(t('maintenance.fields.brand'), asset.brand);
+  push(t('maintenance.fields.model'), asset.model);
+  push(t('maintenance.fields.serialNumber'), asset.serial_number);
+  if (asset.purchase_date) push(t('maintenance.fields.purchaseDate'), fmtDate(asset.purchase_date));
+  if (asset.installation_date) push(t('maintenance.fields.installationDate'), fmtDate(asset.installation_date));
+  if (asset.warranty_expiry_date) push(t('maintenance.fields.warrantyDate'), fmtDate(asset.warranty_expiry_date));
+  push(t('maintenance.fields.supplier'), asset.supplier_vendor);
+  push(t('maintenance.fields.technicianContact'), asset.technician_contact);
+
+  if (rows.length === 0 && !asset.notes) {
+    return <p className="text-sm text-muted-foreground">—</p>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+      {rows.map(r => <Info key={r.label} label={r.label} value={r.value} />)}
+      {asset.notes && (
+        <div className="sm:col-span-2">
+          <Info
+            label={t('maintenance.fields.notes')}
+            value={<span className="whitespace-pre-wrap">{asset.notes}</span>}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* -------------------------- List View -------------------------- */
 function AssetList({
   assets, onOpen, canManage, onEdit, onArchiveToggle, isOwner,
