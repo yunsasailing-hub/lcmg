@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { invokeManageRoles } from '@/lib/manageRoles';
 import { todayVN } from '@/lib/timezone';
 import type { Database, Tables, TablesInsert } from '@/integrations/supabase/types';
+import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 
 // Type exports
 export type ChecklistType = Database['public']['Enums']['checklist_type'];
@@ -201,15 +202,42 @@ export function useSubmitChecklist() {
   });
 }
 
-export async function uploadChecklistPhoto(file: File, userId: string): Promise<string> {
-  const timestamp = Date.now();
-  const path = `${userId}/${timestamp}-${file.name}`;
-  const { error } = await supabase.storage
-    .from('checklist-photos')
-    .upload(path, file);
-  if (error) throw error;
-  const { data } = supabase.storage.from('checklist-photos').getPublicUrl(path);
-  return data.publicUrl;
+/**
+ * Upload a checklist proof photo.
+ *
+ * NEW uploads go to the unified `app-files` bucket using path:
+ *   checklists/{branchCode}/{year}/{month}/{uuid}_{name}.{ext}
+ *
+ * IMPORTANT: existing photos remain in the legacy `checklist-photos`
+ * bucket and continue to load from their stored URLs unchanged. Only
+ * new uploads are written to `app-files`.
+ *
+ * `context` is optional so callers without instance metadata still
+ * work; missing branch/date fall back to "UNK" and the current date.
+ */
+export async function uploadChecklistPhoto(
+  file: File,
+  _userId: string,
+  context?: { branchName?: string | null; scheduledDate?: string | null },
+): Promise<{ url: string; path: string }> {
+  const date = context?.scheduledDate ? new Date(context.scheduledDate) : new Date();
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + 1;
+
+  const result = await uploadToAppFilesBucket(file, 'checklists', {
+    branchName: context?.branchName ?? undefined,
+    year,
+    month,
+  });
+
+  // eslint-disable-next-line no-console
+  console.log('[checklist.upload]', {
+    bucket: result.bucket,
+    path: result.path,
+    url: result.publicUrl,
+  });
+
+  return { url: result.publicUrl, path: result.path };
 }
 
 // ─── Manager/Owner Hooks ───
