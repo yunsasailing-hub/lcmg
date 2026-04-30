@@ -24,6 +24,7 @@ import {
   uploadChecklistPhoto,
   type ChecklistStatus,
 } from '@/hooks/useChecklists';
+import { useRecentlySubmitted } from '@/hooks/useChecklists';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
 import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 
@@ -351,7 +352,7 @@ function ChecklistDetail({ instanceId, templateId, onBack }: { instanceId: strin
     }
     submit.mutate(instanceId, {
       onSuccess: () => {
-        toast.success('Checklist submitted!');
+        toast.success('Checklist submitted successfully.');
         onBack();
       },
       onError: (err: any) => toast.error(err?.message || 'Failed to submit checklist'),

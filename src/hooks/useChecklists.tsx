@@ -52,7 +52,35 @@ export function useMyChecklists(date?: string) {
         .select('*, template:checklist_templates(title, code, department, checklist_type), branch:branches(id, name)')
         .eq('assigned_to', user!.id)
         .eq('scheduled_date', targetDate)
+        // Hide submitted/final statuses from "My Checklist".
+        // Active statuses kept: pending, late, escalated, rejected (rejected = needs redo).
+        .not('status', 'in', '(completed,verified)')
+        .is('archive_hidden_at', null)
         .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+}
+
+/**
+ * Recently submitted checklists for the current user (last 24h).
+ * View-only: shown beneath "My Checklist" so staff can confirm their submission.
+ */
+export function useRecentlySubmitted() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['checklists', 'recently-submitted', user?.id],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('checklist_instances')
+        .select('*, template:checklist_templates(title, code, department, checklist_type), branch:branches(id, name)')
+        .eq('assigned_to', user!.id)
+        .in('status', ['completed', 'verified'])
+        .gte('submitted_at', since)
+        .order('submitted_at', { ascending: false });
       if (error) throw error;
       return data;
     },
