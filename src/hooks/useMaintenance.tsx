@@ -27,19 +27,40 @@ export function useMaintenanceAssetTypes() {
   });
 }
 
+export type EnrichedMaintenanceAsset = MaintenanceAsset & {
+  branch_name: string | null;
+  type_name_en: string | null;
+  type_code: string | null;
+};
+
+async function enrich(rows: MaintenanceAsset[]): Promise<EnrichedMaintenanceAsset[]> {
+  if (!rows.length) return [];
+  const branchIds = Array.from(new Set(rows.map(r => r.branch_id).filter(Boolean)));
+  const typeIds = Array.from(new Set(rows.map(r => r.asset_type_id).filter(Boolean)));
+  const [{ data: branches }, { data: types }] = await Promise.all([
+    supabase.from('branches').select('id, name').in('id', branchIds.length ? branchIds : ['00000000-0000-0000-0000-000000000000']),
+    supabase.from('maintenance_asset_types').select('id, code, name_en').in('id', typeIds.length ? typeIds : ['00000000-0000-0000-0000-000000000000']),
+  ]);
+  const bMap = new Map((branches ?? []).map(b => [b.id, b.name]));
+  const tMap = new Map((types ?? []).map(t => [t.id, t]));
+  return rows.map(r => ({
+    ...r,
+    branch_name: bMap.get(r.branch_id) ?? null,
+    type_name_en: tMap.get(r.asset_type_id)?.name_en ?? null,
+    type_code: tMap.get(r.asset_type_id)?.code ?? null,
+  }));
+}
+
 export function useMaintenanceAssets() {
   return useQuery({
     queryKey: ASSETS_KEY,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('maintenance_assets')
-        .select('*, branch:branches(id, name), asset_type:maintenance_asset_types(id, code, name_en, name_vi)')
+        .select('*')
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      return data as Array<MaintenanceAsset & {
-        branch: { id: string; name: string } | null;
-        asset_type: { id: string; code: string; name_en: string; name_vi: string | null } | null;
-      }>;
+      return enrich(data as MaintenanceAsset[]);
     },
   });
 }
@@ -51,11 +72,13 @@ export function useMaintenanceAsset(id: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('maintenance_assets')
-        .select('*, branch:branches(id, name), asset_type:maintenance_asset_types(id, code, name_en, name_vi)')
+        .select('*')
         .eq('id', id!)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      if (!data) return null;
+      const [enriched] = await enrich([data as MaintenanceAsset]);
+      return enriched;
     },
   });
 }
