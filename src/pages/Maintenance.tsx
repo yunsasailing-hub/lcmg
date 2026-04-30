@@ -21,6 +21,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import AssetTypeSettings from '@/components/maintenance/AssetTypeSettings';
+import SchedulesList from '@/components/maintenance/SchedulesList';
+import ScheduleFormDialog from '@/components/maintenance/ScheduleFormDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -400,15 +402,17 @@ function AssetFormDialog({
 }
 
 /* -------------------------- Detail View -------------------------- */
-function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
+function AssetDetail({ asset, onBack, canEdit, canCreate, onArchiveToggle, onEdit }: {
   asset: EnrichedMaintenanceAsset;
   onBack: () => void;
   canEdit: boolean;
+  canCreate: boolean;
   onArchiveToggle: () => void;
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
   const isArchived = asset.status === 'archived';
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -473,14 +477,26 @@ function AssetDetail({ asset, onBack, canEdit, onArchiveToggle, onEdit }: {
         icon={<CalendarClock className="h-4 w-4" />}
       >
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {t('maintenance.sections.scheduledPlaceholder',
-              'Scheduled maintenance will be managed here in the next step.')}
-          </p>
-          <Button size="sm" variant="outline" disabled>
-            <Plus className="h-4 w-4 mr-1" />
-            {t('maintenance.actions.addSchedule', 'Add Schedule')}
-          </Button>
+          {canCreate && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setScheduleOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t('maintenance.actions.addSchedule', 'Add Schedule')}
+              </Button>
+            </div>
+          )}
+          <SchedulesList
+            filterByAssetId={asset.id}
+            presetAssetId={asset.id}
+            hideHeaderAdd
+          />
+          {scheduleOpen && (
+            <ScheduleFormDialog
+              open={scheduleOpen}
+              onOpenChange={setScheduleOpen}
+              presetAssetId={asset.id}
+            />
+          )}
         </div>
       </DetailSection>
 
@@ -786,6 +802,7 @@ export default function Maintenance() {
           asset={selected}
           onBack={() => setSelectedId(null)}
           canEdit={canManageAsset(selected)}
+          canCreate={canCreate && canManageAsset(selected)}
           onArchiveToggle={() => setArchiveTarget(selected)}
           onEdit={() => { setEditing(selected); setFormOpen(true); }}
         />
@@ -794,6 +811,7 @@ export default function Maintenance() {
           <TabsList>
             <TabsTrigger value="dashboard">{t('maintenance.tabs.dashboard')}</TabsTrigger>
             <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>
+            <TabsTrigger value="schedules">{t('maintenance.tabs.schedules', 'Schedules')}</TabsTrigger>
             {isOwner && (
               <TabsTrigger value="settings">{t('maintenance.tabs.settings')}</TabsTrigger>
             )}
@@ -808,6 +826,9 @@ export default function Maintenance() {
               onArchiveToggle={a => setArchiveTarget(a)}
               isOwner={isOwner}
             />
+          </TabsContent>
+          <TabsContent value="schedules">
+            <SchedulesList />
           </TabsContent>
           {isOwner && (
             <TabsContent value="settings">

@@ -1037,6 +1037,74 @@ export type Database = {
           },
         ]
       }
+      maintenance_schedule_templates: {
+        Row: {
+          archived_at: string | null
+          asset_id: string
+          assigned_department: Database["public"]["Enums"]["department"] | null
+          assigned_staff_id: string | null
+          created_at: string
+          created_by: string | null
+          custom_interval_days: number | null
+          description: string | null
+          due_time: string
+          frequency: Database["public"]["Enums"]["maintenance_schedule_frequency"]
+          id: string
+          note_required: boolean
+          photo_required: boolean
+          status: Database["public"]["Enums"]["maintenance_schedule_status"]
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          asset_id: string
+          assigned_department?: Database["public"]["Enums"]["department"] | null
+          assigned_staff_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_interval_days?: number | null
+          description?: string | null
+          due_time?: string
+          frequency?: Database["public"]["Enums"]["maintenance_schedule_frequency"]
+          id?: string
+          note_required?: boolean
+          photo_required?: boolean
+          status?: Database["public"]["Enums"]["maintenance_schedule_status"]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          asset_id?: string
+          assigned_department?: Database["public"]["Enums"]["department"] | null
+          assigned_staff_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_interval_days?: number | null
+          description?: string | null
+          due_time?: string
+          frequency?: Database["public"]["Enums"]["maintenance_schedule_frequency"]
+          id?: string
+          note_required?: boolean
+          photo_required?: boolean
+          status?: Database["public"]["Enums"]["maintenance_schedule_status"]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_schedule_templates_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_settings: {
         Row: {
           checklist_notices_enabled: boolean
@@ -1921,6 +1989,13 @@ export type Database = {
         | "bakery"
       ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
       maintenance_asset_status: "active" | "inactive" | "archived"
+      maintenance_schedule_frequency:
+        | "daily"
+        | "weekly"
+        | "monthly"
+        | "every_90_days"
+        | "custom_interval"
+      maintenance_schedule_status: "active" | "inactive" | "archived"
       note_requirement: "none" | "optional" | "mandatory"
       notification_priority: "normal" | "high" | "critical"
       notification_status: "unread" | "read" | "archived"
@@ -2099,6 +2174,14 @@ export const Constants = {
       ],
       ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
       maintenance_asset_status: ["active", "inactive", "archived"],
+      maintenance_schedule_frequency: [
+        "daily",
+        "weekly",
+        "monthly",
+        "every_90_days",
+        "custom_interval",
+      ],
+      maintenance_schedule_status: ["active", "inactive", "archived"],
       note_requirement: ["none", "optional", "mandatory"],
       notification_priority: ["normal", "high", "critical"],
       notification_status: ["unread", "read", "archived"],
