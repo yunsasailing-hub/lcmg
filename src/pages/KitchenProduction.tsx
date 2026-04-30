@@ -401,6 +401,14 @@ export default function KitchenProduction() {
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.type')}</Label>
                   <Input readOnly value={selectedItem.code.startsWith('1013') ? t('kitchenProduction.types.MENU_ITEM') : t('kitchenProduction.types.BATCH_RECIPE')} className="h-10 bg-background/60" />
                 </div>
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.department')}</Label>
+                  <Input
+                    readOnly
+                    value={recipeDepartment ? t(`departments.${recipeDepartment}`, { defaultValue: recipeDepartment }) : t('kitchenProduction.fields.deptMissing')}
+                    className={`h-10 bg-background/60 ${!recipeDepartment ? 'text-destructive' : ''}`}
+                  />
+                </div>
                 <div className="sm:col-span-2 lg:col-span-2">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t('kitchenProduction.fields.linkedRecipeCode')}</Label>
                   <Input readOnly value={selectedItem.code} className="h-10 font-mono bg-background/60" />
@@ -412,6 +420,14 @@ export default function KitchenProduction() {
                     <span>{t('kitchenProduction.warnings.unitMissing')}</span>
                   </div>
                 )}
+
+                {!recipeDepartment && (
+                  <div className="sm:col-span-2 lg:col-span-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{t('kitchenProduction.warnings.deptMissing')}</span>
+                  </div>
+                )}
+                {errors.dept && <p className="sm:col-span-2 lg:col-span-4 text-xs text-destructive">{errors.dept}</p>}
               </div>
             )}
 
