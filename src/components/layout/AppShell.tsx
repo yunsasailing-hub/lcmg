@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   LayoutDashboard, GraduationCap, ClipboardCheck, CookingPot,
-  Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal,
+  Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal, ChefHat,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -23,6 +23,7 @@ const useNavItems = () => {
     { to: '/training', icon: GraduationCap, label: t('nav.training') },
     { to: '/checklists', icon: ClipboardCheck, label: t('nav.checklists') },
     { to: '/recipes', icon: CookingPot, label: t('nav.recipes') },
+    { to: '/kitchen-production', icon: ChefHat, label: t('nav.kitchenProduction') },
     { to: '/inventory', icon: Package, label: t('nav.inventory') },
     { to: '/maintenance', icon: Wrench, label: t('nav.maintenance') },
     { to: '/management', icon: Settings, label: t('nav.management') },
