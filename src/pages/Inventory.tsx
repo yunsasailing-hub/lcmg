@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Apple, Hammer, ArrowLeft, Info, ClipboardList, ShieldCheck, ListChecks,
+  Apple, Hammer, ArrowLeft, Info, ClipboardList, ShieldCheck, ListChecks, FileSpreadsheet,
 } from 'lucide-react';
 import InventoryRequestList from '@/components/inventory/InventoryRequestList';
 import InventoryOwnerReview from '@/components/inventory/InventoryOwnerReview';
 import InventoryControlList from '@/components/inventory/InventoryControlList';
+import InventoryWeeklySheet from '@/components/inventory/InventoryWeeklySheet';
 import { useAuth } from '@/hooks/useAuth';
 
 type View = 'dashboard' | 'consumable';
@@ -85,12 +86,16 @@ function ConsumableView({ onBack }: { onBack: () => void }) {
       </div>
 
       {isOwner ? (
-        <Tabs defaultValue="requests">
-          <TabsList>
+        <Tabs defaultValue="sheet">
+          <TabsList className="flex flex-wrap">
+            <TabsTrigger value="sheet"><FileSpreadsheet className="h-4 w-4 mr-1" />Weekly sheet</TabsTrigger>
             <TabsTrigger value="requests"><ClipboardList className="h-4 w-4 mr-1" />All requests</TabsTrigger>
             <TabsTrigger value="review"><ShieldCheck className="h-4 w-4 mr-1" />Owner review</TabsTrigger>
             <TabsTrigger value="control"><ListChecks className="h-4 w-4 mr-1" />Control list</TabsTrigger>
           </TabsList>
+          <TabsContent value="sheet" className="mt-3">
+            <InventoryWeeklySheet />
+          </TabsContent>
           <TabsContent value="requests" className="mt-3">
             <InventoryRequestList />
           </TabsContent>
@@ -102,7 +107,18 @@ function ConsumableView({ onBack }: { onBack: () => void }) {
           </TabsContent>
         </Tabs>
       ) : (
-        <InventoryRequestList />
+        <Tabs defaultValue="sheet">
+          <TabsList>
+            <TabsTrigger value="sheet"><FileSpreadsheet className="h-4 w-4 mr-1" />Weekly sheet</TabsTrigger>
+            <TabsTrigger value="requests"><ClipboardList className="h-4 w-4 mr-1" />My requests</TabsTrigger>
+          </TabsList>
+          <TabsContent value="sheet" className="mt-3">
+            <InventoryWeeklySheet />
+          </TabsContent>
+          <TabsContent value="requests" className="mt-3">
+            <InventoryRequestList />
+          </TabsContent>
+        </Tabs>
       )}
 
       <FutureAutomationNote />
