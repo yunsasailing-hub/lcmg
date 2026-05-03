@@ -1,0 +1,1 @@
+ALTER TABLE public.maintenance_tasks ADD COLUMN IF NOT EXISTS execution_date date;
