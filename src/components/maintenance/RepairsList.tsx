@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Search, Plus, Pencil, Archive, Wrench, User, Calendar, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
@@ -58,9 +58,13 @@ interface Props {
   presetAssetId?: string;
   /** Hide the top "New repair" button (parent provides one). */
   hideHeaderAdd?: boolean;
+  /** When set, automatically open the repair edit dialog for this id. */
+  openRepairId?: string | null;
+  /** Called once the openRepairId has been consumed. */
+  onConsumeOpenRepair?: () => void;
 }
 
-export default function RepairsList({ filterByAssetId, presetAssetId, hideHeaderAdd }: Props) {
+export default function RepairsList({ filterByAssetId, presetAssetId, hideHeaderAdd, openRepairId, onConsumeOpenRepair }: Props) {
   const { profile, hasRole } = useAuth();
   const isOwner = hasRole('owner');
   const isManager = hasRole('manager');
@@ -76,6 +80,15 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
   const [workAreaFilter, setWorkAreaFilter] = useState<string>('all');
   const [open, setOpen] = useState<{ mode: 'new' | 'edit' | 'report'; row?: EnrichedMaintenanceRepair } | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<EnrichedMaintenanceRepair | null>(null);
+
+  useEffect(() => {
+    if (!openRepairId || !repairs.length) return;
+    const target = repairs.find(r => r.id === openRepairId);
+    if (target) {
+      setOpen({ mode: 'edit', row: target });
+      onConsumeOpenRepair?.();
+    }
+  }, [openRepairId, repairs, onConsumeOpenRepair]);
 
   const branches = useMemo(() => {
     const m = new Map<string, string>();
