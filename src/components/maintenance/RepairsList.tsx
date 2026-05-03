@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Search, Plus, Pencil, Archive, Wrench, User, Calendar, Banknote } from 'lucide-react';
+import {
+  Loader2, Search, Plus, Pencil, Archive, Wrench,
+  ArrowUp, ArrowDown, ArrowUpDown,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useMaintenanceRepairs,
@@ -36,31 +40,30 @@ const STATUS_BADGE: Record<MaintenanceRepairStatus, string> = {
   'In Progress': 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30',
   Done: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
   Archived: 'bg-muted text-muted-foreground border-border',
-  // Legacy values retained so old rows still render correctly
   Resolved: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
   Cancelled: 'bg-muted text-muted-foreground border-border',
 };
 
-function fmtDateTime(s?: string | null) {
-  if (!s) return '—';
-  try { return new Date(s).toLocaleString(); } catch { return s; }
-}
+const STATUS_RANK: Record<string, number> = {
+  Reported: 0, 'In Progress': 1, Done: 2, Resolved: 2, Archived: 3, Cancelled: 4,
+};
 
 function fmtDate(s?: string | null) {
   if (!s) return '—';
   try { return new Date(s).toLocaleDateString(); } catch { return s; }
 }
 
+function shortCode(id: string) {
+  return `REP-${id.slice(0, 6).toUpperCase()}`;
+}
+
+type SortKey = 'reported_at' | 'branch' | 'department' | 'work_area' | 'status' | 'source' | 'cost';
+
 interface Props {
-  /** Restrict to a single equipment (used by asset detail section). */
   filterByAssetId?: string;
-  /** Pre-select equipment in the form (used by asset detail section). */
   presetAssetId?: string;
-  /** Hide the top "New repair" button (parent provides one). */
   hideHeaderAdd?: boolean;
-  /** When set, automatically open the repair edit dialog for this id. */
   openRepairId?: string | null;
-  /** Called once the openRepairId has been consumed. */
   onConsumeOpenRepair?: () => void;
 }
 
@@ -74,12 +77,21 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
   const upsert = useUpsertMaintenanceRepair();
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('active'); // hide Archived by default
+  const [statusFilter, setStatusFilter] = useState<string>('active');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
+  const [deptFilter, setDeptFilter] = useState<string>('all');
   const [workAreaFilter, setWorkAreaFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [open, setOpen] = useState<{ mode: 'new' | 'edit' | 'report'; row?: EnrichedMaintenanceRepair } | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<EnrichedMaintenanceRepair | null>(null);
+
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const handleSort = (k: SortKey) => {
+    if (sortKey !== k) { setSortKey(k); setSortDir(k === 'reported_at' || k === 'cost' ? 'desc' : 'asc'); return; }
+    setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+  };
 
   useEffect(() => {
     if (!openRepairId || !repairs.length) return;
@@ -96,6 +108,21 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
     return Array.from(m.entries());
   }, [repairs]);
 
+  const departments = useMemo(() => {
+    const set = new Set<string>();
+    repairs.forEach(r => {
+      const d = (r as any).department ?? r.asset_department;
+      if (d) set.add(d);
+    });
+    return Array.from(set).sort();
+  }, [repairs]);
+
+  const sources = useMemo(() => {
+    const set = new Set<string>();
+    repairs.forEach(r => set.add(r.source || 'Manual'));
+    return Array.from(set).sort();
+  }, [repairs]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const list = repairs.filter(r => {
@@ -103,28 +130,68 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
       if (statusFilter !== 'all' && statusFilter !== 'active' && r.status !== statusFilter) return false;
       if (severityFilter !== 'all' && r.severity !== severityFilter) return false;
       if (!filterByAssetId && branchFilter !== 'all' && r.asset_branch_id !== branchFilter) return false;
+      if (deptFilter !== 'all' && ((r as any).department ?? r.asset_department) !== deptFilter) return false;
       if (workAreaFilter !== 'all' && (r as any).work_area !== workAreaFilter) return false;
+      if (sourceFilter !== 'all' && (r.source || 'Manual') !== sourceFilter) return false;
       if (q && !`${r.title} ${r.asset_name ?? ''} ${r.asset_code ?? ''} ${r.issue_description ?? ''}`
         .toLowerCase().includes(q)) return false;
       return true;
     });
-    // Latest first
-    return list.sort((a, b) =>
-      new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
-  }, [repairs, search, statusFilter, severityFilter, branchFilter, workAreaFilter, filterByAssetId]);
 
-  const canAdd = canManage || (!!profile?.user_id); // staff can also report
+    if (sortKey) {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      list.sort((a, b) => {
+        switch (sortKey) {
+          case 'reported_at': return (new Date(a.reported_at).getTime() - new Date(b.reported_at).getTime()) * dir;
+          case 'branch': return ((a.asset_branch_name ?? '').localeCompare(b.asset_branch_name ?? '')) * dir;
+          case 'department': {
+            const ad = ((a as any).department ?? a.asset_department ?? '') as string;
+            const bd = ((b as any).department ?? b.asset_department ?? '') as string;
+            return ad.localeCompare(bd) * dir;
+          }
+          case 'work_area': return (((a as any).work_area ?? '').localeCompare((b as any).work_area ?? '')) * dir;
+          case 'status': return ((STATUS_RANK[a.status] ?? 99) - (STATUS_RANK[b.status] ?? 99)) * dir;
+          case 'source': return ((a.source || 'Manual').localeCompare(b.source || 'Manual')) * dir;
+          case 'cost': return ((Number(a.cost_amount) || 0) - (Number(b.cost_amount) || 0)) * dir;
+        }
+      });
+    } else {
+      list.sort((a, b) => {
+        const ar = STATUS_RANK[a.status] ?? 99;
+        const br = STATUS_RANK[b.status] ?? 99;
+        const aActive = ar < 3 ? 0 : 1;
+        const bActive = br < 3 ? 0 : 1;
+        const td = new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime();
+        if (td !== 0) return td;
+        if (aActive !== bActive) return aActive - bActive;
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
+    }
+    return list;
+  }, [repairs, search, statusFilter, severityFilter, branchFilter, deptFilter, workAreaFilter, sourceFilter, filterByAssetId, sortKey, sortDir]);
+
+  const canAdd = canManage || (!!profile?.user_id);
+
+  const SortIcon = ({ k }: { k: SortKey }) =>
+    sortKey !== k
+      ? <ArrowUpDown className="h-3 w-3 opacity-30" />
+      : sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+  const SH = ({ k, label }: { k: SortKey; label: string }) => (
+    <button type="button" onClick={() => handleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+      {label}<SortIcon k={k} />
+    </button>
+  );
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-8" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search repairs…" />
+          <Input className="pl-8 h-9" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search repairs…" />
         </div>
-        <div className="grid grid-cols-2 sm:flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="sm:w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="h-9 sm:w-36"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="all">All statuses</SelectItem>
@@ -132,7 +199,7 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
             </SelectContent>
           </Select>
           <Select value={severityFilter} onValueChange={setSeverityFilter}>
-            <SelectTrigger className="sm:w-36"><SelectValue placeholder="Severity" /></SelectTrigger>
+            <SelectTrigger className="h-9 sm:w-36"><SelectValue placeholder="Severity" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All severities</SelectItem>
               {REPAIR_SEVERITIES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -140,18 +207,32 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
           </Select>
           {!filterByAssetId && (
             <Select value={branchFilter} onValueChange={setBranchFilter}>
-              <SelectTrigger className="sm:w-40"><SelectValue placeholder="Branch" /></SelectTrigger>
+              <SelectTrigger className="h-9 sm:w-40"><SelectValue placeholder="Branch" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All branches</SelectItem>
                 {branches.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
+          <Select value={deptFilter} onValueChange={setDeptFilter}>
+            <SelectTrigger className="h-9 sm:w-36"><SelectValue placeholder="Department" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All depts</SelectItem>
+              {departments.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={workAreaFilter} onValueChange={setWorkAreaFilter}>
-            <SelectTrigger className="sm:w-44"><SelectValue placeholder="Work Area" /></SelectTrigger>
+            <SelectTrigger className="h-9 sm:w-44"><SelectValue placeholder="Work Area" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All work areas</SelectItem>
               {WORK_AREAS.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="h-9 sm:w-40"><SelectValue placeholder="Source" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {sources.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           {!hideHeaderAdd && canAdd && (
@@ -170,79 +251,73 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
           No repairs to show.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filtered.map(r => (
-            <Card key={r.id} className="p-3 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-mono text-muted-foreground truncate">
-                    {r.asset_code ? `${r.asset_code} — ` : ''}{r.asset_name ?? '—'}
-                  </div>
-                  <div className="text-sm font-semibold truncate mt-0.5">{r.title}</div>
-                  {r.reported_by_name && (
-                    <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                      Reported by: {r.reported_by_name}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <Badge variant="outline" className={STATUS_BADGE[r.status]}>{r.status}</Badge>
-                  <Badge variant="outline" className={SEVERITY_BADGE[r.severity]}>{r.severity}</Badge>
-                </div>
-              </div>
-
-              {r.issue_description && (
-                <p className="text-xs text-muted-foreground line-clamp-2">{r.issue_description}</p>
-              )}
-
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{fmtDate(r.reported_at)}</span>
-                {r.completed_at && <span>Done: {fmtDate(r.completed_at)}</span>}
-                {r.reported_by_name && <span className="inline-flex items-center gap-1"><User className="h-3 w-3" />{r.reported_by_name}</span>}
-                {r.technician_name && <span>Tech: {r.technician_name}</span>}
-                {r.cost_amount != null && Number(r.cost_amount) > 0 && (
-                  <span className="inline-flex items-center gap-1"><Banknote className="h-3 w-3" />{Number(r.cost_amount).toLocaleString()} {r.currency}</span>
-                )}
-                {(r as any).cost_type && <span>· {(r as any).cost_type}</span>}
-                {r.downtime_hours != null && <span>Downtime: {r.downtime_hours}h</span>}
-                {(r as any).work_area && <span>Area: {(r as any).work_area}</span>}
-              </div>
-
-              {(() => {
-                const photos = Array.isArray((r as any).photos) ? ((r as any).photos as string[]) : [];
-                const legacy = [r.before_photo_url, r.after_photo_url].filter(Boolean) as string[];
-                const all = [...photos, ...legacy];
-                if (all.length === 0) return null;
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="h-10">Code</TableHead>
+                <TableHead className="h-10">Title</TableHead>
+                <TableHead className="h-10"><SH k="branch" label="Branch" /></TableHead>
+                <TableHead className="h-10"><SH k="department" label="Dept" /></TableHead>
+                <TableHead className="h-10"><SH k="work_area" label="Work Area" /></TableHead>
+                <TableHead className="h-10">Area / Equipment</TableHead>
+                <TableHead className="h-10"><SH k="reported_at" label="Intervention Date" /></TableHead>
+                <TableHead className="h-10"><SH k="status" label="Status" /></TableHead>
+                <TableHead className="h-10"><SH k="source" label="Source" /></TableHead>
+                <TableHead className="h-10">Assigned</TableHead>
+                <TableHead className="h-10"><SH k="cost" label="Cost" /></TableHead>
+                <TableHead className="h-10 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(r => {
+                const dept = ((r as any).department ?? r.asset_department) as string | null;
+                const equip = r.asset_code
+                  ? `${r.asset_code} — ${r.asset_name ?? ''}`
+                  : (r.asset_name ?? r.area_or_equipment ?? '—');
                 return (
-                  <div className="flex flex-wrap gap-1.5">
-                    {all.slice(0, 4).map((url, i) => (
-                      <div key={`${url}-${i}`} className="h-14 w-14 rounded border overflow-hidden bg-muted/40">
-                        <ChecklistPhotoPreview imageUrl={url} altText={`${r.title} #${i + 1}`} />
+                  <TableRow key={r.id} className="cursor-pointer" onClick={() => setOpen({ mode: 'edit', row: r })}>
+                    <TableCell className="py-2 font-mono text-xs text-muted-foreground">{shortCode(r.id)}</TableCell>
+                    <TableCell className="py-2 font-medium max-w-[16rem] truncate">{r.title}</TableCell>
+                    <TableCell className="py-2 text-xs">{r.asset_branch_name ?? '—'}</TableCell>
+                    <TableCell className="py-2 text-xs capitalize">{dept ?? '—'}</TableCell>
+                    <TableCell className="py-2 text-xs">{(r as any).work_area ?? '—'}</TableCell>
+                    <TableCell className="py-2 text-xs max-w-[14rem] truncate">{equip}</TableCell>
+                    <TableCell className="py-2 text-xs">{fmtDate(r.reported_at)}</TableCell>
+                    <TableCell className="py-2">
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className={STATUS_BADGE[r.status]}>{r.status}</Badge>
+                        <Badge variant="outline" className={`${SEVERITY_BADGE[r.severity]} text-[10px] px-1.5`}>{r.severity}</Badge>
                       </div>
-                    ))}
-                    {all.length > 4 && (
-                      <div className="h-14 w-14 rounded border bg-muted/40 flex items-center justify-center text-[11px] text-muted-foreground">
-                        +{all.length - 4}
-                      </div>
-                    )}
-                  </div>
+                    </TableCell>
+                    <TableCell className="py-2 text-xs">{r.source || 'Manual'}</TableCell>
+                    <TableCell className="py-2 text-xs text-muted-foreground">
+                      {r.assigned_to_name ?? r.technician_name ?? '—'}
+                    </TableCell>
+                    <TableCell className="py-2 text-xs">
+                      {r.cost_amount != null && Number(r.cost_amount) > 0
+                        ? `${Number(r.cost_amount).toLocaleString()} ${r.currency}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="py-2 text-right" onClick={e => e.stopPropagation()}>
+                      {canManage ? (
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => setOpen({ mode: 'edit', row: r })}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          {isOwner && r.status !== 'Archived' && (
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmArchive(r)}>
+                              <Archive className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
                 );
-              })()}
-
-              {canManage && (
-                <div className="flex gap-1 pt-1 border-t">
-                  <Button size="sm" variant="outline" onClick={() => setOpen({ mode: 'edit', row: r })}>
-                    <Pencil className="h-3.5 w-3.5 mr-1" />Edit
-                  </Button>
-                  {isOwner && r.status !== 'Archived' && (
-                    <Button size="sm" variant="ghost" onClick={() => setConfirmArchive(r)}>
-                      <Archive className="h-3.5 w-3.5 mr-1" />Archive
-                    </Button>
-                  )}
-                </div>
-              )}
-            </Card>
-          ))}
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
 
