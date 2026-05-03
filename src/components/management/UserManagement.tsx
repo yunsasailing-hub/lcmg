@@ -366,7 +366,7 @@ export default function UserManagement() {
     return result;
   }, [profiles, search, filters]);
 
-  const ROLE_RANK: Record<string, number> = { owner: 0, manager: 1, staff: 2 };
+  const ROLE_RANK: Record<string, number> = { administrator: 0, owner: 1, manager: 2, staff: 3 };
   const sorted = useMemo(() => {
     const arr = [...filtered];
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -503,6 +503,7 @@ export default function UserManagement() {
               <SelectTrigger><SelectValue placeholder="All roles" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="administrator">Administrator</SelectItem>
                 <SelectItem value="owner">Owner</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
