@@ -493,12 +493,19 @@ export default function InventoryControlList() {
       <ControlListFormDialog
         open={newListOpen} onOpenChange={setNewListOpen}
         defaultBranchId={branchId} defaultDepartment={department || null}
-        onSaved={(id) => setControlListId(id)}
+        existingLists={allLists}
+        onSaved={({ id, branch_id, department: dep }) => {
+          setBranchId(branch_id);
+          setDepartment(dep);
+          setControlListId(id);
+          toast.success('Control List created. Add items now.');
+        }}
       />
       <ControlListFormDialog
         key={currentList?.id ?? 'edit'}
         open={editListOpen} onOpenChange={setEditListOpen}
         editing={currentList}
+        existingLists={allLists}
       />
 
       <BulkAddFromIngredientsDialog
