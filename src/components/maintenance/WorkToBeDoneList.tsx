@@ -198,6 +198,7 @@ export default function WorkToBeDoneList() {
                       </div>
                     )}
                     {item.assignee_username && <div className="truncate">Assigned: {item.assignee_username}</div>}
+                    <div className="truncate">Updates: {item.updates_count ?? 0}</div>
                   </div>
                 </CardContent>
               </Card>

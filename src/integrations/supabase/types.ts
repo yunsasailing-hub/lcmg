@@ -1582,6 +1582,44 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance_work_to_be_done_updates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          photo_path: string | null
+          photo_url: string | null
+          update_note: string
+          work_to_be_done_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_path?: string | null
+          photo_url?: string | null
+          update_note: string
+          work_to_be_done_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_path?: string | null
+          photo_url?: string | null
+          update_note?: string
+          work_to_be_done_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_work_to_be_done_updates_work_to_be_done_id_fkey"
+            columns: ["work_to_be_done_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_work_to_be_done"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_settings: {
         Row: {
           checklist_notices_enabled: boolean
