@@ -27,6 +27,8 @@ import {
 } from '@/hooks/useMaintenanceSchedules';
 import { useMaintenanceAssets, useBranchesAll } from '@/hooks/useMaintenance';
 import ScheduleFormDialog, { FREQ_LABEL } from './ScheduleFormDialog';
+import { useLastExecutionByTemplate, parseLocalDate } from '@/hooks/useLastExecutionByTemplate';
+import { nextDueDate } from '@/lib/maintenanceSchedule';
 import type { Database } from '@/integrations/supabase/types';
 
 type Department = Database['public']['Enums']['department'];
@@ -56,61 +58,13 @@ function fmtDate(d: Date | null) {
  * Calculate the next due date for a schedule based on frequency, created_at and due_time.
  * Returns null when the schedule is not active or the calculation cannot be performed.
  */
-function computeNextDue(s: EnrichedScheduleTemplate): Date | null {
+function computeNextDue(s: EnrichedScheduleTemplate, lastExecISO?: string | null): Date | null {
   if (s.status !== 'active') return null;
   const created = s.created_at ? new Date(s.created_at) : null;
   if (!created || isNaN(created.getTime())) return null;
-  const [hh, mm] = (s.due_time ?? '00:00').split(':').map(n => parseInt(n, 10));
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh || 0, mm || 0, 0, 0);
-
-  const addDays = (d: Date, n: number) => {
-    const x = new Date(d);
-    x.setDate(x.getDate() + n);
-    return x;
-  };
-
-  switch (s.frequency) {
-    case 'daily':
-      return today.getTime() >= now.getTime() ? today : addDays(today, 1);
-    case 'weekly': {
-      const target = created.getDay();
-      let diff = (target - today.getDay() + 7) % 7;
-      const candidate = addDays(today, diff);
-      if (diff === 0 && candidate.getTime() < now.getTime()) return addDays(candidate, 7);
-      return candidate;
-    }
-    case 'monthly': {
-      const day = created.getDate();
-      const tryMonth = (offset: number) => {
-        const base = new Date(now.getFullYear(), now.getMonth() + offset, 1, hh || 0, mm || 0);
-        const last = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
-        base.setDate(Math.min(day, last));
-        return base;
-      };
-      const c = tryMonth(0);
-      return c.getTime() >= now.getTime() ? c : tryMonth(1);
-    }
-    case 'every_90_days':
-    case 'custom_interval': {
-      const interval = s.frequency === 'every_90_days'
-        ? 90
-        : (s.custom_interval_days ?? 0);
-      if (!interval || interval <= 0) return null;
-      const startUtc = Date.UTC(created.getFullYear(), created.getMonth(), created.getDate());
-      const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-      const elapsed = Math.floor((todayUtc - startUtc) / (24 * 3600 * 1000));
-      const cycles = Math.max(0, Math.ceil(elapsed / interval));
-      let candidate = addDays(
-        new Date(created.getFullYear(), created.getMonth(), created.getDate(), hh || 0, mm || 0),
-        cycles * interval,
-      );
-      if (candidate.getTime() < now.getTime()) candidate = addDays(candidate, interval);
-      return candidate;
-    }
-    default:
-      return null;
-  }
+  const today = new Date();
+  const lastExec = parseLocalDate(lastExecISO ?? null);
+  return nextDueDate(s.frequency, s.custom_interval_days, created, lastExec, today);
 }
 
 function daysLeftLabel(next: Date | null): { text: string; tone: 'default' | 'warn' | 'muted' | 'danger' } {
