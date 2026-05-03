@@ -389,6 +389,169 @@ function ChangeRoleDialog({
 
 // ─── Main Component ───
 
+function CreateUserDialog({
+  branches,
+  open,
+  onClose,
+  canAssignAdministrator,
+}: {
+  branches: Branch[];
+  open: boolean;
+  onClose: () => void;
+  canAssignAdministrator: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({
+    full_name: '',
+    email: '',
+    password: '',
+    username: '',
+    phone: '',
+    position: '',
+    department: '',
+    branch_id: '',
+    role: 'staff' as string,
+  });
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const USERNAME_RE = /^[a-z0-9_-]{3,32}$/;
+
+  const update = (field: string, value: string) => setForm(p => ({ ...p, [field]: value }));
+
+  const validateUsername = (v: string): string | null => {
+    const t = v.trim();
+    if (t === '') return null;
+    if (/\s/.test(v)) return 'Username cannot contain spaces.';
+    if (v !== v.toLowerCase()) return 'Username must be lowercase only.';
+    if (!USERNAME_RE.test(t)) return 'Only letters, numbers, dash, underscore (3–32 chars).';
+    return null;
+  };
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await callManageRoles('create_user', {
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        username: form.username.trim().toLowerCase() || undefined,
+        phone: form.phone.trim() || undefined,
+        position: form.position.trim() || undefined,
+        department: form.department || undefined,
+        branch_id: form.branch_id || undefined,
+        role: form.role,
+      });
+      if (res?.ok === false) throw new Error(res.error || 'Failed to create user');
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-management'] });
+      toast.success('User created');
+      onClose();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const canSubmit =
+    form.full_name.trim() && form.email.trim() && form.password.length >= 6 && !usernameError;
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create User</DialogTitle>
+          <DialogDescription>Administrator-only: create a new team member.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Full Name *</Label>
+            <Input value={form.full_name} onChange={e => update('full_name', e.target.value)} />
+          </div>
+          <div>
+            <Label>Email *</Label>
+            <Input type="email" value={form.email} onChange={e => update('email', e.target.value)} />
+          </div>
+          <div>
+            <Label>Password * (min 6)</Label>
+            <Input type="text" value={form.password} onChange={e => update('password', e.target.value)} />
+          </div>
+          <div>
+            <Label>Username</Label>
+            <Input
+              value={form.username}
+              onChange={e => { update('username', e.target.value); setUsernameError(validateUsername(e.target.value)); }}
+              placeholder="e.g. john_doe"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {usernameError ? (
+              <p className="text-xs text-destructive mt-1">{usernameError}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-1">
+                Lowercase letters, numbers, dash, underscore. Required for username login.
+              </p>
+            )}
+          </div>
+          <div>
+            <Label>Phone</Label>
+            <Input value={form.phone} onChange={e => update('phone', e.target.value)} />
+          </div>
+          <div>
+            <Label>Position</Label>
+            <Input value={form.position} onChange={e => update('position', e.target.value)} />
+          </div>
+          <div>
+            <Label>Department</Label>
+            <Select value={form.department || 'none'} onValueChange={v => update('department', v === 'none' ? '' : v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No department</SelectItem>
+                {Constants.public.Enums.department.map(d => (
+                  <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Branch</Label>
+            <Select value={form.branch_id || 'none'} onValueChange={v => update('branch_id', v === 'none' ? '' : v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No branch</SelectItem>
+                {[...branches]
+                  .sort((a, b) => {
+                    if (a.id === ALL_BRANCHES_ID) return -1;
+                    if (b.id === ALL_BRANCHES_ID) return 1;
+                    return a.name.localeCompare(b.name);
+                  })
+                  .map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Permission Level</Label>
+            <Select value={form.role} onValueChange={v => update('role', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {canAssignAdministrator && <SelectItem value="administrator">Administrator</SelectItem>}
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!canSubmit || mutation.isPending}>
+            {mutation.isPending ? 'Creating…' : 'Create User'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function UserManagement() {
   const queryClient = useQueryClient();
   const { hasRole } = useAuth();
@@ -399,6 +562,7 @@ export default function UserManagement() {
   const [hideInactive, setHideInactive] = useState(true);
   const [editingUser, setEditingUser] = useState<EnrichedProfile | null>(null);
   const [changingRole, setChangingRole] = useState<EnrichedProfile | null>(null);
+  const [creatingUser, setCreatingUser] = useState(false);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
   type SortKey = 'name' | 'username' | 'role' | 'department' | 'branch' | 'status';
   const [sortKey, setSortKey] = useState<SortKey>('name');
