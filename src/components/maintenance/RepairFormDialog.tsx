@@ -22,6 +22,7 @@ import {
 } from '@/hooks/useMaintenanceRepairs';
 import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 import { optimizeChecklistImage } from '@/lib/imageCompression';
+import { WORK_AREAS, DEFAULT_WORK_AREA, type WorkArea } from '@/hooks/useWorkToBeDone';
 
 interface Props {
   open: boolean;
@@ -138,6 +139,7 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
         after_photo_url: initial?.after_photo_url ?? null,
         photos: form.photos,
         downtime_hours: !reportOnly && form.downtime_hours !== '' ? Number(form.downtime_hours) : null,
+        work_area: form.work_area,
         updated_by: profile?.user_id ?? null,
       };
       if (initial?.id) payload.id = initial.id;
