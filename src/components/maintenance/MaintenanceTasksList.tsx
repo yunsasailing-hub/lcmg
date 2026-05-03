@@ -20,7 +20,6 @@ import { ChevronDown, Trash2, Upload } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useMaintenanceTasks,
@@ -241,7 +240,8 @@ function SortHeader({
 
 function RequirementsBadges({ task }: { task: EnrichedMaintenanceTask }) {
   const tech = hasTechDetails(task);
-  if (!task.note_required && !task.photo_required && !tech) {
+  const photoCount = (task.photo_url ? 1 : 0) + (Array.isArray(task.additional_photos) ? task.additional_photos.length : 0);
+  if (!task.note_required && !task.photo_required && !tech && photoCount === 0) {
     return <span className="text-muted-foreground/60 text-xs">—</span>;
   }
   return (
@@ -249,6 +249,9 @@ function RequirementsBadges({ task }: { task: EnrichedMaintenanceTask }) {
       {task.note_required && <Badge variant="outline" className="text-[10px] gap-1"><StickyNote className="h-3 w-3" />Note</Badge>}
       {task.photo_required && <Badge variant="outline" className="text-[10px] gap-1"><Camera className="h-3 w-3" />Photo</Badge>}
       {tech && <Badge variant="outline" className="text-[10px] gap-1"><Wrench className="h-3 w-3" />Tech</Badge>}
+      {task.status === 'Done' && photoCount > 0 && (
+        <Badge variant="secondary" className="text-[10px] gap-1"><Camera className="h-3 w-3" />{photoCount} photo{photoCount === 1 ? '' : 's'}</Badge>
+      )}
     </div>
   );
 }
@@ -411,7 +414,6 @@ function TaskCompletionDialog({
   const { profile } = useAuth();
   const complete = useCompleteMaintenanceTask();
   const [note, setNote] = useState(task.note ?? '');
-  const [photoUrl, setPhotoUrl] = useState<string | null>(task.photo_url ?? null);
   const [uploading, setUploading] = useState(false);
   const [attempted, setAttempted] = useState(false);
 
@@ -428,17 +430,28 @@ function TaskCompletionDialog({
   const [externalContact, setExternalContact] = useState<string>(initialAdv.external_contact ?? '');
   const [spareParts, setSpareParts] = useState<string>(initialAdv.spare_parts ?? '');
   const [technicalNote, setTechnicalNote] = useState<string>(initialAdv.technical_note ?? '');
-  const [additionalPhotos, setAdditionalPhotos] = useState<string[]>(
-    Array.isArray(initialAdv.additional_photos) ? initialAdv.additional_photos : [],
-  );
-  const [uploadingExtra, setUploadingExtra] = useState(false);
-  const MAX_EXTRA_PHOTOS = 4;
+  const MAX_PHOTOS = 4;
+  // Unified photo list: combines legacy photo_url (first slot) + additional_photos.
+  const [photos, setPhotos] = useState<string[]>(() => {
+    const list: string[] = [];
+    if (task.photo_url) list.push(task.photo_url);
+    if (Array.isArray(initialAdv.additional_photos)) {
+      for (const u of initialAdv.additional_photos as string[]) {
+        if (u && !list.includes(u)) list.push(u);
+      }
+    }
+    return list.slice(0, MAX_PHOTOS);
+  });
 
   const isDone = task.status === 'Done';
   const noteMissing = task.note_required && !note.trim();
-  const photoMissing = task.photo_required && !photoUrl;
+  const photoMissing = task.photo_required && photos.length === 0;
 
   const handleUpload = async (file: File) => {
+    if (photos.length >= MAX_PHOTOS) {
+      toast.error(`Up to ${MAX_PHOTOS} photos allowed`);
+      return;
+    }
     setUploading(true);
     try {
       const res = await uploadToAppFilesBucket(file, 'maintenance', {
@@ -446,32 +459,11 @@ function TaskCompletionDialog({
         category: task.asset_department ?? undefined,
         assetOrEquipment: task.asset_code ?? task.asset_name ?? undefined,
       });
-      setPhotoUrl(res.publicUrl);
-      toast.success('Photo uploaded');
+      setPhotos(prev => [...prev, res.publicUrl].slice(0, MAX_PHOTOS));
     } catch (e: any) {
       toast.error(e?.message ?? 'Upload failed');
     } finally {
       setUploading(false);
-    }
-  };
-
-  const handleUploadExtra = async (file: File) => {
-    if (additionalPhotos.length >= MAX_EXTRA_PHOTOS) {
-      toast.error(`Up to ${MAX_EXTRA_PHOTOS} additional photos allowed`);
-      return;
-    }
-    setUploadingExtra(true);
-    try {
-      const res = await uploadToAppFilesBucket(file, 'maintenance', {
-        branchName: task.asset_branch_name ?? undefined,
-        category: task.asset_department ?? undefined,
-        assetOrEquipment: task.asset_code ?? task.asset_name ?? undefined,
-      });
-      setAdditionalPhotos(prev => [...prev, res.publicUrl]);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Upload failed');
-    } finally {
-      setUploadingExtra(false);
     }
   };
 
@@ -491,10 +483,11 @@ function TaskCompletionDialog({
     }
     try {
       const costNum = costAmount.trim() === '' ? null : Number(costAmount);
+      const [firstPhoto, ...restPhotos] = photos;
       await complete.mutateAsync({
         id: task.id,
         note,
-        photo_url: photoUrl,
+        photo_url: firstPhoto ?? null,
         user_id: profile.user_id,
         cost_amount: costNum != null && !isNaN(costNum) ? costNum : null,
         cost_type: costType || null,
@@ -502,7 +495,7 @@ function TaskCompletionDialog({
         external_contact: externalContact,
         spare_parts: spareParts,
         technical_note: technicalNote,
-        additional_photos: additionalPhotos,
+        additional_photos: restPhotos,
       });
       toast.success('Maintenance task completed');
       onOpenChange(false);
@@ -519,6 +512,15 @@ function TaskCompletionDialog({
         </DialogHeader>
 
         <div className="space-y-3 text-sm">
+          <div className="rounded-md border bg-muted/30 p-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Job description</div>
+            {task.template_description?.trim() ? (
+              <div className="whitespace-pre-wrap text-sm">{task.template_description}</div>
+            ) : (
+              <div className="text-sm italic text-muted-foreground">No job description provided.</div>
+            )}
+          </div>
+
           <div className="rounded-md border p-3 space-y-1">
             <div><span className="text-muted-foreground">Equipment:</span> {task.asset_code ? `${task.asset_code} — ` : ''}{task.asset_name}</div>
             {task.asset_type_name && (
@@ -561,27 +563,54 @@ function TaskCompletionDialog({
           </div>
 
           <div>
-            <Label>Photo {task.photo_required && <span className="text-destructive">*</span>}</Label>
-            {photoUrl ? (
-              <div className="mt-1">
-                <ChecklistPhotoPreview imageUrl={photoUrl} altText={task.title} />
-              </div>
-            ) : (
+            <div className="flex items-center justify-between">
+              <Label>
+                Photos {task.photo_required && <span className="text-destructive">*</span>}
+                <span className="ml-1 text-xs text-muted-foreground font-normal">({photos.length}/{MAX_PHOTOS})</span>
+              </Label>
+              {isDone && photos.length > 0 && (
+                <Badge variant="secondary" className="text-[10px]">{photos.length} photo{photos.length === 1 ? '' : 's'}</Badge>
+              )}
+            </div>
+            <div className={`mt-1 flex flex-wrap gap-2 ${attempted && photoMissing ? 'p-1 rounded border border-destructive' : ''}`}>
+              {photos.map((url, i) => (
+                <div key={`${url}-${i}`} className="relative h-20 w-20 rounded border bg-muted/40 overflow-hidden">
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <img src={url} className="h-full w-full object-cover" />
+                  {!isDone && (
+                    <button
+                      type="button"
+                      onClick={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))}
+                      className="absolute top-0.5 right-0.5 rounded-full bg-background/90 border p-0.5 hover:bg-destructive hover:text-destructive-foreground transition"
+                      aria-label="Remove photo"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {!isDone && photos.length < MAX_PHOTOS && (
+                <label className="h-20 w-20 rounded border border-dashed flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/40 cursor-pointer transition">
+                  {uploading
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <><Upload className="h-4 w-4" /><span className="text-[10px] mt-0.5">Add</span></>}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    hidden
+                    onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void handleUpload(f); }}
+                  />
+                </label>
+              )}
+            </div>
+            {photos.length === 0 && !isDone && (
               <div className={`text-xs mt-1 ${attempted && photoMissing ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {attempted && photoMissing ? 'Photo is required.' : 'No photo attached.'}
+                {attempted && photoMissing ? 'At least 1 photo is required.' : task.photo_required ? 'At least 1 photo required.' : 'Photos optional (up to 4).'}
               </div>
             )}
-            {!isDone && (
-              <div className="mt-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  disabled={uploading}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) void handleUpload(f); }}
-                  className={attempted && photoMissing ? 'border-destructive' : ''}
-                />
-                {uploading && <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</div>}
-              </div>
+            {isDone && photos.length === 0 && (
+              <div className="text-xs mt-1 text-muted-foreground">No photos attached.</div>
             )}
           </div>
 
@@ -651,42 +680,6 @@ function TaskCompletionDialog({
               <div>
                 <Label className="text-xs">Technical note</Label>
                 <Textarea rows={2} value={technicalNote} disabled={isDone} onChange={e => setTechnicalNote(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Additional photos (up to {MAX_EXTRA_PHOTOS})</Label>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {additionalPhotos.map((url, i) => (
-                    <div key={`${url}-${i}`} className="relative h-16 w-16 rounded border bg-muted/40 overflow-hidden">
-                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                      <img src={url} className="h-full w-full object-cover" />
-                      {!isDone && (
-                        <button
-                          type="button"
-                          onClick={() => setAdditionalPhotos(prev => prev.filter((_, idx) => idx !== i))}
-                          className="absolute top-0.5 right-0.5 rounded-full bg-background/90 border p-0.5 hover:bg-destructive hover:text-destructive-foreground transition"
-                          aria-label="Remove"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {!isDone && additionalPhotos.length < MAX_EXTRA_PHOTOS && (
-                    <label className="h-16 w-16 rounded border border-dashed flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/40 cursor-pointer transition">
-                      {uploadingExtra
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : <><Upload className="h-4 w-4" /><span className="text-[9px] mt-0.5">Add</span></>}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        hidden
-                        onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void handleUploadExtra(f); }}
-                      />
-                    </label>
-                  )}
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{additionalPhotos.length}/{MAX_EXTRA_PHOTOS}</p>
               </div>
             </CollapsibleContent>
           </Collapsible>
