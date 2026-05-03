@@ -222,6 +222,16 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
             </Select>
           </div>
 
+          <div>
+            <Label>Work Area *</Label>
+            <Select value={form.work_area} onValueChange={v => update('work_area', v as WorkArea)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {WORK_AREAS.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
           {!reportOnly && (
             <div>
               <Label>Status</Label>
