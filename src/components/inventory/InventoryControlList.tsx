@@ -5,7 +5,9 @@ import * as XLSX from 'xlsx';
 import {
   Plus, Trash2, Power, PowerOff, Save, Upload, Download, FileDown,
   Sparkles, Copy as CopyIcon, FilePlus2, Pencil,
+  ExternalLink, AlertTriangle,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,29 +98,98 @@ export default function InventoryControlList() {
 
   // Load ALL active control lists once, filter client-side. Active includes NULL (legacy).
   const { data: activeLists = [], refetch: refetchBranchLists } = useInventoryControlLists({ activeOnly: true });
+  const { data: items = [], isLoading } = useInventoryControlItems({ controlListId: controlListId || null });
+  const { data: allItems = [] } = useInventoryControlItems(); // for duplicate checks across branch
 
   const filteredLists = useMemo(() => {
     let lists = [...activeLists];
     if (branchId) lists = lists.filter(l => l.branch_id === branchId);
-    if (department) lists = lists.filter(l => l.department === department);
+    // NOTE: dropdown shows all branch lists; department only re-orders so the user
+    // can still see siblings causing duplicate-blocks across departments.
     if (
       optimisticList &&
       (!branchId || optimisticList.branch_id === branchId) &&
-      (!department || optimisticList.department === department) &&
       !lists.some(l => l.id === optimisticList.id)
     ) {
       lists.unshift(optimisticList);
     }
+    if (department) {
+      lists.sort((a, b) => {
+        const am = a.department === department ? 0 : 1;
+        const bm = b.department === department ? 0 : 1;
+        if (am !== bm) return am - bm;
+        return (a.control_list_code || '').localeCompare(b.control_list_code || '');
+      });
+    }
     return lists;
   }, [activeLists, branchId, department, optimisticList]);
+
+  // Panel: ALL control lists for the selected branch (active + inactive).
+  const branchPanelLists = useMemo(() => {
+    if (!branchId) return [];
+    const lists = allLists.filter(l => l.branch_id === branchId);
+    if (optimisticList && optimisticList.branch_id === branchId && !lists.some(l => l.id === optimisticList.id)) {
+      lists.unshift(optimisticList);
+    }
+    lists.sort((a, b) => (a.control_list_code || '').localeCompare(b.control_list_code || '', undefined, { numeric: true }));
+    return lists;
+  }, [allLists, branchId, optimisticList]);
+
+  const itemCountByList = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const it of allItems) {
+      if (!it.control_list_id) continue;
+      m.set(it.control_list_id, (m.get(it.control_list_id) ?? 0) + 1);
+    }
+    return m;
+  }, [allItems]);
+
+  const refreshAll = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
+    await queryClient.invalidateQueries({ queryKey: ['inventory_control_items'] });
+    await Promise.all([refetchAllLists(), refetchBranchLists()]);
+  };
+
+  const handleToggleListActive = async (l: EnrichedControlList) => {
+    try {
+      await upsertList.mutateAsync({
+        id: l.id, branch_id: l.branch_id, department: l.department,
+        control_list_code: l.control_list_code, control_list_name: l.control_list_name,
+        notes: l.notes ?? null, is_active: !l.is_active,
+      });
+      toast.success(l.is_active ? 'Deactivated' : 'Activated');
+      await refreshAll();
+    } catch (e: any) { toast.error(e?.message ?? 'Failed'); }
+  };
+
+  const handleDeleteList = async (l: EnrichedControlList) => {
+    try {
+      // Block delete if inventory_records reference this list
+      const { count: recCount, error: recErr } = await supabase
+        .from('inventory_records').select('id', { count: 'exact', head: true })
+        .eq('control_list_id', l.id);
+      if (recErr) throw recErr;
+      if ((recCount ?? 0) > 0) {
+        toast.error('This list has submitted inventory records. You can deactivate it but not delete it.');
+        return;
+      }
+      const itemCount = itemCountByList.get(l.id) ?? 0;
+      if (itemCount > 0) {
+        toast.error(`This list has ${itemCount} item(s). Remove items first or deactivate it.`);
+        return;
+      }
+      if (!confirm('Delete this empty Control List? This cannot be undone.')) return;
+      await deleteList.mutateAsync(l.id);
+      if (controlListId === l.id) setControlListId('');
+      toast.success('Deleted');
+      await refreshAll();
+    } catch (e: any) { toast.error(e?.message ?? 'Delete failed'); }
+  };
 
   // Keep selection valid; do not auto-select on Branch changes except after explicit creation/copy.
   useEffect(() => {
     if (controlListId && !filteredLists.find(l => l.id === controlListId)) setControlListId('');
   }, [filteredLists, controlListId]);
-
-  const { data: items = [], isLoading } = useInventoryControlItems({ controlListId: controlListId || null });
-  const { data: allItems = [] } = useInventoryControlItems(); // for duplicate checks across branch
 
   const [search, setSearch] = useState('');
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
@@ -363,7 +434,7 @@ export default function InventoryControlList() {
                     <span className="font-mono">{l.control_list_code}</span> — {l.control_list_name}
                     {' — '}
                     <span className="text-muted-foreground">
-                      {branchName(l.branch_id) || '—'} / <span className="capitalize">{l.department}</span>
+                      <span className="capitalize">{l.department}</span>
                     </span>
                     {l.is_active === false && ' (inactive)'}
                   </SelectItem>
@@ -391,6 +462,76 @@ export default function InventoryControlList() {
           )}
         </CardContent>
       </Card>
+
+      {/* Existing Control Lists for this branch */}
+      {branchId && (
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                Existing Control Lists for {branchName(branchId)}
+              </div>
+              <span className="text-xs text-muted-foreground">{branchPanelLists.length} list(s)</span>
+            </div>
+            {branchPanelLists.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No control lists yet for this branch.</p>
+            ) : (
+              <div className="overflow-x-auto rounded border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/40">
+                    <tr className="text-left">
+                      <th className="px-2 py-1.5">Code</th>
+                      <th className="px-2 py-1.5">Name</th>
+                      <th className="px-2 py-1.5">Department</th>
+                      <th className="px-2 py-1.5 text-center">Active</th>
+                      <th className="px-2 py-1.5 text-right">Items</th>
+                      <th className="px-2 py-1.5 text-right w-[180px]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {branchPanelLists.map(l => {
+                      const cnt = itemCountByList.get(l.id) ?? 0;
+                      return (
+                        <tr key={l.id} className={`border-t ${!l.is_active ? 'opacity-60' : ''}`}>
+                          <td className="px-2 py-1 font-mono">{l.control_list_code}</td>
+                          <td className="px-2 py-1">{l.control_list_name}</td>
+                          <td className="px-2 py-1 capitalize">{l.department}</td>
+                          <td className="px-2 py-1 text-center">
+                            {l.is_active
+                              ? <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">Active</Badge>
+                              : <Badge variant="outline" className="bg-muted">Inactive</Badge>}
+                          </td>
+                          <td className="px-2 py-1 text-right">{cnt}</td>
+                          <td className="px-2 py-1 text-right whitespace-nowrap">
+                            <Button size="sm" variant="ghost" title="Open"
+                              onClick={() => { setDepartment(l.department); setControlListId(l.id); }}>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                            {isOwner && (
+                              <Button size="sm" variant="ghost"
+                                title={l.is_active ? 'Deactivate' : 'Activate'}
+                                onClick={() => handleToggleListActive(l)}>
+                                {l.is_active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                              </Button>
+                            )}
+                            {isOwner && (
+                              <Button size="sm" variant="ghost" title={cnt > 0 ? 'Cannot delete: list has items' : 'Delete empty list'}
+                                disabled={cnt > 0}
+                                onClick={() => handleDeleteList(l)}>
+                                <Trash2 className={`h-3.5 w-3.5 ${cnt > 0 ? '' : 'text-destructive'}`} />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {!controlListId ? (
         <Card>
@@ -582,6 +723,7 @@ export default function InventoryControlList() {
         open={bulkOpen} onOpenChange={setBulkOpen}
         controlList={currentList}
         allItems={allItems}
+        allLists={allLists}
       />
 
       <ImportPreviewDialog
@@ -718,18 +860,23 @@ function ControlListFormDialog({
 
 // ===================== Bulk add from ingredients =====================
 function BulkAddFromIngredientsDialog({
-  open, onOpenChange, controlList, allItems,
+  open, onOpenChange, controlList, allItems, allLists,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   controlList: EnrichedControlList | null;
   allItems: EnrichedControlItem[];
+  allLists: EnrichedControlList[];
 }) {
   const { data: ingredients = [] } = useIngredientPicker();
   const upsert = useUpsertInventoryControlItem();
 
   const [search, setSearch] = useState('');
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [blockedDetails, setBlockedDetails] = useState<
+    { item_code: string; item_name: string; list_code: string; list_name: string; department: string }[]
+  >([]);
+  const [showBlocked, setShowBlocked] = useState(false);
 
   const sorted = useMemo(() => {
     const arr = [...ingredients];
@@ -756,6 +903,7 @@ function BulkAddFromIngredientsDialog({
     if (!controlList) { toast.error('Select a Control List first'); return; }
     if (picked.size === 0) { toast.error('Pick at least one ingredient'); return; }
     let added = 0, blocked = 0, failed = 0;
+    const blockedRows: typeof blockedDetails = [];
     for (const id of picked) {
       const ing = ingredients.find(i => i.id === id);
       if (!ing) continue;
@@ -767,7 +915,23 @@ function BulkAddFromIngredientsDialog({
           (it.item_code ?? '').toLowerCase() === code.toLowerCase() &&
           it.control_list_id !== controlList.id &&
           it.branch_id === controlList.branch_id);
-        if (conflict) { blocked++; continue; }
+        if (conflict) {
+          // Only block if the conflicting list is also active
+          const conflictList = allLists.find(l => l.id === conflict.control_list_id);
+          if (conflictList && conflictList.is_active === false) {
+            // inactive list — do not block
+          } else {
+            blocked++;
+            blockedRows.push({
+              item_code: code,
+              item_name: ing.name_en,
+              list_code: conflictList?.control_list_code ?? '(unknown)',
+              list_name: conflictList?.control_list_name ?? '',
+              department: conflictList?.department ?? '',
+            });
+            continue;
+          }
+        }
       }
       try {
         await upsert.mutateAsync({
@@ -784,9 +948,15 @@ function BulkAddFromIngredientsDialog({
         added++;
       } catch { failed++; }
     }
-    toast.success(`Added ${added}${blocked ? `, blocked ${blocked} (already in another list)` : ''}${failed ? `, ${failed} failed` : ''}`);
+    setBlockedDetails(blockedRows);
+    if (blocked > 0) {
+      toast.warning(`Added ${added}. Blocked ${blocked} (already in another active list).${failed ? ` ${failed} failed.` : ''}`);
+      setShowBlocked(true);
+    } else {
+      toast.success(`Added ${added}${failed ? `, ${failed} failed` : ''}`);
+      onOpenChange(false);
+    }
     setPicked(new Set());
-    onOpenChange(false);
   };
 
   return (
@@ -831,6 +1001,39 @@ function BulkAddFromIngredientsDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={submit} disabled={upsert.isPending || !controlList}>Add selected</Button>
         </DialogFooter>
+        {showBlocked && blockedDetails.length > 0 && (
+          <div className="mt-3 rounded border border-destructive/40 bg-destructive/5 p-2">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs font-semibold text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5" /> Blocked items ({blockedDetails.length})
+              </div>
+              <Button size="sm" variant="ghost" className="h-6 text-xs"
+                onClick={() => { setShowBlocked(false); setBlockedDetails([]); }}>Dismiss</Button>
+            </div>
+            <div className="max-h-[160px] overflow-y-auto text-xs">
+              <table className="w-full">
+                <thead className="bg-muted/40">
+                  <tr className="text-left">
+                    <th className="px-2 py-1">Item Code</th>
+                    <th className="px-2 py-1">Item Name</th>
+                    <th className="px-2 py-1">Existing List</th>
+                    <th className="px-2 py-1">Department</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blockedDetails.map((b, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="px-2 py-0.5 font-mono">{b.item_code}</td>
+                      <td className="px-2 py-0.5">{b.item_name}</td>
+                      <td className="px-2 py-0.5"><span className="font-mono">{b.list_code}</span> — {b.list_name}</td>
+                      <td className="px-2 py-0.5 capitalize">{b.department}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
