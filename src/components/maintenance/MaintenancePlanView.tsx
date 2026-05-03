@@ -476,11 +476,14 @@ function PreviewDialog({
                 {item.photo_required && <Badge variant="outline" className="gap-1 text-[10px]"><Camera className="h-3 w-3" />Photo required</Badge>}
               </div>
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-2.5 text-xs text-amber-900 dark:text-amber-200">
-                This task will be available for completion on its due date.
+                This task is scheduled for a future date. You may complete it early if the work has already been done.
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>Close</Button>
+              {onCompleteEarly && item.preview && (
+                <Button onClick={() => onCompleteEarly(item)}>Complete Early</Button>
+              )}
             </DialogFooter>
           </>
         )}
