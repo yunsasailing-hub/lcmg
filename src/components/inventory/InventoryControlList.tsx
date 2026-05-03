@@ -5,7 +5,9 @@ import * as XLSX from 'xlsx';
 import {
   Plus, Trash2, Power, PowerOff, Save, Upload, Download, FileDown,
   Sparkles, Copy as CopyIcon, FilePlus2, Pencil,
+  ExternalLink, AlertTriangle,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,17 +102,87 @@ export default function InventoryControlList() {
   const filteredLists = useMemo(() => {
     let lists = [...activeLists];
     if (branchId) lists = lists.filter(l => l.branch_id === branchId);
-    if (department) lists = lists.filter(l => l.department === department);
+    // NOTE: dropdown shows all branch lists; department only re-orders so the user
+    // can still see siblings causing duplicate-blocks across departments.
     if (
       optimisticList &&
       (!branchId || optimisticList.branch_id === branchId) &&
-      (!department || optimisticList.department === department) &&
       !lists.some(l => l.id === optimisticList.id)
     ) {
       lists.unshift(optimisticList);
     }
+    if (department) {
+      lists.sort((a, b) => {
+        const am = a.department === department ? 0 : 1;
+        const bm = b.department === department ? 0 : 1;
+        if (am !== bm) return am - bm;
+        return (a.control_list_code || '').localeCompare(b.control_list_code || '');
+      });
+    }
     return lists;
   }, [activeLists, branchId, department, optimisticList]);
+
+  // Panel: ALL control lists for the selected branch (active + inactive).
+  const branchPanelLists = useMemo(() => {
+    if (!branchId) return [];
+    const lists = allLists.filter(l => l.branch_id === branchId);
+    if (optimisticList && optimisticList.branch_id === branchId && !lists.some(l => l.id === optimisticList.id)) {
+      lists.unshift(optimisticList);
+    }
+    lists.sort((a, b) => (a.control_list_code || '').localeCompare(b.control_list_code || '', undefined, { numeric: true }));
+    return lists;
+  }, [allLists, branchId, optimisticList]);
+
+  const itemCountByList = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const it of allItems) {
+      if (!it.control_list_id) continue;
+      m.set(it.control_list_id, (m.get(it.control_list_id) ?? 0) + 1);
+    }
+    return m;
+  }, [allItems]);
+
+  const refreshAll = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
+    await queryClient.invalidateQueries({ queryKey: ['inventory_control_items'] });
+    await Promise.all([refetchAllLists(), refetchBranchLists()]);
+  };
+
+  const handleToggleListActive = async (l: EnrichedControlList) => {
+    try {
+      await upsertList.mutateAsync({
+        id: l.id, branch_id: l.branch_id, department: l.department,
+        control_list_code: l.control_list_code, control_list_name: l.control_list_name,
+        notes: l.notes ?? null, is_active: !l.is_active,
+      });
+      toast.success(l.is_active ? 'Deactivated' : 'Activated');
+      await refreshAll();
+    } catch (e: any) { toast.error(e?.message ?? 'Failed'); }
+  };
+
+  const handleDeleteList = async (l: EnrichedControlList) => {
+    try {
+      // Block delete if inventory_records reference this list
+      const { count: recCount, error: recErr } = await supabase
+        .from('inventory_records').select('id', { count: 'exact', head: true })
+        .eq('control_list_id', l.id);
+      if (recErr) throw recErr;
+      if ((recCount ?? 0) > 0) {
+        toast.error('This list has submitted inventory records. You can deactivate it but not delete it.');
+        return;
+      }
+      const itemCount = itemCountByList.get(l.id) ?? 0;
+      if (itemCount > 0) {
+        toast.error(`This list has ${itemCount} item(s). Remove items first or deactivate it.`);
+        return;
+      }
+      if (!confirm('Delete this empty Control List? This cannot be undone.')) return;
+      await deleteList.mutateAsync(l.id);
+      if (controlListId === l.id) setControlListId('');
+      toast.success('Deleted');
+      await refreshAll();
+    } catch (e: any) { toast.error(e?.message ?? 'Delete failed'); }
+  };
 
   // Keep selection valid; do not auto-select on Branch changes except after explicit creation/copy.
   useEffect(() => {
@@ -363,7 +435,7 @@ export default function InventoryControlList() {
                     <span className="font-mono">{l.control_list_code}</span> — {l.control_list_name}
                     {' — '}
                     <span className="text-muted-foreground">
-                      {branchName(l.branch_id) || '—'} / <span className="capitalize">{l.department}</span>
+                      <span className="capitalize">{l.department}</span>
                     </span>
                     {l.is_active === false && ' (inactive)'}
                   </SelectItem>
