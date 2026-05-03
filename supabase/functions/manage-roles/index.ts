@@ -62,7 +62,9 @@ Deno.serve(async (req) => {
       .eq("user_id", userId);
 
     const roles_list = (callerRoles || []).map((r: any) => r.role);
-    const isOwner = roles_list.includes("owner");
+    const isAdministrator = roles_list.includes("administrator");
+    // Administrator implicitly has Owner-level access
+    const isOwner = roles_list.includes("owner") || isAdministrator;
     const isManager = roles_list.includes("manager");
 
     // ─── LIST_ACTIVE_USERS: available to owner + manager for assignment dropdowns ───
@@ -207,6 +209,12 @@ Deno.serve(async (req) => {
     // ─── ASSIGN role ───
     if (action === "assign") {
       const { user_id, role } = params;
+      if (role === "administrator" && !isAdministrator) {
+        return new Response(JSON.stringify({ ok: false, error: "Only an Administrator can assign the Administrator role" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const { data, error } = await supabaseAdmin
         .from("user_roles")
         .upsert({ user_id, role }, { onConflict: "user_id,role" })
@@ -227,6 +235,12 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (role === "administrator" && !isAdministrator) {
+        return new Response(JSON.stringify({ ok: false, error: "Only an Administrator can remove the Administrator role" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const { error } = await supabaseAdmin
         .from("user_roles")
         .delete()
@@ -243,6 +257,25 @@ Deno.serve(async (req) => {
       const { user_id, role } = params;
       if (!user_id || !role) throw new Error("user_id and role required");
       if (user_id === userId) throw new Error("Cannot change your own role");
+      if (role === "administrator" && !isAdministrator) {
+        return new Response(JSON.stringify({ ok: false, error: "Only an Administrator can assign the Administrator role" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Prevent non-administrators from demoting an existing administrator
+      if (!isAdministrator) {
+        const { data: targetRoles } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+        if ((targetRoles || []).some((r: any) => r.role === "administrator")) {
+          return new Response(JSON.stringify({ ok: false, error: "Only an Administrator can change an Administrator's role" }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
 
       await supabaseAdmin
         .from("user_roles")
