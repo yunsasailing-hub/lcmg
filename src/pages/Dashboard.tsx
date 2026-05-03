@@ -5,6 +5,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import StatCard from '@/components/shared/StatCard';
 import ModuleCard from '@/components/shared/ModuleCard';
 import OverdueChecklistsSummary from '@/components/dashboard/OverdueChecklistsSummary';
+import StaffActionDashboard from '@/components/dashboard/StaffActionDashboard';
 import { Users, Building2, ClipboardCheck, GraduationCap, CookingPot, Package, Wrench, Settings, ChefHat } from 'lucide-react';
 
 export default function Dashboard() {
@@ -15,6 +16,19 @@ export default function Dashboard() {
   const primaryRole = roles[0];
   const roleLabel = primaryRole ? t(`roles.${primaryRole}`) : t('roles.staff');
   const isManagerOrOwner = hasRole('manager') || hasRole('owner');
+  const isStaffOnly = !isManagerOrOwner;
+
+  if (isStaffOnly) {
+    return (
+      <AppShell>
+        <PageHeader
+          title={t('dashboard.welcome', { name: firstName })}
+          description="Your action items"
+        />
+        <StaffActionDashboard />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
