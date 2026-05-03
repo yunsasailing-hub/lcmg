@@ -114,9 +114,9 @@ export default function SystemRepair() {
             <TabsContent value="repair" className="mt-4 space-y-3">
               <RepairOrphanChecklists />
             </TabsContent>
-            <TabsContent value="admin" className="mt-4 space-y-3">
-              <Alert variant="destructive" className="py-2.5 px-3">
-                <AlertTriangle className="h-4 w-4" />
+            <TabsContent value="admin" className="mt-4 space-y-4">
+              <Alert variant="destructive" className="py-2 px-3 flex items-center [&>svg]:static [&>svg~*]:pl-0 [&>svg+div]:translate-y-0">
+                <AlertTriangle className="h-4 w-4 mr-2" />
                 <AlertDescription className="text-xs leading-snug">
                   These tools modify system data or login identity. Use only when necessary.
                 </AlertDescription>
