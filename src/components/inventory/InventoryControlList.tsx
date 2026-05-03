@@ -83,6 +83,7 @@ export default function InventoryControlList() {
   const { hasRole } = useAuth();
   const queryClient = useQueryClient();
   const isOwner = hasRole('owner');
+  const canViewInventoryDebug = hasRole('owner') || hasRole('administrator');
   const { data: branches = [] } = useBranchesAll();
   const { data: allLists = [], refetch: refetchAllLists } = useInventoryControlLists();
   const upsertList = useUpsertInventoryControlList();
@@ -95,6 +96,7 @@ export default function InventoryControlList() {
   const [department, setDepartment] = useState<Department | ''>('');
   const [controlListId, setControlListId] = useState<string>('');
   const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
+  const [lastCreatedTableSource, setLastCreatedTableSource] = useState('inventory_control_lists');
 
   // Load ALL active control lists once, filter client-side. Active includes NULL (legacy).
   const { data: activeLists = [], refetch: refetchBranchLists } = useInventoryControlLists({ activeOnly: true });
@@ -133,6 +135,12 @@ export default function InventoryControlList() {
     lists.sort((a, b) => (a.control_list_code || '').localeCompare(b.control_list_code || '', undefined, { numeric: true }));
     return lists;
   }, [allLists, branchId, optimisticList]);
+
+  const lastCreatedControlList = useMemo(() => {
+    return [...allLists].sort((a, b) =>
+      new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+    )[0] ?? null;
+  }, [allLists]);
 
   // Debug: surface DB vs UI count mismatches in console.
   useEffect(() => {
@@ -473,6 +481,27 @@ export default function InventoryControlList() {
         </CardContent>
       </Card>
 
+      {canViewInventoryDebug && (
+        <Card>
+          <CardContent className="py-3">
+            <div className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Inventory Debug</div>
+            <div className="grid gap-2 text-xs sm:grid-cols-4">
+              <div><span className="text-muted-foreground">Control Lists count:</span> <span className="font-mono">{allLists.length}</span></div>
+              <div><span className="text-muted-foreground">Control Items count:</span> <span className="font-mono">{allItems.length}</span></div>
+              <div><span className="text-muted-foreground">Last created Control List code:</span> <span className="font-mono">{lastCreatedControlList?.control_list_code ?? '—'}</span></div>
+              <div><span className="text-muted-foreground">Last created table source:</span> <span className="font-mono">{lastCreatedTableSource}</span></div>
+            </div>
+            <div className="mt-2 max-h-24 overflow-y-auto rounded border p-2 text-xs">
+              {allLists.length === 0 ? (
+                <span className="text-muted-foreground">No raw Control List rows returned.</span>
+              ) : allLists.map(l => (
+                <div key={l.id}><span className="font-mono">{l.control_list_code}</span> - {l.control_list_name}</div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Existing Control Lists panel */}
       <Card>
         <CardContent className="py-3">
@@ -720,6 +749,7 @@ export default function InventoryControlList() {
         onSaved={async (created) => {
           const visibleList = created as EnrichedControlList;
           setOptimisticList(visibleList);
+          setLastCreatedTableSource('inventory_control_lists');
           setBranchId(created.branch_id);
           setDepartment(created.department);
           setControlListId(created.id);
@@ -754,6 +784,7 @@ export default function InventoryControlList() {
         defaultFromListId={controlListId || null}
         onCreated={async (created) => {
           setOptimisticList(created as EnrichedControlList);
+          setLastCreatedTableSource('inventory_control_lists');
           setBranchId(created.branch_id);
           setDepartment(created.department);
           setControlListId(created.id);

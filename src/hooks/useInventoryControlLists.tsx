@@ -20,8 +20,8 @@ export function useInventoryControlLists(opts?: { activeOnly?: boolean; branchId
       // by consumers so we can never hide rows by accident.
       const { data, error } = await supabase
         .from('inventory_control_lists')
-        .select('*, branches(name)')
-        .order('control_list_code');
+        .select('*')
+        .order('created_at', { ascending: false });
       if (error) {
         // eslint-disable-next-line no-console
         console.error('CONTROL LIST RAW ERROR:', error);
@@ -33,7 +33,7 @@ export function useInventoryControlLists(opts?: { activeOnly?: boolean; branchId
       if (activeOnly) rows = rows.filter(r => r.is_active === true || r.is_active === null);
       if (branchId) rows = rows.filter(r => r.branch_id === branchId);
       if (department) rows = rows.filter(r => r.department === department);
-      return rows.map((r: any) => ({ ...r, branch_name: r.branches?.name ?? null }));
+      return rows.map((r: any) => ({ ...r, branch_name: null }));
     },
   });
 }
@@ -62,6 +62,7 @@ export function useUpsertInventoryControlList() {
         notes: p.notes ?? null,
         is_active: p.is_active ?? true,
       };
+      let saved: SavedControlList;
       if (p.id) {
         const { data, error } = await supabase
           .from('inventory_control_lists')
@@ -70,16 +71,29 @@ export function useUpsertInventoryControlList() {
           .select('*')
           .single();
         if (error) throw error;
-        return data;
+        saved = data;
+      } else {
+        payload.created_by = user.id;
+        const { data, error } = await supabase
+          .from('inventory_control_lists')
+          .insert(payload)
+          .select('*')
+          .single();
+        if (error) throw error;
+        saved = data;
       }
-      payload.created_by = user.id;
-      const { data, error } = await supabase
+      const { data: verifyRows, error: verifyError } = await supabase
         .from('inventory_control_lists')
-        .insert(payload)
         .select('*')
-        .single();
-      if (error) throw error;
-      return data;
+        .order('created_at', { ascending: false });
+      if (verifyError) {
+        // eslint-disable-next-line no-console
+        console.error('CONTROL LIST POST-SAVE RAW ERROR:', verifyError);
+      } else {
+        // eslint-disable-next-line no-console
+        console.log('CONTROL LIST POST-SAVE RAW:', (verifyRows ?? []).length, verifyRows);
+      }
+      return saved;
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['inventory_control_lists'] });
