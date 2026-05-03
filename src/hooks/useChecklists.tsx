@@ -319,14 +319,14 @@ export function useAllChecklists(filters?: ChecklistFilters) {
 
       // Manually fetch assignee profiles for instances with assigned_to
       const assignedUserIds = [...new Set(data?.filter(d => d.assigned_to).map(d => d.assigned_to) || [])];
-      let profilesMap: Record<string, { full_name: string | null; avatar_url: string | null; branch_id: string | null }> = {};
+      let profilesMap: Record<string, { username: string | null; full_name: string | null; avatar_url: string | null; branch_id: string | null }> = {};
       if (assignedUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('user_id, full_name, avatar_url, branch_id')
+          .select('user_id, username, full_name, avatar_url, branch_id')
           .in('user_id', assignedUserIds as string[]);
         if (profiles) {
-          profilesMap = Object.fromEntries(profiles.map(p => [p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url, branch_id: p.branch_id }]));
+          profilesMap = Object.fromEntries(profiles.map(p => [p.user_id, { username: p.username, full_name: p.full_name, avatar_url: p.avatar_url, branch_id: p.branch_id }]));
         }
       }
 
