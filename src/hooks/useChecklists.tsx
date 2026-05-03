@@ -821,8 +821,53 @@ export function useActiveUsersForAssignment(options: { enabled?: boolean } = {})
   return useQuery<ActiveUser[]>({
     queryKey: ['active-users-assignment'],
     queryFn: async () => {
-      const result = await invokeManageRoles('list_active_users');
-      return result.users || [];
+      // Permissive active-user filter: accept any non-disabled profile that has a username.
+      // Source of truth is the profiles table (RLS already restricts to is_active = true).
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('user_id, username, full_name, email, department, position, branch_id, is_active')
+        .order('username', { ascending: true });
+      if (error) throw error;
+
+      const isDisabled = (p: any) => {
+        if (p.is_active === false) return true;
+        if (typeof p.status === 'string') {
+          const s = p.status.toLowerCase();
+          if (s === 'inactive' || s === 'disabled') return true;
+        }
+        if (p.disabled === true) return true;
+        return false;
+      };
+
+      const filtered = (profiles || []).filter((p: any) =>
+        !!(p.username && String(p.username).trim()) && !isDisabled(p)
+      );
+
+      // Try to enrich with roles via the privileged endpoint.
+      // If it fails (e.g. caller lacks owner/manager), fall back to empty roles
+      // so the assignment dropdown still works.
+      let rolesMap: Record<string, string[]> = {};
+      try {
+        const result = await invokeManageRoles('list_active_users');
+        for (const u of (result?.users || []) as any[]) {
+          if (u?.user_id) rolesMap[u.user_id] = u.roles || [];
+        }
+      } catch (e) {
+        console.warn('[useActiveUsersForAssignment] roles enrichment failed:', e);
+      }
+
+      return filtered
+        .map((p: any) => ({
+          user_id: p.user_id,
+          username: p.username,
+          full_name: p.full_name,
+          email: p.email,
+          department: p.department,
+          position: p.position,
+          branch_id: p.branch_id,
+          roles: rolesMap[p.user_id] || [],
+        }))
+        .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
     },
     retry: 1,
     enabled,
