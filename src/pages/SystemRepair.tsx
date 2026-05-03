@@ -9,6 +9,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ChevronDown, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleanupOrphanPendingChecklists } from '@/hooks/useChecklists';
@@ -16,6 +20,7 @@ import AdminEmailChange from '@/components/system-repair/AdminEmailChange';
 
 function RepairOrphanChecklists() {
   const cleanup = useCleanupOrphanPendingChecklists();
+  const [openDetails, setOpenDetails] = useState(false);
   const handleConfirm = () => {
     cleanup.mutate(undefined, {
       onSuccess: (res) => {
@@ -32,15 +37,19 @@ function RepairOrphanChecklists() {
   };
 
   return (
-    <div className="rounded-lg border bg-card p-4 max-w-2xl">
-      <div className="flex items-center gap-2">
+    <div className="rounded-lg border bg-card p-5">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="space-y-1">
+          <h3 className="font-heading font-semibold">Repair Orphan Checklists</h3>
+          <p className="text-sm text-muted-foreground">Fix pending or broken checklist records.</p>
+        </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm" disabled={cleanup.isPending}>
+            <Button variant="outline" size="sm" disabled={cleanup.isPending} className="shrink-0">
               {cleanup.isPending
                 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 : <Trash2 className="h-4 w-4 mr-2" />}
-              Repair Orphan Checklists
+              Run Repair
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -62,30 +71,26 @@ function RepairOrphanChecklists() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="About this tool">
-              <HelpCircle className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="text-sm max-w-xs">
-            This tool scans and repairs orphan or inconsistent pending checklist records.
-            Use only when records appear incorrect.
-          </PopoverContent>
-        </Popover>
       </div>
 
-      <div className="mt-3 text-sm text-muted-foreground space-y-1">
-        <p className="font-medium text-foreground">Use when:</p>
-        <ul className="list-disc pl-5 space-y-0.5">
-          <li>a pending checklist remains after assignment removal</li>
-          <li>a checklist appears stuck or duplicated</li>
-          <li>a deleted user leaves orphan checklist records</li>
-          <li>recurring generation created invalid pending records</li>
-        </ul>
-        <p className="italic mt-2">Normally not needed for daily use.</p>
-      </div>
+      <Collapsible open={openDetails} onOpenChange={setOpenDetails} className="mt-3">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-muted-foreground">
+            <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
+            Details
+            <ChevronDown className={`h-3.5 w-3.5 ml-1 transition-transform ${openDetails ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground mb-1">Use when:</p>
+          <ul className="list-disc pl-5 space-y-0.5">
+            <li>a pending checklist remains after assignment removal</li>
+            <li>a checklist appears stuck or duplicated</li>
+            <li>a deleted user leaves orphan checklist records</li>
+            <li>recurring generation created invalid pending records</li>
+          </ul>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
@@ -97,15 +102,26 @@ export default function SystemRepair() {
 
   return (
     <AppShell>
-      <PageHeader title={t('pages.systemRepair.title')} description={t('pages.systemRepair.subtitle')} />
+      <PageHeader title="System Repair" description="Advanced tools for fixing data and system issues." />
       {isAdministrator ? (
-        <div className="space-y-8">
+        <div className="mx-auto w-full max-w-[900px] space-y-10">
           <section className="space-y-3">
-            <h2 className="font-heading text-lg font-semibold">Repair Tools</h2>
+            <div>
+              <h2 className="font-heading text-lg font-semibold">Repair Tools</h2>
+              <p className="text-sm text-muted-foreground">Safe repair utilities for fixing operational records.</p>
+            </div>
             <RepairOrphanChecklists />
           </section>
           <section className="space-y-3">
-            <h2 className="font-heading text-lg font-semibold">Admin Tools</h2>
+            <div>
+              <h2 className="font-heading text-lg font-semibold">Administrator Tools</h2>
+            </div>
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                These tools modify system data or login identity. Use only when necessary.
+              </AlertDescription>
+            </Alert>
             <AdminEmailChange />
           </section>
         </div>
