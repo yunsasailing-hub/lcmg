@@ -1312,6 +1312,7 @@ export type Database = {
           title: string
           updated_at: string
           updated_by: string | null
+          work_area: Database["public"]["Enums"]["work_area"]
         }
         Insert: {
           action_taken?: string | null
@@ -1338,6 +1339,7 @@ export type Database = {
           title: string
           updated_at?: string
           updated_by?: string | null
+          work_area?: Database["public"]["Enums"]["work_area"]
         }
         Update: {
           action_taken?: string | null
@@ -1364,6 +1366,7 @@ export type Database = {
           title?: string
           updated_at?: string
           updated_by?: string | null
+          work_area?: Database["public"]["Enums"]["work_area"]
         }
         Relationships: []
       }
@@ -1535,6 +1538,7 @@ export type Database = {
           title: string
           updated_at: string
           updated_by: string | null
+          work_area: Database["public"]["Enums"]["work_area"]
         }
         Insert: {
           area_or_equipment?: string | null
@@ -1557,6 +1561,7 @@ export type Database = {
           title: string
           updated_at?: string
           updated_by?: string | null
+          work_area?: Database["public"]["Enums"]["work_area"]
         }
         Update: {
           area_or_equipment?: string | null
@@ -1579,6 +1584,7 @@ export type Database = {
           title?: string
           updated_at?: string
           updated_by?: string | null
+          work_area?: Database["public"]["Enums"]["work_area"]
         }
         Relationships: []
       }
@@ -2549,6 +2555,16 @@ export type Database = {
       recipe_status: "draft" | "active" | "archived"
       storage_type: "dry" | "chilled" | "frozen" | "ambient"
       unit_type: "weight" | "volume" | "count" | "other"
+      work_area:
+        | "Electrical"
+        | "Plumbing"
+        | "Construction / Finishing"
+        | "Carpentry / Metal Work"
+        | "Equipment / Machinery"
+        | "Cooling & Ventilation"
+        | "Cleaning / Pest Control"
+        | "IT / System"
+        | "General / Other"
       wtbd_priority: "Low" | "Medium" | "High" | "Urgent"
       wtbd_status:
         | "Open"
@@ -2769,6 +2785,17 @@ export const Constants = {
       recipe_status: ["draft", "active", "archived"],
       storage_type: ["dry", "chilled", "frozen", "ambient"],
       unit_type: ["weight", "volume", "count", "other"],
+      work_area: [
+        "Electrical",
+        "Plumbing",
+        "Construction / Finishing",
+        "Carpentry / Metal Work",
+        "Equipment / Machinery",
+        "Cooling & Ventilation",
+        "Cleaning / Pest Control",
+        "IT / System",
+        "General / Other",
+      ],
       wtbd_priority: ["Low", "Medium", "High", "Urgent"],
       wtbd_status: [
         "Open",

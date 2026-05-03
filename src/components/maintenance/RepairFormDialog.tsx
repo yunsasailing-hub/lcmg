@@ -22,6 +22,7 @@ import {
 } from '@/hooks/useMaintenanceRepairs';
 import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 import { optimizeChecklistImage } from '@/lib/imageCompression';
+import { WORK_AREAS, DEFAULT_WORK_AREA, type WorkArea } from '@/hooks/useWorkToBeDone';
 
 interface Props {
   open: boolean;
@@ -138,6 +139,7 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
         after_photo_url: initial?.after_photo_url ?? null,
         photos: form.photos,
         downtime_hours: !reportOnly && form.downtime_hours !== '' ? Number(form.downtime_hours) : null,
+        work_area: form.work_area,
         updated_by: profile?.user_id ?? null,
       };
       if (initial?.id) payload.id = initial.id;
@@ -216,6 +218,16 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {REPAIR_SEVERITIES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Work Area *</Label>
+            <Select value={form.work_area} onValueChange={v => update('work_area', v as WorkArea)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {WORK_AREAS.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -336,6 +348,7 @@ function buildInitialForm(initial: EnrichedMaintenanceRepair | null | undefined,
     parts_replaced: initial?.parts_replaced ?? '',
     photos,
     downtime_hours: initial?.downtime_hours != null ? String(initial.downtime_hours) : '',
+    work_area: (((initial as any)?.work_area) ?? DEFAULT_WORK_AREA) as WorkArea,
   };
 }
 
