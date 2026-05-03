@@ -85,6 +85,8 @@ export default function InventoryControlList() {
   const isOwner = hasRole('owner');
   const canViewInventoryDebug = hasRole('owner') || hasRole('administrator');
   const { data: branches = [] } = useBranchesAll();
+  // SINGLE SOURCE OF TRUTH for Control Lists. Same query feeds dropdown,
+  // "Existing Control Lists" table, and (via the same hook key) the Weekly Sheet.
   const { data: allLists = [], refetch: refetchAllLists } = useInventoryControlLists();
   const upsertList = useUpsertInventoryControlList();
   const deleteList = useDeleteInventoryControlList();
@@ -98,33 +100,29 @@ export default function InventoryControlList() {
   const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
   const [lastCreatedTableSource, setLastCreatedTableSource] = useState('inventory_control_lists');
 
-  // Load ALL active control lists once, filter client-side. Active includes NULL (legacy).
-  const { data: activeLists = [], refetch: refetchBranchLists } = useInventoryControlLists({ activeOnly: true });
   const { data: items = [], isLoading } = useInventoryControlItems({ controlListId: controlListId || null });
   const { data: allItems = [] } = useInventoryControlItems(); // for duplicate checks across branch
 
+  // Derive the dropdown list from the SAME `allLists` data the table uses.
+  // Active = is_active true OR null (legacy rows). Filters are applied client-side
+  // so "All branches" / "All departments" simply skip filtering.
   const filteredLists = useMemo(() => {
-    let lists = [...activeLists];
+    let lists = allLists.filter(l => l.is_active === true || l.is_active === null);
     if (branchId) lists = lists.filter(l => l.branch_id === branchId);
-    // NOTE: dropdown shows all branch lists; department only re-orders so the user
-    // can still see siblings causing duplicate-blocks across departments.
+    if (department) lists = lists.filter(l => l.department === department);
     if (
       optimisticList &&
       (!branchId || optimisticList.branch_id === branchId) &&
+      (!department || optimisticList.department === department) &&
       !lists.some(l => l.id === optimisticList.id)
     ) {
       lists.unshift(optimisticList);
     }
-    if (department) {
-      lists.sort((a, b) => {
-        const am = a.department === department ? 0 : 1;
-        const bm = b.department === department ? 0 : 1;
-        if (am !== bm) return am - bm;
-        return (a.control_list_code || '').localeCompare(b.control_list_code || '');
-      });
-    }
+    lists.sort((a, b) =>
+      (a.control_list_code || '').localeCompare(b.control_list_code || '', undefined, { numeric: true, sensitivity: 'base' }),
+    );
     return lists;
-  }, [activeLists, branchId, department, optimisticList]);
+  }, [allLists, branchId, department, optimisticList]);
 
   // Panel: control lists for selected branch, OR ALL lists when no branch selected.
   const branchPanelLists = useMemo(() => {
@@ -145,8 +143,8 @@ export default function InventoryControlList() {
   // Debug: surface DB vs UI count mismatches in console.
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.debug('[ControlList] DB lists =', allLists.length, '| active =', activeLists.length, '| visible in dropdown =', filteredLists.length, '| filters:', { branchId, department });
-  }, [allLists.length, activeLists.length, filteredLists.length, branchId, department]);
+    console.debug('[ControlList] DB lists =', allLists.length, '| visible in dropdown =', filteredLists.length, '| filters:', { branchId, department });
+  }, [allLists.length, filteredLists.length, branchId, department]);
 
   const itemCountByList = useMemo(() => {
     const m = new Map<string, number>();
@@ -160,7 +158,7 @@ export default function InventoryControlList() {
   const refreshAll = async () => {
     await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
     await queryClient.invalidateQueries({ queryKey: ['inventory_control_items'] });
-    await Promise.all([refetchAllLists(), refetchBranchLists()]);
+    await refetchAllLists();
   };
 
   const handleToggleListActive = async (l: EnrichedControlList) => {
@@ -236,7 +234,7 @@ export default function InventoryControlList() {
   );
   const hiddenListSafety =
     filteredLists.length === 0 &&
-    activeLists.length > 0;
+    allLists.some(l => l.is_active !== false);
 
   useEffect(() => { setNewRows([]); setDrafts({}); }, [controlListId]);
 
@@ -445,15 +443,15 @@ export default function InventoryControlList() {
               <SelectTrigger className="h-9"><SelectValue placeholder="Select control list" /></SelectTrigger>
               <SelectContent>
                 {filteredLists.length === 0 && (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No control lists match the filters.</div>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    {allLists.length === 0
+                      ? 'Create your first Control List'
+                      : 'No control lists match the filters.'}
+                  </div>
                 )}
                 {filteredLists.map(l => (
                   <SelectItem key={l.id} value={l.id}>
                     <span className="font-mono">{l.control_list_code}</span> — {l.control_list_name}
-                    {' — '}
-                    <span className="text-muted-foreground">
-                      <span className="capitalize">{l.department}</span>
-                    </span>
                     {l.is_active === false && ' (inactive)'}
                   </SelectItem>
                 ))}
@@ -517,8 +515,8 @@ export default function InventoryControlList() {
                 <p className="text-xs text-destructive">Control lists exist but are hidden by filters.</p>
                 <Button size="sm" variant="outline" className="h-7" onClick={clearFilters}>Reset filters</Button>
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No control lists created yet.</p>
+          ) : (
+              <p className="text-xs text-muted-foreground">Create your first Control List.</p>
             )
           ) : (
               <div className="overflow-x-auto rounded border">
@@ -750,11 +748,11 @@ export default function InventoryControlList() {
           const visibleList = created as EnrichedControlList;
           setOptimisticList(visibleList);
           setLastCreatedTableSource('inventory_control_lists');
+          // Clear filters so the new list is guaranteed visible in dropdown + table.
           setBranchId(created.branch_id);
           setDepartment(created.department);
-          setControlListId(created.id);
           await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
-          await Promise.all([refetchAllLists(), refetchBranchLists()]);
+          await refetchAllLists();
           setControlListId(created.id);
           toast.success('Control List created. Add items now.');
         }}
@@ -787,9 +785,8 @@ export default function InventoryControlList() {
           setLastCreatedTableSource('inventory_control_lists');
           setBranchId(created.branch_id);
           setDepartment(created.department);
-          setControlListId(created.id);
           await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
-          await Promise.all([refetchAllLists(), refetchBranchLists()]);
+          await refetchAllLists();
           setControlListId(created.id);
         }}
       />
