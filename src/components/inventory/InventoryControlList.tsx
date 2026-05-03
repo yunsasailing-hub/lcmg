@@ -463,6 +463,76 @@ export default function InventoryControlList() {
         </CardContent>
       </Card>
 
+      {/* Existing Control Lists for this branch */}
+      {branchId && (
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                Existing Control Lists for {branchName(branchId)}
+              </div>
+              <span className="text-xs text-muted-foreground">{branchPanelLists.length} list(s)</span>
+            </div>
+            {branchPanelLists.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No control lists yet for this branch.</p>
+            ) : (
+              <div className="overflow-x-auto rounded border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/40">
+                    <tr className="text-left">
+                      <th className="px-2 py-1.5">Code</th>
+                      <th className="px-2 py-1.5">Name</th>
+                      <th className="px-2 py-1.5">Department</th>
+                      <th className="px-2 py-1.5 text-center">Active</th>
+                      <th className="px-2 py-1.5 text-right">Items</th>
+                      <th className="px-2 py-1.5 text-right w-[180px]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {branchPanelLists.map(l => {
+                      const cnt = itemCountByList.get(l.id) ?? 0;
+                      return (
+                        <tr key={l.id} className={`border-t ${!l.is_active ? 'opacity-60' : ''}`}>
+                          <td className="px-2 py-1 font-mono">{l.control_list_code}</td>
+                          <td className="px-2 py-1">{l.control_list_name}</td>
+                          <td className="px-2 py-1 capitalize">{l.department}</td>
+                          <td className="px-2 py-1 text-center">
+                            {l.is_active
+                              ? <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">Active</Badge>
+                              : <Badge variant="outline" className="bg-muted">Inactive</Badge>}
+                          </td>
+                          <td className="px-2 py-1 text-right">{cnt}</td>
+                          <td className="px-2 py-1 text-right whitespace-nowrap">
+                            <Button size="sm" variant="ghost" title="Open"
+                              onClick={() => { setDepartment(l.department); setControlListId(l.id); }}>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                            {isOwner && (
+                              <Button size="sm" variant="ghost"
+                                title={l.is_active ? 'Deactivate' : 'Activate'}
+                                onClick={() => handleToggleListActive(l)}>
+                                {l.is_active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                              </Button>
+                            )}
+                            {isOwner && (
+                              <Button size="sm" variant="ghost" title={cnt > 0 ? 'Cannot delete: list has items' : 'Delete empty list'}
+                                disabled={cnt > 0}
+                                onClick={() => handleDeleteList(l)}>
+                                <Trash2 className={`h-3.5 w-3.5 ${cnt > 0 ? '' : 'text-destructive'}`} />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {!controlListId ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
