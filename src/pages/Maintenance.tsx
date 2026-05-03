@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
-import { Wrench, Plus, Search, Pencil, Archive, ArchiveRestore, ArrowLeft, Loader2, List as ListIcon, LayoutGrid } from 'lucide-react';
+import { Wrench, Plus, Search, Pencil, Archive, ArchiveRestore, ArrowLeft, Loader2, List as ListIcon, LayoutGrid, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -682,8 +682,31 @@ function AssetList({
   const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
   const isMobile = useIsMobile();
 
+  type SortKey = 'code' | 'name' | 'branch' | 'department' | 'type' | 'status' | 'updated';
+  const [sortKey, setSortKey] = useState<SortKey>('code');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>('asc');
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey !== key) { setSortKey(key); setSortDir('asc'); return; }
+    if (sortDir === 'asc') setSortDir('desc');
+    else if (sortDir === 'desc') { setSortKey('code'); setSortDir(null); }
+    else setSortDir('asc');
+  };
+
+  const sortValue = (a: EnrichedMaintenanceAsset, key: SortKey): string | number => {
+    switch (key) {
+      case 'code': return a.code ?? '';
+      case 'name': return a.name ?? '';
+      case 'branch': return a.branch_name ?? '';
+      case 'department': return a.department ?? '';
+      case 'type': return a.type_name_en ?? '';
+      case 'status': return a.status ?? '';
+      case 'updated': return a.updated_at ? new Date(a.updated_at).getTime() : 0;
+    }
+  };
+
   const filtered = useMemo(() => {
-    return assets.filter(a => {
+    const result = assets.filter(a => {
       if (statusFilter === 'not_archived' && a.status === 'archived') return false;
       if (statusFilter !== 'all' && statusFilter !== 'not_archived' && a.status !== statusFilter) return false;
       if (branchFilter !== 'all' && a.branch_id !== branchFilter) return false;
@@ -695,7 +718,29 @@ function AssetList({
       }
       return true;
     });
-  }, [assets, search, branchFilter, deptFilter, typeFilter, statusFilter]);
+    if (!sortDir) return result;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...result].sort((a, b) => {
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' }) * dir;
+    });
+  }, [assets, search, branchFilter, deptFilter, typeFilter, statusFilter, sortKey, sortDir]);
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (sortKey !== k || !sortDir) return <ArrowUpDown className="h-3 w-3 opacity-30" />;
+    return sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+  };
+  const SortHeader = ({ k, label }: { k: SortKey; label: string }) => (
+    <button
+      type="button"
+      onClick={() => handleSort(k)}
+      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+    >
+      {label}<SortIcon k={k} />
+    </button>
+  );
 
   return (
     <div className="space-y-4">
@@ -791,6 +836,38 @@ function AssetList({
         </div>
       ) : isMobile ? (
         <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{t('common.sortBy', 'Sort by')}:</span>
+            <Select
+              value={sortDir ? sortKey : 'none'}
+              onValueChange={(v) => {
+                if (v === 'none') { setSortKey('code'); setSortDir(null); }
+                else { setSortKey(v as SortKey); setSortDir(prev => prev ?? 'asc'); }
+              }}
+            >
+              <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="code">{t('maintenance.fields.code')}</SelectItem>
+                <SelectItem value="name">{t('maintenance.fields.name')}</SelectItem>
+                <SelectItem value="branch">{t('maintenance.fields.branch')}</SelectItem>
+                <SelectItem value="department">{t('maintenance.fields.department')}</SelectItem>
+                <SelectItem value="type">{t('maintenance.fields.type')}</SelectItem>
+                <SelectItem value="status">{t('maintenance.fields.status')}</SelectItem>
+                <SelectItem value="updated">{t('maintenance.fields.lastUpdated')}</SelectItem>
+                <SelectItem value="none">{t('common.default', 'Default')}</SelectItem>
+              </SelectContent>
+            </Select>
+            {sortDir && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2"
+                onClick={() => setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+              >
+                {sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+              </Button>
+            )}
+          </div>
           {filtered.map(a => (
             <div
               key={a.id}
@@ -830,13 +907,13 @@ function AssetList({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="h-10">{t('maintenance.fields.code')}</TableHead>
-                <TableHead className="h-10">{t('maintenance.fields.name')}</TableHead>
-                <TableHead className="h-10">{t('maintenance.fields.branch')}</TableHead>
-                <TableHead className="h-10">{t('maintenance.fields.department')}</TableHead>
-                <TableHead className="h-10">{t('maintenance.fields.type')}</TableHead>
-                <TableHead className="h-10">{t('maintenance.fields.status')}</TableHead>
-                <TableHead className="h-10">{t('maintenance.fields.lastUpdated')}</TableHead>
+                <TableHead className="h-10"><SortHeader k="code" label={t('maintenance.fields.code')} /></TableHead>
+                <TableHead className="h-10"><SortHeader k="name" label={t('maintenance.fields.name')} /></TableHead>
+                <TableHead className="h-10"><SortHeader k="branch" label={t('maintenance.fields.branch')} /></TableHead>
+                <TableHead className="h-10"><SortHeader k="department" label={t('maintenance.fields.department')} /></TableHead>
+                <TableHead className="h-10"><SortHeader k="type" label={t('maintenance.fields.type')} /></TableHead>
+                <TableHead className="h-10"><SortHeader k="status" label={t('maintenance.fields.status')} /></TableHead>
+                <TableHead className="h-10"><SortHeader k="updated" label={t('maintenance.fields.lastUpdated')} /></TableHead>
                 <TableHead className="h-10 text-right">{t('common.actions', 'Actions')}</TableHead>
               </TableRow>
             </TableHeader>
