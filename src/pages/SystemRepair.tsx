@@ -37,15 +37,15 @@ function RepairOrphanChecklists() {
   };
 
   return (
-    <div className="rounded-lg border bg-card p-5">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="font-heading font-semibold">Repair Orphan Checklists</h3>
-          <p className="text-sm text-muted-foreground">Fix pending or broken checklist records.</p>
+    <div className="rounded-lg border bg-card px-4 py-4 sm:px-5 sm:py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="font-heading font-semibold leading-tight">Repair Orphan Checklists</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Fix pending or broken checklist records.</p>
         </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm" disabled={cleanup.isPending} className="shrink-0">
+            <Button variant="outline" size="sm" disabled={cleanup.isPending} className="shrink-0 w-full sm:w-auto">
               {cleanup.isPending
                 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 : <Trash2 className="h-4 w-4 mr-2" />}
@@ -73,15 +73,15 @@ function RepairOrphanChecklists() {
         </AlertDialog>
       </div>
 
-      <Collapsible open={openDetails} onOpenChange={setOpenDetails} className="mt-3">
+      <Collapsible open={openDetails} onOpenChange={setOpenDetails} className="mt-2">
         <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground/80 hover:text-muted-foreground">
             <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
             Details
             <ChevronDown className={`h-3.5 w-3.5 ml-1 transition-transform ${openDetails ? 'rotate-180' : ''}`} />
           </Button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2 text-sm text-muted-foreground">
+        <CollapsibleContent className="mt-2 text-xs text-muted-foreground/90">
           <p className="font-medium text-foreground mb-1">Use when:</p>
           <ul className="list-disc pl-5 space-y-0.5">
             <li>a pending checklist remains after assignment removal</li>
@@ -102,32 +102,35 @@ export default function SystemRepair() {
 
   return (
     <AppShell>
-      <PageHeader title="System Repair" description="Advanced tools for fixing data and system issues." />
-      {isAdministrator ? (
-        <div className="mx-auto w-full max-w-[900px] space-y-10">
-          <section className="space-y-3">
-            <div>
-              <h2 className="font-heading text-lg font-semibold">Repair Tools</h2>
-              <p className="text-sm text-muted-foreground">Safe repair utilities for fixing operational records.</p>
-            </div>
-            <RepairOrphanChecklists />
-          </section>
-          <section className="space-y-3">
-            <div>
-              <h2 className="font-heading text-lg font-semibold">Administrator Tools</h2>
-            </div>
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                These tools modify system data or login identity. Use only when necessary.
-              </AlertDescription>
-            </Alert>
-            <AdminEmailChange />
-          </section>
-        </div>
-      ) : (
+      <div className="mx-auto w-full max-w-[860px] px-2 sm:px-0">
+        <PageHeader title="System Repair" description="Advanced tools for fixing data and system issues." />
+        {isAdministrator ? (
+          <div className="space-y-8">
+            <section className="space-y-3">
+              <div>
+                <h2 className="font-heading text-base font-semibold">Repair Tools</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Safe repair utilities for fixing operational records.</p>
+              </div>
+              <RepairOrphanChecklists />
+            </section>
+            <section className="space-y-3">
+              <div>
+                <h2 className="font-heading text-base font-semibold">Administrator Tools</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Sensitive tools — use with caution.</p>
+              </div>
+              <Alert variant="destructive" className="py-2.5 px-3">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs leading-snug">
+                  These tools modify system data or login identity. Use only when necessary.
+                </AlertDescription>
+              </Alert>
+              <AdminEmailChange />
+            </section>
+          </div>
+        ) : (
         <EmptyState icon={Wrench} title="Administrator access required" description="Only an Administrator can access System Repair tools." />
-      )}
+        )}
+      </div>
     </AppShell>
   );
 }

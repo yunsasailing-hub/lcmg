@@ -108,21 +108,21 @@ export default function AdminEmailChange() {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border bg-card">
-        <div className="p-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="flex gap-3">
-            <MailWarning className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
-            <div className="space-y-1">
-              <h3 className="font-heading font-semibold">Admin Email Change</h3>
-              <p className="text-sm text-muted-foreground">
+        <div className="px-4 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <MailWarning className="h-5 w-5 text-destructive shrink-0" />
+            <div>
+              <h3 className="font-heading font-semibold leading-tight">Admin Email Change</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Change a user login email only when correction or migration is required.
               </p>
             </div>
           </div>
           <Button
-            variant={open ? 'outline' : 'default'}
+            variant="secondary"
             size="sm"
             onClick={() => setOpen(o => !o)}
-            className="shrink-0"
+            className="shrink-0 w-full sm:w-auto"
           >
             {open ? 'Close Tool' : 'Open Tool'}
           </Button>
@@ -230,10 +230,10 @@ export default function AdminEmailChange() {
         </Collapsible>
       </div>
 
-      <div className="rounded-lg border bg-card p-5">
-        <h3 className="font-heading font-semibold mb-3">Email Change History</h3>
+      <div className="rounded-lg border bg-card/50 px-4 py-3 sm:px-5 sm:py-4">
+        <h3 className="text-sm font-heading font-semibold text-muted-foreground mb-2">Email Change History</h3>
         {!logs || logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No email changes recorded.</p>
+          <p className="text-xs text-muted-foreground/70">No email changes recorded.</p>
         ) : (
           <div className="overflow-x-auto">
             <Table>
