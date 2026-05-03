@@ -83,6 +83,7 @@ export default function InventoryControlList() {
   const { hasRole } = useAuth();
   const queryClient = useQueryClient();
   const isOwner = hasRole('owner');
+  const canViewInventoryDebug = hasRole('owner') || hasRole('administrator');
   const { data: branches = [] } = useBranchesAll();
   const { data: allLists = [], refetch: refetchAllLists } = useInventoryControlLists();
   const upsertList = useUpsertInventoryControlList();
@@ -95,6 +96,7 @@ export default function InventoryControlList() {
   const [department, setDepartment] = useState<Department | ''>('');
   const [controlListId, setControlListId] = useState<string>('');
   const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
+  const [lastCreatedTableSource, setLastCreatedTableSource] = useState('inventory_control_lists');
 
   // Load ALL active control lists once, filter client-side. Active includes NULL (legacy).
   const { data: activeLists = [], refetch: refetchBranchLists } = useInventoryControlLists({ activeOnly: true });
@@ -133,6 +135,12 @@ export default function InventoryControlList() {
     lists.sort((a, b) => (a.control_list_code || '').localeCompare(b.control_list_code || '', undefined, { numeric: true }));
     return lists;
   }, [allLists, branchId, optimisticList]);
+
+  const lastCreatedControlList = useMemo(() => {
+    return [...allLists].sort((a, b) =>
+      new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+    )[0] ?? null;
+  }, [allLists]);
 
   // Debug: surface DB vs UI count mismatches in console.
   useEffect(() => {
