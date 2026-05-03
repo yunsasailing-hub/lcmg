@@ -392,7 +392,7 @@ function AssignDialog({ template }: { template: any }) {
     const aDept = a.department === template.department ? 0 : 1;
     const bDept = b.department === template.department ? 0 : 1;
     if (aDept !== bDept) return aDept - bDept;
-    return (a.full_name || '').localeCompare(b.full_name || '');
+    return (a.username || '\uffff').localeCompare(b.username || '\uffff');
   });
 
   const handleAssign = () => {
@@ -438,10 +438,10 @@ function AssignDialog({ template }: { template: any }) {
   };
 
   const getUserLabel = (u: any) => {
-    const name = u.full_name || u.email || 'Unknown';
+    const handle = (u.username && String(u.username).trim()) ? `@${u.username}` : '⚠️ no username';
     const role = u.roles?.[0] ? u.roles[0].charAt(0).toUpperCase() + u.roles[0].slice(1) : '';
     const dept = u.department ? u.department.charAt(0).toUpperCase() + u.department.slice(1) : '';
-    const parts = [name, role, dept].filter(Boolean);
+    const parts = [handle, role, dept].filter(Boolean);
     return parts.join(' – ');
   };
 
