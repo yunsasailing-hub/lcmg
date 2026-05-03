@@ -244,6 +244,7 @@ export interface CompleteTaskPayload {
   spare_parts?: string | null;
   technical_note?: string | null;
   additional_photos?: string[] | null;
+  execution_date?: string | null;
 }
 
 export function useCompleteMaintenanceTask() {
@@ -265,6 +266,7 @@ export function useCompleteMaintenanceTask() {
           spare_parts: p.spare_parts?.trim() || null,
           technical_note: p.technical_note?.trim() || null,
           additional_photos: p.additional_photos ?? [],
+          execution_date: p.execution_date ?? null,
         })
         .eq('id', p.id)
         .select()
