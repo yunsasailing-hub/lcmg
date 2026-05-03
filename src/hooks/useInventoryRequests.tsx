@@ -46,7 +46,7 @@ export interface UpsertRequestPayload {
     id?: string;
     ingredient_id?: string | null;
     inventory_control_item_id?: string | null;
-    source_type?: 'ingredient' | 'manual';
+    source_type?: 'ingredient' | 'manual' | 'extra';
     item_code?: string | null;
     item_name: string;
     unit?: string | null;
@@ -116,7 +116,7 @@ export function useUpsertInventoryRequest() {
           request_id: requestId!,
           ingredient_id: it.ingredient_id ?? null,
           inventory_control_item_id: it.inventory_control_item_id ?? null,
-          source_type: it.source_type ?? 'ingredient',
+          source_type: (it.source_type ?? 'ingredient') as any,
           item_code: it.item_code ?? null,
           item_name: it.item_name,
           unit: it.unit ?? null,
@@ -128,7 +128,7 @@ export function useUpsertInventoryRequest() {
         }));
         const { error: insErr } = await supabase
           .from('inventory_request_items')
-          .insert(rows);
+          .insert(rows as any);
         if (insErr) throw insErr;
       }
 
