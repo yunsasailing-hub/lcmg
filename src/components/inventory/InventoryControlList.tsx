@@ -650,7 +650,7 @@ function ControlListFormDialog({
       l.branch_id === branchId &&
       l.control_list_code.trim().toLowerCase() === codeTrim.toLowerCase()
     );
-    if (dup) return toast.error('This Control List Code already exists for this branch.');
+    if (dup) return toast.error('This Control List already exists. Please select it from the dropdown or clear filters.');
     try {
       const saved = await upsert.mutateAsync({
         id: editing?.id, branch_id: branchId, department: department as Department,
