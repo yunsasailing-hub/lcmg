@@ -6,18 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff } from 'lucide-react';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
-
-const DEPARTMENTS = [
-  { value: 'management', label: 'Management' },
-  { value: 'kitchen', label: 'Kitchen' },
-  { value: 'pizza', label: 'Pizza' },
-  { value: 'service', label: 'Service' },
-  { value: 'bar', label: 'Bar' },
-  { value: 'office', label: 'Office' },
-] as const;
 
 export default function Login() {
   const { isAuthenticated } = useAuth();
