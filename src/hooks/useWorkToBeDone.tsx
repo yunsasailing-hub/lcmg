@@ -204,3 +204,120 @@ export function useAddWtbdUpdate() {
     },
   });
 }
+
+/**
+ * Look up an existing Repair / Intervention created from a given Work To Be Done job.
+ * Returns null if none exists yet.
+ */
+export function useLinkedRepairForWtbd(jobId: string | null | undefined) {
+  return useQuery<{ id: string } | null>({
+    queryKey: ['wtbd-linked-repair', jobId],
+    enabled: !!jobId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('maintenance_repairs')
+        .select('id')
+        .eq('source_work_to_be_done_id', jobId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
+
+/**
+ * Create a Repair / Intervention record from a completed Work To Be Done job.
+ * Includes duplicate protection, photo carry-over, and progress-update summary.
+ */
+export function useCreateRepairFromWtbd() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { job: EnrichedWtbd; userId: string | null }) => {
+      const { job, userId } = input;
+
+      // Duplicate protection
+      const { data: existing } = await (supabase as any)
+        .from('maintenance_repairs')
+        .select('id')
+        .eq('source_work_to_be_done_id', job.id)
+        .maybeSingle();
+      if (existing?.id) {
+        return { repairId: existing.id as string, alreadyExisted: true };
+      }
+
+      // Pull progress updates for the description summary + photo references
+      const { data: updateRows } = await (supabase as any)
+        .from('maintenance_work_to_be_done_updates')
+        .select('*')
+        .eq('work_to_be_done_id', job.id)
+        .order('created_at', { ascending: true });
+
+      const updates = (updateRows ?? []) as WtbdUpdateRow[];
+      const userIds = Array.from(new Set(updates.map(u => u.created_by).filter(Boolean) as string[]));
+      let userMap = new Map<string, string>();
+      if (userIds.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, username, full_name')
+          .in('user_id', userIds);
+        userMap = new Map((profs ?? []).map((p: any) => [p.user_id, p.username || p.full_name || 'Unknown']));
+      }
+
+      const fmt = (iso: string) => {
+        try {
+          return new Date(iso).toLocaleString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh',
+          });
+        } catch { return iso; }
+      };
+
+      const parts: string[] = [];
+      if (job.description) parts.push(`Original description:\n${job.description}`);
+      if (job.notes) parts.push(`Notes:\n${job.notes}`);
+      if (updates.length) {
+        const lines = updates.map(u => {
+          const who = u.created_by ? userMap.get(u.created_by) ?? 'Unknown' : 'Unknown';
+          const photo = u.photo_url ? ` (photo: ${u.photo_url})` : '';
+          return `- ${fmt(u.created_at)} ${who}: ${u.update_note}${photo}`;
+        });
+        parts.push(`Progress updates:\n${lines.join('\n')}`);
+      }
+      const issueDescription = parts.join('\n\n') || null;
+
+      const photos = updates.map(u => u.photo_url).filter(Boolean) as string[];
+
+      const completedAt = job.completed_at ?? new Date().toISOString();
+
+      const { data: created, error } = await (supabase as any)
+        .from('maintenance_repairs')
+        .insert({
+          asset_id: null,
+          title: job.title,
+          issue_description: issueDescription,
+          status: 'Done',
+          severity: 'Medium',
+          reported_at: completedAt,
+          completed_at: completedAt,
+          assigned_to: job.assigned_to,
+          reported_by: userId,
+          updated_by: userId,
+          photos,
+          source: 'Work To Be Done',
+          source_work_to_be_done_id: job.id,
+          branch_id: job.branch_id,
+          department: job.department,
+          area_or_equipment: job.area_or_equipment,
+          work_area: (job as any).work_area ?? 'General / Other',
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return { repairId: created.id as string, alreadyExisted: false };
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['wtbd-linked-repair', vars.job.id] });
+      qc.invalidateQueries({ queryKey: ['maintenance_repairs'] });
+    },
+  });
+}
