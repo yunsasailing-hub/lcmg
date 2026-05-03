@@ -13,9 +13,11 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   useMaintenanceTasks,
   todayLocalISO,
-  isDueToday,
   type EnrichedMaintenanceTask,
 } from '@/hooks/useMaintenanceTasks';
+import { useLastExecutionByTemplate, parseLocalDate } from '@/hooks/useLastExecutionByTemplate';
+import { occurrencesInRange } from '@/lib/maintenanceSchedule';
+import type { EarlyPreviewPayload } from './TaskCompletionDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type ScheduleTemplate = Database['public']['Tables']['maintenance_schedule_templates']['Row'];
@@ -26,6 +28,7 @@ type PlanItem = {
   // identity
   isReal: boolean;                 // true if backed by an existing maintenance_tasks row
   realTask?: EnrichedMaintenanceTask;
+  preview?: EarlyPreviewPayload;
   // display
   title: string;
   asset_code: string | null;
@@ -115,15 +118,18 @@ function useAllSchedulesForPlan() {
 export interface MaintenancePlanViewProps {
   /** Open a real task (existing maintenance_tasks row) in the completion dialog. */
   onOpenTask: (task: EnrichedMaintenanceTask) => void;
+  /** Open an upcoming preview occurrence in the completion dialog (early-complete flow). */
+  onOpenPreview?: (preview: EarlyPreviewPayload) => void;
 }
 
-export default function MaintenancePlanView({ onOpenTask }: MaintenancePlanViewProps) {
+export default function MaintenancePlanView({ onOpenTask, onOpenPreview }: MaintenancePlanViewProps) {
   const { profile, hasRole } = useAuth();
   const isOwner = hasRole('owner');
   const isManager = hasRole('manager');
 
   const { data: tasks = [], isLoading: loadingTasks } = useMaintenanceTasks();
   const { data: schedules = [], isLoading: loadingScheds } = useAllSchedulesForPlan();
+  const { data: lastExecMap } = useLastExecutionByTemplate();
 
   const [previewItem, setPreviewItem] = useState<PlanItem | null>(null);
 
@@ -150,14 +156,18 @@ export default function MaintenancePlanView({ onOpenTask }: MaintenancePlanViewP
   const canSeeTask = (t: EnrichedMaintenanceTask): boolean => {
     if (isOwner) return true;
     if (isManager) return profile?.branch_id ? t.asset_branch_id === profile.branch_id : false;
-    return t.assigned_staff_id === profile?.user_id
-      || (!!t.assigned_department && t.assigned_department === profile?.department);
+    const mine = t.assigned_staff_id === profile?.user_id;
+    const branchMatch = !!profile?.branch_id && t.asset_branch_id === profile.branch_id;
+    const deptMatch = !!t.assigned_department && t.assigned_department === profile?.department;
+    return mine || (deptMatch && branchMatch);
   };
   const canSeeSchedule = (s: ReturnType<typeof useAllSchedulesForPlan>['data'] extends (infer U)[] ? U : never): boolean => {
     if (isOwner) return true;
     if (isManager) return profile?.branch_id ? s.asset_branch_id === profile.branch_id : false;
-    return s.assigned_staff_id === profile?.user_id
-      || (!!s.assigned_department && s.assigned_department === profile?.department);
+    const mine = s.assigned_staff_id === profile?.user_id;
+    const branchMatch = !!profile?.branch_id && s.asset_branch_id === profile.branch_id;
+    const deptMatch = !!s.assigned_department && s.assigned_department === profile?.department;
+    return mine || (deptMatch && branchMatch);
   };
 
   // Compose plan items from schedules across the next 30 days.
@@ -200,18 +210,40 @@ export default function MaintenancePlanView({ onOpenTask }: MaintenancePlanViewP
     // 2) Compute upcoming occurrences from schedule templates (preview only),
     //    skipping any (template, date) pair already represented as a real task.
     const visibleSchedules = (schedules as any[]).filter(canSeeSchedule);
+    const planEndISOForPreview = weeks[3].endISO;
     for (const s of visibleSchedules) {
-      const anchor = new Date(s.created_at);
-      anchor.setHours(0, 0, 0, 0);
-      for (let i = 0; i < 30; i++) {
-        const day = addDays(today, i);
-        const dayISO = localISO(day);
-        if (!isDueToday(s.frequency as Frequency, s.custom_interval_days, anchor, day)) continue;
+      const lastISO = lastExecMap?.get(s.id) ?? null;
+      const lastDate = parseLocalDate(lastISO);
+      const occISOs = occurrencesInRange(
+        s.frequency as Frequency,
+        s.custom_interval_days,
+        new Date(s.created_at),
+        lastDate,
+        todayISO,
+        planEndISOForPreview,
+      );
+      for (const dayISO of occISOs) {
         const key = `${s.id}_${dayISO}`;
         if (realByKey.has(key)) continue; // real task already exists for this day
         out.push({
           key: `prev_${key}`,
           isReal: false,
+          preview: {
+            schedule_template_id: s.id,
+            asset_id: s.asset_id,
+            title: s.title,
+            due_date: dayISO,
+            due_time: s.due_time,
+            assigned_staff_id: s.assigned_staff_id,
+            assigned_department: s.assigned_department,
+            asset_code: s.asset_code,
+            asset_name: s.asset_name,
+            asset_branch_name: s.asset_branch_name,
+            asset_department: s.asset_department,
+            template_description: s.description ?? null,
+            note_required: !!s.note_required,
+            photo_required: !!s.photo_required,
+          },
           title: s.title,
           asset_code: s.asset_code,
           asset_name: s.asset_name,
@@ -229,7 +261,7 @@ export default function MaintenancePlanView({ onOpenTask }: MaintenancePlanViewP
     }
 
     return out;
-  }, [tasks, schedules, weeks, todayISO, today, profile, isOwner, isManager]);
+  }, [tasks, schedules, weeks, todayISO, today, profile, isOwner, isManager, lastExecMap]);
 
   // Group: Overdue + 4 weeks
   const groups = useMemo(() => {
@@ -297,7 +329,16 @@ export default function MaintenancePlanView({ onOpenTask }: MaintenancePlanViewP
         onClick={handleClick}
       />
 
-      <PreviewDialog item={previewItem} onClose={() => setPreviewItem(null)} />
+      <PreviewDialog
+        item={previewItem}
+        onClose={() => setPreviewItem(null)}
+        onCompleteEarly={(it) => {
+          if (it.preview && onOpenPreview) {
+            onOpenPreview(it.preview);
+            setPreviewItem(null);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -400,7 +441,13 @@ function PlanRow({ item, onClick }: { item: PlanItem; onClick: () => void }) {
   );
 }
 
-function PreviewDialog({ item, onClose }: { item: PlanItem | null; onClose: () => void }) {
+function PreviewDialog({
+  item, onClose, onCompleteEarly,
+}: {
+  item: PlanItem | null;
+  onClose: () => void;
+  onCompleteEarly?: (it: PlanItem) => void;
+}) {
   return (
     <Dialog open={!!item} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
@@ -429,11 +476,14 @@ function PreviewDialog({ item, onClose }: { item: PlanItem | null; onClose: () =
                 {item.photo_required && <Badge variant="outline" className="gap-1 text-[10px]"><Camera className="h-3 w-3" />Photo required</Badge>}
               </div>
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-2.5 text-xs text-amber-900 dark:text-amber-200">
-                This task will be available for completion on its due date.
+                This task is scheduled for a future date. You may complete it early if the work has already been done.
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>Close</Button>
+              {onCompleteEarly && item.preview && (
+                <Button onClick={() => onCompleteEarly(item)}>Complete Early</Button>
+              )}
             </DialogFooter>
           </>
         )}

@@ -11,9 +11,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { todayVN, formatVN } from '@/lib/timezone';
 import {
   useMaintenanceTasks,
-  isDueToday,
   type EnrichedMaintenanceTask,
 } from '@/hooks/useMaintenanceTasks';
+import { useLastExecutionByTemplate, parseLocalDate } from '@/hooks/useLastExecutionByTemplate';
+import { occurrencesInRange } from '@/lib/maintenanceSchedule';
+import TaskCompletionDialog, { type EarlyPreviewPayload } from '@/components/maintenance/TaskCompletionDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type Frequency = Database['public']['Enums']['maintenance_schedule_frequency'];
@@ -30,6 +32,7 @@ type ActionItem = {
   status: 'Overdue' | 'Due Today' | 'Upcoming';
   // navigation / interaction payload
   isPreview?: boolean;
+  earlyPayload?: EarlyPreviewPayload;
   onOpen?: () => void;
   description?: string | null;
 };
@@ -124,8 +127,10 @@ export default function StaffActionDashboard() {
   const { data: checklists = [], isLoading: loadingChk } = useStaffOpenChecklists();
   const { data: maintTasks = [], isLoading: loadingMT } = useMaintenanceTasks();
   const { data: schedules = [], isLoading: loadingSch } = useStaffSchedules();
+  const { data: lastExecMap } = useLastExecutionByTemplate();
 
   const [previewTask, setPreviewTask] = useState<ActionItem | null>(null);
+  const [earlyPayload, setEarlyPayload] = useState<EarlyPreviewPayload | null>(null);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
   const todayISO = todayVN();
@@ -137,7 +142,8 @@ export default function StaffActionDashboard() {
       if (t.status === 'Done') return false;
       const mine = t.assigned_staff_id === profile?.user_id;
       const dept = !!t.assigned_department && t.assigned_department === profile?.department;
-      return mine || dept;
+      const branchMatch = !!profile?.branch_id && t.asset_branch_id === profile.branch_id;
+      return mine || (dept && branchMatch);
     });
   }, [maintTasks, profile]);
 
@@ -190,15 +196,22 @@ export default function StaffActionDashboard() {
     const visibleScheds = (schedules as any[]).filter(s => {
       const mine = s.assigned_staff_id === profile?.user_id;
       const dept = !!s.assigned_department && s.assigned_department === profile?.department;
-      return mine || dept;
+      const branchMatch = !!profile?.branch_id && s.asset_branch_id === profile.branch_id;
+      return mine || (dept && branchMatch);
     });
     for (const s of visibleScheds) {
-      const anchor = new Date(s.created_at); anchor.setHours(0,0,0,0);
-      for (let i = 1; i <= 7; i++) { // start from tomorrow
-        const day = addDays(today, i);
-        const dayISO = localISO(day);
-        if (dayISO > horizonISO) break;
-        if (!isDueToday(s.frequency as Frequency, s.custom_interval_days, anchor, day)) continue;
+      const lastISO = lastExecMap?.get(s.id) ?? null;
+      const lastDate = parseLocalDate(lastISO);
+      const tomorrowISO = localISO(addDays(today, 1));
+      const occISOs = occurrencesInRange(
+        s.frequency as Frequency,
+        s.custom_interval_days,
+        new Date(s.created_at),
+        lastDate,
+        tomorrowISO,
+        horizonISO,
+      );
+      for (const dayISO of occISOs) {
         const key = `${s.id}_${dayISO}`;
         if (realKeys.has(key)) continue;
         out.push({
@@ -212,12 +225,28 @@ export default function StaffActionDashboard() {
           dueTime: s.due_time,
           status: 'Upcoming',
           isPreview: true,
+          earlyPayload: {
+            schedule_template_id: s.id,
+            asset_id: s.asset_id,
+            title: s.title,
+            due_date: dayISO,
+            due_time: s.due_time,
+            assigned_staff_id: s.assigned_staff_id,
+            assigned_department: s.assigned_department,
+            asset_code: s.asset_code,
+            asset_name: s.asset_name,
+            asset_branch_name: s.asset_branch_name,
+            asset_department: s.asset_department,
+            template_description: s.description ?? null,
+            note_required: !!s.note_required,
+            photo_required: !!s.photo_required,
+          },
           description: s.description ?? null,
         });
       }
     }
     return out;
-  }, [checklists, myMaintTasks, schedules, todayISO, horizonISO, today, profile, navigate]);
+  }, [checklists, myMaintTasks, schedules, todayISO, horizonISO, today, profile, navigate, lastExecMap]);
 
   const overdue = useMemo(
     () => items.filter(i => i.status === 'Overdue').sort((a, b) => a.dueISO.localeCompare(b.dueISO)),
@@ -266,6 +295,13 @@ export default function StaffActionDashboard() {
     else it.onOpen?.();
   };
 
+  const startEarly = (it: ActionItem) => {
+    if (it.earlyPayload) {
+      setPreviewTask(null);
+      setEarlyPayload(it.earlyPayload);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {overdue.length > 0 && (
@@ -284,7 +320,17 @@ export default function StaffActionDashboard() {
         </Section>
       )}
 
-      <PreviewDialog item={previewTask} onClose={() => setPreviewTask(null)} />
+      <PreviewDialog
+        item={previewTask}
+        onClose={() => setPreviewTask(null)}
+        onCompleteEarly={startEarly}
+      />
+      {earlyPayload && (
+        <TaskCompletionDialog
+          preview={earlyPayload}
+          onOpenChange={(v) => { if (!v) setEarlyPayload(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -365,7 +411,13 @@ function ActionRow({ item, onClick }: { item: ActionItem; onClick: () => void })
   );
 }
 
-function PreviewDialog({ item, onClose }: { item: ActionItem | null; onClose: () => void }) {
+function PreviewDialog({
+  item, onClose, onCompleteEarly,
+}: {
+  item: ActionItem | null;
+  onClose: () => void;
+  onCompleteEarly?: (it: ActionItem) => void;
+}) {
   return (
     <Dialog open={!!item} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
@@ -389,8 +441,13 @@ function PreviewDialog({ item, onClose }: { item: ActionItem | null; onClose: ()
                 <div><span className="text-muted-foreground">Due:</span> {item.dueISO}{item.dueTime ? ` · ${item.dueTime.slice(0, 5)}` : ''}</div>
               </div>
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-2.5 text-xs text-amber-900 dark:text-amber-200">
-                This task will be available for completion on its due date.
+                This task is scheduled for a future date. You may complete it early if the work has already been done.
               </div>
+              {onCompleteEarly && item.earlyPayload && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={() => onCompleteEarly(item)}>Complete Early</Button>
+                </div>
+              )}
             </div>
           </>
         )}

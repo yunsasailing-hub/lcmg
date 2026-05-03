@@ -29,6 +29,7 @@ import {
 } from '@/hooks/useMaintenanceTasks';
 import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
 import MaintenancePlanView from './MaintenancePlanView';
+import TaskCompletionDialog, { type EarlyPreviewPayload } from './TaskCompletionDialog';
 
 const DEPARTMENTS = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
 
@@ -43,6 +44,7 @@ export default function MaintenanceTasksList() {
   const [deptFilter, setDeptFilter] = useState<string>('all');
   const [assetFilter, setAssetFilter] = useState<string>('all');
   const [active, setActive] = useState<EnrichedMaintenanceTask | null>(null);
+  const [activePreview, setActivePreview] = useState<EarlyPreviewPayload | null>(null);
 
   // Permission scoping: RLS already restricts, but apply manager branch
   // filter explicitly so they don't see foreign branches if RLS evolves.
@@ -50,9 +52,12 @@ export default function MaintenanceTasksList() {
     return tasks.filter(t => {
       if (isOwner) return true;
       if (isManager) return profile?.branch_id ? t.asset_branch_id === profile.branch_id : false;
-      // staff
-      return t.assigned_staff_id === profile?.user_id
-        || (!!t.assigned_department && t.assigned_department === profile?.department);
+      // Staff: must be directly assigned, OR assigned to my dept AND equipment must
+      // be in my branch. Department alone is not enough — branch must also match.
+      const directlyMine = t.assigned_staff_id === profile?.user_id;
+      const branchMatch = !!profile?.branch_id && t.asset_branch_id === profile.branch_id;
+      const deptMatch = !!t.assigned_department && t.assigned_department === profile?.department;
+      return directlyMine || (deptMatch && branchMatch);
     });
   }, [tasks, isOwner, isManager, profile]);
 
@@ -124,7 +129,9 @@ export default function MaintenanceTasksList() {
             <TabsTrigger value="overdue">Overdue ({overdue.length})</TabsTrigger>
             <TabsTrigger value="done">Completed ({completed.length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="plan" className="mt-3"><MaintenancePlanView onOpenTask={setActive} /></TabsContent>
+          <TabsContent value="plan" className="mt-3">
+            <MaintenancePlanView onOpenTask={setActive} onOpenPreview={setActivePreview} />
+          </TabsContent>
           <TabsContent value="today" className="mt-3"><TaskView tab="today" items={todays} onOpen={setActive} /></TabsContent>
           <TabsContent value="overdue" className="mt-3"><TaskView tab="overdue" items={overdue} onOpen={setActive} /></TabsContent>
           <TabsContent value="done" className="mt-3"><TaskView tab="done" items={completed} onOpen={setActive} /></TabsContent>
@@ -135,6 +142,12 @@ export default function MaintenanceTasksList() {
         <TaskCompletionDialog
           task={active}
           onOpenChange={(v) => { if (!v) setActive(null); }}
+        />
+      )}
+      {activePreview && (
+        <TaskCompletionDialog
+          preview={activePreview}
+          onOpenChange={(v) => { if (!v) setActivePreview(null); }}
         />
       )}
     </div>
@@ -413,7 +426,7 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge className="bg-amber-500 hover:bg-amber-500 text-white gap-1 px-2 py-0.5 text-[11px] font-semibold"><Clock className="h-3.5 w-3.5" />Pending</Badge>;
 }
 
-function TaskCompletionDialog({
+function _LegacyTaskCompletionDialog({
   task, onOpenChange,
 }: { task: EnrichedMaintenanceTask; onOpenChange: (v: boolean) => void }) {
   const { profile } = useAuth();
