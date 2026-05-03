@@ -102,10 +102,9 @@ export default function InventoryControlList() {
     return lists;
   }, [branchActiveLists, branchId, optimisticList]);
 
-  // When context changes, auto-select if only one list is available; else clear
+  // Keep selection valid; do not auto-select on Branch changes except after explicit creation/copy.
   useEffect(() => {
     if (controlListId && !filteredLists.find(l => l.id === controlListId)) setControlListId('');
-    if (!controlListId && filteredLists.length === 1) setControlListId(filteredLists[0].id);
   }, [filteredLists, controlListId]);
 
   const { data: items = [], isLoading } = useInventoryControlItems({ controlListId: controlListId || null });
@@ -303,7 +302,7 @@ export default function InventoryControlList() {
         <CardContent className="py-3 flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Branch</Label>
-            <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); }}>
+            <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); setNewRows([]); setDrafts({}); }}>
               <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="All branches" /></SelectTrigger>
               <SelectContent>
                 {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
@@ -325,7 +324,7 @@ export default function InventoryControlList() {
               <SelectTrigger className="h-9"><SelectValue placeholder="Select control list" /></SelectTrigger>
               <SelectContent>
                 {filteredLists.length === 0 && (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No control lists for this filter.</div>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No active control lists for this branch.</div>
                 )}
                 {filteredLists.map(l => (
                   <SelectItem key={l.id} value={l.id}>
