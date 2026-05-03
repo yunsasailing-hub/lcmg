@@ -410,18 +410,23 @@ export default function InventoryControlList() {
         <CardContent className="py-3 flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Branch</Label>
-            <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); setNewRows([]); setDrafts({}); }}>
+            <Select value={branchId || '__all__'} onValueChange={(v) => {
+              const next = v === '__all__' ? '' : v;
+              setBranchId(next); setControlListId(''); setNewRows([]); setDrafts({});
+            }}>
               <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="All branches" /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="__all__">All branches</SelectItem>
                 {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Department</Label>
-            <Select value={department} onValueChange={(v) => setDepartment(v as Department)}>
+            <Select value={department || '__all__'} onValueChange={(v) => setDepartment(v === '__all__' ? '' : (v as Department))}>
               <SelectTrigger className="h-9 min-w-[160px] capitalize"><SelectValue placeholder="All departments" /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="__all__">All departments</SelectItem>
                 {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -468,25 +473,32 @@ export default function InventoryControlList() {
         </CardContent>
       </Card>
 
-      {/* Existing Control Lists for this branch */}
-      {branchId && (
-        <Card>
-          <CardContent className="py-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs font-semibold uppercase text-muted-foreground">
-                Existing Control Lists for {branchName(branchId)}
-              </div>
-              <span className="text-xs text-muted-foreground">{branchPanelLists.length} list(s)</span>
+      {/* Existing Control Lists panel */}
+      <Card>
+        <CardContent className="py-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">
+              Existing Control Lists {branchId ? `for ${branchName(branchId)}` : '(all branches)'}
             </div>
-            {branchPanelLists.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No control lists yet for this branch.</p>
+            <span className="text-xs text-muted-foreground">{branchPanelLists.length} list(s)</span>
+          </div>
+          {branchPanelLists.length === 0 ? (
+            allLists.length > 0 ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-xs text-destructive">Control lists exist but are hidden by filters.</p>
+                <Button size="sm" variant="outline" className="h-7" onClick={clearFilters}>Reset filters</Button>
+              </div>
             ) : (
+              <p className="text-xs text-muted-foreground">No control lists created yet.</p>
+            )
+          ) : (
               <div className="overflow-x-auto rounded border">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/40">
                     <tr className="text-left">
                       <th className="px-2 py-1.5">Code</th>
                       <th className="px-2 py-1.5">Name</th>
+                      {!branchId && <th className="px-2 py-1.5">Branch</th>}
                       <th className="px-2 py-1.5">Department</th>
                       <th className="px-2 py-1.5 text-center">Active</th>
                       <th className="px-2 py-1.5 text-right">Items</th>
@@ -500,6 +512,7 @@ export default function InventoryControlList() {
                         <tr key={l.id} className={`border-t ${!l.is_active ? 'opacity-60' : ''}`}>
                           <td className="px-2 py-1 font-mono">{l.control_list_code}</td>
                           <td className="px-2 py-1">{l.control_list_name}</td>
+                          {!branchId && <td className="px-2 py-1">{branchName(l.branch_id)}</td>}
                           <td className="px-2 py-1 capitalize">{l.department}</td>
                           <td className="px-2 py-1 text-center">
                             {l.is_active
@@ -509,7 +522,7 @@ export default function InventoryControlList() {
                           <td className="px-2 py-1 text-right">{cnt}</td>
                           <td className="px-2 py-1 text-right whitespace-nowrap">
                             <Button size="sm" variant="ghost" title="Open"
-                              onClick={() => { setDepartment(l.department); setControlListId(l.id); }}>
+                              onClick={() => { setBranchId(l.branch_id); setDepartment(l.department); setControlListId(l.id); }}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
                             {isOwner && (
@@ -536,7 +549,6 @@ export default function InventoryControlList() {
             )}
           </CardContent>
         </Card>
-      )}
 
       {!controlListId ? (
         <Card>
