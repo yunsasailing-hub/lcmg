@@ -23,7 +23,6 @@ export default function Login() {
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,10 +33,6 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [department, setDepartment] = useState('');
-  const [position, setPosition] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true });
@@ -49,10 +44,6 @@ export default function Login() {
     setEmail('');
     setUsername('');
     setPassword('');
-    setFullName('');
-    setPhone('');
-    setDepartment('');
-    setPosition('');
   };
 
   const GENERIC_ERROR = 'Username or password is incorrect.';
@@ -121,32 +112,6 @@ export default function Login() {
       }
     } catch {
       setError(GENERIC_ERROR);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const { error: err } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            full_name: fullName.trim() || undefined,
-            phone: phone.trim() || undefined,
-            department: department || undefined,
-            position: position.trim() || undefined,
-          },
-        },
-      });
-      if (err) throw err;
-      setSuccess(t('login.confirmEmail'));
-    } catch (err: any) {
-      setError(err.message || t('login.signupFailed'));
     } finally {
       setLoading(false);
     }
