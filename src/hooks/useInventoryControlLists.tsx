@@ -9,9 +9,7 @@ export interface EnrichedControlList extends InventoryControlList {
   branch_name?: string | null;
 }
 
-export type SavedControlList = Pick<InventoryControlList,
-  'id' | 'branch_id' | 'department' | 'control_list_code' | 'control_list_name' | 'is_active'
->;
+export type SavedControlList = InventoryControlList;
 
 export function useInventoryControlLists(opts?: { activeOnly?: boolean; branchId?: string | null; department?: Department | null }) {
   const { activeOnly, branchId, department } = opts ?? {};
@@ -61,7 +59,7 @@ export function useUpsertInventoryControlList() {
           .from('inventory_control_lists')
           .update(payload)
           .eq('id', p.id)
-          .select('id, branch_id, department, control_list_code, control_list_name, is_active')
+          .select('*')
           .single();
         if (error) throw error;
         return data;
@@ -70,7 +68,7 @@ export function useUpsertInventoryControlList() {
       const { data, error } = await supabase
         .from('inventory_control_lists')
         .insert(payload)
-        .select('id, branch_id, department, control_list_code, control_list_name, is_active')
+        .select('*')
         .single();
       if (error) throw error;
       return data;
