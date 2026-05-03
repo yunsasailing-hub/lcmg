@@ -287,7 +287,7 @@ export default function InventoryWeeklySheet({
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : showEmpty ? (
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-          No inventory items selected for this branch / department.
+          No inventory items selected for this Control List.
           Owner must add items in <span className="font-medium text-foreground">Inventory Control List</span>.
         </CardContent></Card>
       ) : rows.length > 0 ? (
