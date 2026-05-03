@@ -9,6 +9,10 @@ export interface EnrichedControlList extends InventoryControlList {
   branch_name?: string | null;
 }
 
+export type SavedControlList = Pick<InventoryControlList,
+  'id' | 'branch_id' | 'department' | 'control_list_code' | 'control_list_name' | 'is_active'
+>;
+
 export function useInventoryControlLists(opts?: { activeOnly?: boolean; branchId?: string | null; department?: Department | null }) {
   const { activeOnly, branchId, department } = opts ?? {};
   return useQuery({
@@ -41,7 +45,7 @@ export interface UpsertControlListPayload {
 export function useUpsertInventoryControlList() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: UpsertControlListPayload) => {
+    mutationFn: async (p: UpsertControlListPayload): Promise<SavedControlList> => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       const payload: any = {
@@ -53,16 +57,28 @@ export function useUpsertInventoryControlList() {
         is_active: p.is_active ?? true,
       };
       if (p.id) {
-        const { error } = await supabase.from('inventory_control_lists').update(payload).eq('id', p.id);
+        const { data, error } = await supabase
+          .from('inventory_control_lists')
+          .update(payload)
+          .eq('id', p.id)
+          .select('id, branch_id, department, control_list_code, control_list_name, is_active')
+          .single();
         if (error) throw error;
-        return p.id;
+        return data;
       }
       payload.created_by = user.id;
-      const { data, error } = await supabase.from('inventory_control_lists').insert(payload).select('id').single();
+      const { data, error } = await supabase
+        .from('inventory_control_lists')
+        .insert(payload)
+        .select('id, branch_id, department, control_list_code, control_list_name, is_active')
+        .single();
       if (error) throw error;
-      return data!.id as string;
+      return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory_control_lists'] }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['inventory_control_lists'] });
+      await qc.refetchQueries({ queryKey: ['inventory_control_lists'], type: 'active' });
+    },
   });
 }
 
