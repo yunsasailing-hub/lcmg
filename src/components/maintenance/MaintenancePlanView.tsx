@@ -329,7 +329,16 @@ export default function MaintenancePlanView({ onOpenTask, onOpenPreview }: Maint
         onClick={handleClick}
       />
 
-      <PreviewDialog item={previewItem} onClose={() => setPreviewItem(null)} />
+      <PreviewDialog
+        item={previewItem}
+        onClose={() => setPreviewItem(null)}
+        onCompleteEarly={(it) => {
+          if (it.preview && onOpenPreview) {
+            onOpenPreview(it.preview);
+            setPreviewItem(null);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -432,7 +441,13 @@ function PlanRow({ item, onClick }: { item: PlanItem; onClick: () => void }) {
   );
 }
 
-function PreviewDialog({ item, onClose }: { item: PlanItem | null; onClose: () => void }) {
+function PreviewDialog({
+  item, onClose, onCompleteEarly,
+}: {
+  item: PlanItem | null;
+  onClose: () => void;
+  onCompleteEarly?: (it: PlanItem) => void;
+}) {
   return (
     <Dialog open={!!item} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
