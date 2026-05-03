@@ -547,7 +547,15 @@ export default function InventoryControlList() {
         open={copyOpen} onOpenChange={setCopyOpen}
         lists={allLists} allItems={allItems}
         defaultFromListId={controlListId || null}
-        onCreated={(id) => setControlListId(id)}
+        onCreated={async (created) => {
+          setOptimisticList(created as EnrichedControlList);
+          setBranchId(created.branch_id);
+          setDepartment(created.department);
+          setControlListId(created.id);
+          await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
+          await Promise.all([refetchAllLists(), refetchBranchLists()]);
+          setControlListId(created.id);
+        }}
       />
     </div>
   );
@@ -604,8 +612,8 @@ function ControlListFormDialog({
         notes: notes.trim() || null, is_active: isActive,
       });
       if (editing) toast.success('Updated');
-      await onSaved?.(saved);
       onOpenChange(false);
+      await onSaved?.(saved);
     } catch (e: any) { toast.error(e?.message ?? 'Save failed'); }
   };
 
