@@ -807,6 +807,7 @@ export function useStaffProfiles(branchId?: string) {
 
 export interface ActiveUser {
   user_id: string;
+  username: string | null;
   full_name: string | null;
   email: string | null;
   department: string | null;
