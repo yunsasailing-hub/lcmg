@@ -60,27 +60,32 @@ const useMobileNavItems = () => {
 };
 
 const ROLE_BADGE: Record<string, { color: string }> = {
+  administrator: { color: 'bg-purple-600 text-white' },
   owner: { color: 'bg-red-600 text-white' },
   manager: { color: 'bg-orange-500 text-white' },
-  staff: { color: 'bg-gray-500 text-white' },
+  staff: { color: 'bg-slate-500 text-white' },
 };
 
 function UserIdentity({ collapsed }: { collapsed?: boolean }) {
-  const { profile, roles, user } = useAuth();
+  const { profile, roles } = useAuth();
   const { t } = useTranslation();
   const primaryRole = roles[0];
   const badge = primaryRole ? ROLE_BADGE[primaryRole] : null;
-  const displayName = profile?.full_name || profile?.email || user?.email || 'User';
+  const username = (profile?.username || '').trim();
 
   if (collapsed) return null;
 
   return (
     <div className="px-3 pb-2">
-      <p className="text-xs font-medium truncate" style={{ color: 'var(--primary-foreground)' }}>
-        {displayName}
+      <p
+        className="text-sm font-mono font-medium truncate"
+        style={{ color: 'var(--primary-foreground)' }}
+        title={username || undefined}
+      >
+        {username ? `@${username}` : '⚠️ no username'}
       </p>
       {badge && primaryRole && (
-        <span className={cn('inline-block mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
+        <span className={cn('inline-block mt-1 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
           {t(`roles.${primaryRole}`)}
         </span>
       )}
@@ -165,14 +170,14 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
 }
 
 function MobileNav() {
-  const { signOut, profile, roles, user } = useAuth();
+  const { signOut, profile, roles } = useAuth();
   const { t } = useTranslation();
   const { primary: visibleItems, overflow: overflowItems } = useMobileNavItems();
   const location = useLocation();
   const [showMore, setShowMore] = useState(false);
   const primaryRole = roles[0];
   const badge = primaryRole ? ROLE_BADGE[primaryRole] : null;
-  const displayName = profile?.full_name || profile?.email || user?.email || 'User';
+  const username = (profile?.username || '').trim();
 
   // Close "more" menu on route change
   useEffect(() => setShowMore(false), [location.pathname]);
@@ -186,10 +191,16 @@ function MobileNav() {
       >
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-lg font-heading font-bold text-primary-foreground shrink-0">{t('common.appName')}</span>
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-xs truncate" style={{ color: 'var(--nav-muted)' }}>{displayName}</span>
+          <div className="flex flex-col min-w-0 leading-tight">
+            <span
+              className="text-xs font-mono truncate"
+              style={{ color: 'var(--primary-foreground)' }}
+              title={username || undefined}
+            >
+              {username ? `@${username}` : '⚠️ no username'}
+            </span>
             {badge && primaryRole && (
-              <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
+              <span className={cn('mt-0.5 self-start rounded px-1.5 py-0.5 text-[10px] font-semibold', badge.color)}>
                 {t(`roles.${primaryRole}`)}
               </span>
             )}
