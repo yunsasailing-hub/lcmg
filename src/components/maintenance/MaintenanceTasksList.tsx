@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Loader2, Search, Camera, StickyNote, CheckCircle2, AlertTriangle, Clock, User, CalendarCheck } from 'lucide-react';
+import {
+  Loader2, Search, Camera, StickyNote, CheckCircle2, AlertTriangle, Clock, User, CalendarCheck,
+  ArrowUp, ArrowDown, ArrowUpDown, Wrench, LayoutList, LayoutGrid,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +17,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Trash2, Upload } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -117,9 +123,9 @@ export default function MaintenanceTasksList() {
             <TabsTrigger value="overdue">Overdue ({overdue.length})</TabsTrigger>
             <TabsTrigger value="done">Completed ({completed.length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="today" className="mt-3"><TaskGrid items={todays} onOpen={setActive} /></TabsContent>
-          <TabsContent value="overdue" className="mt-3"><TaskGrid items={overdue} onOpen={setActive} /></TabsContent>
-          <TabsContent value="done" className="mt-3"><TaskGrid items={completed} onOpen={setActive} /></TabsContent>
+          <TabsContent value="today" className="mt-3"><TaskView tab="today" items={todays} onOpen={setActive} /></TabsContent>
+          <TabsContent value="overdue" className="mt-3"><TaskView tab="overdue" items={overdue} onOpen={setActive} /></TabsContent>
+          <TabsContent value="done" className="mt-3"><TaskView tab="done" items={completed} onOpen={setActive} /></TabsContent>
         </Tabs>
       )}
 
@@ -133,13 +139,220 @@ export default function MaintenanceTasksList() {
   );
 }
 
-function TaskGrid({ items, onOpen }: { items: EnrichedMaintenanceTask[]; onOpen: (t: EnrichedMaintenanceTask) => void }) {
-  if (!items.length) {
-    return <div className="text-sm text-muted-foreground border rounded-md p-6 text-center">No tasks to show.</div>;
+type TabKey = 'today' | 'overdue' | 'done';
+type SortKey =
+  | 'asset_code' | 'asset_name' | 'title' | 'asset_branch_name'
+  | 'assigned_department' | 'due_date' | 'due_time' | 'status' | 'completed_at';
+type SortDir = 'asc' | 'desc';
+
+function hasTechDetails(t: EnrichedMaintenanceTask): boolean {
+  const a = t as any;
+  return !!(a.cost_amount != null || a.cost_type || a.external_company || a.external_contact ||
+    a.spare_parts || a.technical_note || (Array.isArray(a.additional_photos) && a.additional_photos.length));
+}
+
+function getDefaultSort(tab: TabKey): { key: SortKey; dir: SortDir } {
+  if (tab === 'overdue') return { key: 'due_date', dir: 'asc' };
+  if (tab === 'done') return { key: 'completed_at', dir: 'desc' };
+  return { key: 'due_time', dir: 'asc' };
+}
+
+function sortValue(t: EnrichedMaintenanceTask, key: SortKey): string | number {
+  switch (key) {
+    case 'due_date': return t.due_date ? new Date(t.due_date).getTime() : 0;
+    case 'due_time': return t.due_time ?? '';
+    case 'completed_at': return t.completed_at ? new Date(t.completed_at).getTime() : 0;
+    case 'asset_code': return t.asset_code ?? '';
+    case 'asset_name': return t.asset_name ?? '';
+    case 'title': return t.title ?? '';
+    case 'asset_branch_name': return t.asset_branch_name ?? '';
+    case 'assigned_department': return t.assigned_department ?? t.asset_department ?? '';
+    case 'status': return t.status ?? '';
+    default: return '';
+  }
+}
+
+function TaskView({ tab, items, onOpen }: { tab: TabKey; items: EnrichedMaintenanceTask[]; onOpen: (t: EnrichedMaintenanceTask) => void }) {
+  const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
+  const def = getDefaultSort(tab);
+  const [sortKey, setSortKey] = useState<SortKey>(def.key);
+  const [sortDir, setSortDir] = useState<SortDir>(def.dir);
+
+  const sorted = useMemo(() => {
+    const arr = [...items];
+    arr.sort((a, b) => {
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      const dir = sortDir === 'asc' ? 1 : -1;
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), undefined, { numeric: true }) * dir;
+    });
+    return arr;
+  }, [items, sortKey, sortDir]);
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('asc'); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-end">
+        <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as 'list' | 'cards')} size="sm">
+          <ToggleGroupItem value="list" aria-label="List view"><LayoutList className="h-4 w-4" /></ToggleGroupItem>
+          <ToggleGroupItem value="cards" aria-label="Cards view"><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      {!sorted.length ? (
+        <div className="text-sm text-muted-foreground border rounded-md p-6 text-center">No tasks to show.</div>
+      ) : viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {sorted.map(t => <TaskCard key={t.id} task={t} onOpen={() => onOpen(t)} />)}
+        </div>
+      ) : isMobile ? (
+        <MobileTaskList items={sorted} onOpen={onOpen} />
+      ) : (
+        <TaskTable items={sorted} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} onOpen={onOpen} showCompleted={tab === 'done'} />
+      )}
+    </div>
+  );
+}
+
+function SortHeader({
+  label, k, sortKey, sortDir, onSort, className,
+}: { label: string; k: SortKey; sortKey: SortKey; sortDir: SortDir; onSort: (k: SortKey) => void; className?: string }) {
+  const active = sortKey === k;
+  const Icon = !active ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown;
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className="inline-flex items-center gap-1 font-medium hover:text-foreground transition"
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${active ? 'text-foreground' : 'text-muted-foreground/60'}`} />
+      </button>
+    </TableHead>
+  );
+}
+
+function RequirementsBadges({ task }: { task: EnrichedMaintenanceTask }) {
+  const tech = hasTechDetails(task);
+  if (!task.note_required && !task.photo_required && !tech) {
+    return <span className="text-muted-foreground/60 text-xs">—</span>;
   }
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {items.map(t => <TaskCard key={t.id} task={t} onOpen={() => onOpen(t)} />)}
+    <div className="flex flex-wrap gap-1">
+      {task.note_required && <Badge variant="outline" className="text-[10px] gap-1"><StickyNote className="h-3 w-3" />Note</Badge>}
+      {task.photo_required && <Badge variant="outline" className="text-[10px] gap-1"><Camera className="h-3 w-3" />Photo</Badge>}
+      {tech && <Badge variant="outline" className="text-[10px] gap-1"><Wrench className="h-3 w-3" />Tech</Badge>}
+    </div>
+  );
+}
+
+function TaskTable({
+  items, sortKey, sortDir, onSort, onOpen, showCompleted,
+}: {
+  items: EnrichedMaintenanceTask[];
+  sortKey: SortKey; sortDir: SortDir;
+  onSort: (k: SortKey) => void;
+  onOpen: (t: EnrichedMaintenanceTask) => void;
+  showCompleted: boolean;
+}) {
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <SortHeader label="Code" k="asset_code" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Equipment" k="asset_name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Task" k="title" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Branch" k="asset_branch_name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Department" k="assigned_department" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Due date" k="due_date" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Due time" k="due_time" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label="Status" k="status" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <TableHead>Assignment</TableHead>
+            <TableHead>Requirements</TableHead>
+            {showCompleted && <TableHead>Completed by</TableHead>}
+            {showCompleted && <SortHeader label="Completed at" k="completed_at" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />}
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map(t => (
+            <TableRow
+              key={t.id}
+              className="cursor-pointer"
+              onClick={() => onOpen(t)}
+            >
+              <TableCell className="font-mono text-xs">{t.asset_code ?? '—'}</TableCell>
+              <TableCell className="max-w-[180px] truncate">{t.asset_name ?? '—'}</TableCell>
+              <TableCell className="max-w-[200px] truncate">{t.title}</TableCell>
+              <TableCell>{t.asset_branch_name ?? '—'}</TableCell>
+              <TableCell className="capitalize">{t.assigned_department ?? t.asset_department ?? '—'}</TableCell>
+              <TableCell className="whitespace-nowrap text-xs">{t.due_date ?? '—'}</TableCell>
+              <TableCell className="whitespace-nowrap text-xs">{t.due_time?.slice(0, 5) ?? '—'}</TableCell>
+              <TableCell><StatusBadge status={t.status} /></TableCell>
+              <TableCell className="text-xs">
+                {t.assigned_staff_name ?? (t.assigned_department ? <span className="capitalize text-muted-foreground">{t.assigned_department}</span> : '—')}
+              </TableCell>
+              <TableCell><RequirementsBadges task={t} /></TableCell>
+              {showCompleted && <TableCell className="text-xs">{t.completed_by_name ?? '—'}</TableCell>}
+              {showCompleted && (
+                <TableCell className="whitespace-nowrap text-xs">
+                  {t.completed_at ? new Date(t.completed_at).toLocaleString() : '—'}
+                </TableCell>
+              )}
+              <TableCell className="text-right">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); onOpen(t); }}
+                >
+                  Open
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function MobileTaskList({ items, onOpen }: { items: EnrichedMaintenanceTask[]; onOpen: (t: EnrichedMaintenanceTask) => void }) {
+  return (
+    <div className="rounded-md border divide-y">
+      {items.map(t => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => onOpen(t)}
+          className="w-full text-left p-3 hover:bg-muted/50 transition"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-semibold truncate">
+              <span className="font-mono text-xs text-muted-foreground mr-1">{t.asset_code ?? '—'}</span>
+              — {t.title}
+            </div>
+            <StatusBadge status={t.status} />
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground flex flex-wrap items-center gap-x-2">
+            <span>{t.due_date ?? '—'}</span>
+            <span>·</span>
+            <span>{t.due_time?.slice(0, 5) ?? '--:--'}</span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            {t.asset_branch_name && <span>{t.asset_branch_name}</span>}
+            {(t.assigned_department || t.asset_department) && <><span>·</span><span className="capitalize">{t.assigned_department ?? t.asset_department}</span></>}
+            <span className="ml-auto"><RequirementsBadges task={t} /></span>
+          </div>
+        </button>
+      ))}
     </div>
   );
 }
