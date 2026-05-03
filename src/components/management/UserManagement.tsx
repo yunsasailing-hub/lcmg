@@ -61,6 +61,19 @@ const ROLE_BADGE: Record<AppRole, { label: string; className: string }> = {
   staff: { label: 'Staff', className: 'bg-gray-500 text-white hover:bg-gray-500/90' },
 };
 
+// Normalize role from any source field, with safe fallback to staff.
+function getRole(m: { roles?: AppRole[] | null; position?: string | null }): AppRole {
+  const raw =
+    (m.roles && m.roles.length > 0 ? m.roles[0] : null) ||
+    (m as unknown as { permission_level?: string }).permission_level ||
+    m.position ||
+    'staff';
+  const value = raw.toString().toLowerCase();
+  if (value.includes('owner')) return 'owner';
+  if (value.includes('manager')) return 'manager';
+  return 'staff';
+}
+
 // ─── Edit User Dialog ───
 
 function EditUserDialog({
@@ -75,7 +88,7 @@ function EditUserDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const currentRole: AppRole = user.roles[0] || 'staff';
+  const currentRole: AppRole = getRole(user);
   const [form, setForm] = useState({
     full_name: user.full_name || '',
     email: user.email || '',
@@ -201,7 +214,7 @@ function ChangeRoleDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const currentRole = user.roles[0] || 'staff';
+  const currentRole = getRole(user);
   const [newRole, setNewRole] = useState<AppRole>(currentRole);
 
   const mutation = useMutation({
@@ -346,8 +359,8 @@ export default function UserManagement() {
           bv = (b.full_name || '').toLowerCase();
           break;
         case 'role':
-          av = ROLE_RANK[a.roles[0] ?? 'staff'] ?? 99;
-          bv = ROLE_RANK[b.roles[0] ?? 'staff'] ?? 99;
+          av = ROLE_RANK[getRole(a)] ?? 99;
+          bv = ROLE_RANK[getRole(b)] ?? 99;
           break;
         case 'department':
           av = (a.department || '').toLowerCase();
@@ -512,8 +525,8 @@ export default function UserManagement() {
         <div className="space-y-2">
           {visible.map(user => {
             const initials = (user.full_name || '?').slice(0, 2).toUpperCase();
-            const primaryRole = user.roles[0];
-            const roleBadge = primaryRole ? ROLE_BADGE[primaryRole] : null;
+            const primaryRole = getRole(user);
+            const roleBadge = ROLE_BADGE[primaryRole];
             const branchName = user.branch_id ? branchMap[user.branch_id] : null;
             const isActive = user.is_active !== false;
             return (
@@ -576,8 +589,8 @@ export default function UserManagement() {
             <TableBody>
               {visible.map(user => {
                 const initials = (user.full_name || '?').slice(0, 2).toUpperCase();
-                const primaryRole = user.roles[0];
-                const roleBadge = primaryRole ? ROLE_BADGE[primaryRole] : null;
+                const primaryRole = getRole(user);
+                const roleBadge = ROLE_BADGE[primaryRole];
                 const branchName = user.branch_id ? branchMap[user.branch_id] : null;
                 const isActive = user.is_active !== false;
                 return (
@@ -596,11 +609,7 @@ export default function UserManagement() {
                       </div>
                     </TableCell>
                     <TableCell className="py-2">
-                      {roleBadge ? (
-                        <Badge className={cn('text-[10px] px-1.5 py-0', roleBadge.className)}>{roleBadge.label}</Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      <Badge className={cn('text-[10px] px-1.5 py-0', roleBadge.className)}>{roleBadge.label}</Badge>
                     </TableCell>
                     <TableCell className="py-2 capitalize text-sm">
                       {user.department || <span className="text-muted-foreground">No department</span>}
