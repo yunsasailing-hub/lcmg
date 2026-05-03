@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleanupOrphanPendingChecklists } from '@/hooks/useChecklists';
 import AdminEmailChange from '@/components/system-repair/AdminEmailChange';
+import SeverityBadge from '@/components/system-repair/SeverityBadge';
 
 function RepairOrphanChecklists() {
   const cleanup = useCleanupOrphanPendingChecklists();
@@ -41,7 +42,10 @@ function RepairOrphanChecklists() {
     <div className="rounded-lg border bg-card px-4 py-4 sm:px-5 sm:py-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 className="font-heading font-semibold leading-tight">Repair Orphan Checklists</h3>
+          <h3 className="font-heading font-semibold leading-tight flex items-center gap-2 flex-wrap">
+            Repair Orphan Checklists
+            <SeverityBadge severity="medium" />
+          </h3>
           <p className="text-xs text-muted-foreground mt-0.5">Fix pending or broken checklist records.</p>
         </div>
         <AlertDialog>

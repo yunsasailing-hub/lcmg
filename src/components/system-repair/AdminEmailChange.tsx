@@ -16,6 +16,7 @@ import { MailWarning, ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { invokeManageRoles } from '@/lib/manageRoles';
+import SeverityBadge from './SeverityBadge';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONFIRM_PHRASE = 'CHANGE EMAIL';
@@ -111,7 +112,10 @@ export default function AdminEmailChange() {
           <div className="flex items-center gap-3">
             <MailWarning className="h-5 w-5 text-destructive shrink-0" />
             <div>
-              <h3 className="font-heading font-semibold leading-tight">Admin Email Change</h3>
+              <h3 className="font-heading font-semibold leading-tight flex items-center gap-2 flex-wrap">
+                Admin Email Change
+                <SeverityBadge severity="critical" />
+              </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Change a user login email only when correction or migration is required.
               </p>
