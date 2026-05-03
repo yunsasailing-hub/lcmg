@@ -221,10 +221,12 @@ function ChangeRoleDialog({
   user,
   open,
   onClose,
+  canAssignAdministrator,
 }: {
   user: EnrichedProfile;
   open: boolean;
   onClose: () => void;
+  canAssignAdministrator: boolean;
 }) {
   const queryClient = useQueryClient();
   const currentRole = getRole(user);
@@ -257,7 +259,10 @@ function ChangeRoleDialog({
             <Select value={newRole} onValueChange={v => setNewRole(v as AppRole)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="owner">Owner / Administrator</SelectItem>
+                {(canAssignAdministrator || currentRole === 'administrator') && (
+                  <SelectItem value="administrator">Administrator</SelectItem>
+                )}
+                <SelectItem value="owner">Owner</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
               </SelectContent>
