@@ -70,11 +70,11 @@ export default function InventoryWeeklySheet({
     (initial?.items?.find((it: any) => it.control_list_id)?.control_list_id as string) ?? '',
   );
 
-  const { data: lists = [] } = useInventoryControlLists({ activeOnly: true, branchId: branchId || null });
+  const { data: lists = [], isFetching: loadingLists } = useInventoryControlLists({ activeOnly: true, branchId: branchId || null });
   const currentList = useMemo(() => lists.find(l => l.id === controlListId) ?? null, [lists, controlListId]);
   const department: Department | '' = (currentList?.department ?? (initial?.department as Department) ?? '') as any;
 
-  // Reset control list when branch changes if it no longer matches
+  // Reset control list when the selected branch/list relationship is no longer valid.
   useEffect(() => {
     if (controlListId && !lists.find(l => l.id === controlListId)) setControlListId('');
   }, [lists, controlListId]);
@@ -240,7 +240,7 @@ export default function InventoryWeeklySheet({
             <Select value={controlListId} onValueChange={setControlListId} disabled={!branchId}>
               <SelectTrigger className="h-9"><SelectValue placeholder={branchId ? 'Select control list' : 'Pick branch first'} /></SelectTrigger>
               <SelectContent>
-                {lists.length === 0 && (
+                {!loadingLists && lists.length === 0 && (
                   <div className="px-2 py-1.5 text-xs text-muted-foreground">No active control lists for this branch.</div>
                 )}
                 {lists.map(l => (
@@ -264,6 +264,8 @@ export default function InventoryWeeklySheet({
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
           Select a branch to load its Control Lists.
         </CardContent></Card>
+      ) : loadingLists ? (
+        <p className="text-sm text-muted-foreground">Loading Control Lists…</p>
       ) : lists.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-sm space-y-3">
