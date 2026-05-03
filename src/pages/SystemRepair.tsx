@@ -11,6 +11,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ChevronDown, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -105,19 +106,15 @@ export default function SystemRepair() {
       <div className="mx-auto w-full max-w-[860px] px-2 sm:px-0">
         <PageHeader title="System Repair" description="Advanced tools for fixing data and system issues." />
         {isAdministrator ? (
-          <div className="space-y-8">
-            <section className="space-y-3">
-              <div>
-                <h2 className="font-heading text-base font-semibold">Repair Tools</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Safe repair utilities for fixing operational records.</p>
-              </div>
+          <Tabs defaultValue="repair" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
+              <TabsTrigger value="repair">Repair Tools</TabsTrigger>
+              <TabsTrigger value="admin">Administrator Tools</TabsTrigger>
+            </TabsList>
+            <TabsContent value="repair" className="mt-4 space-y-3">
               <RepairOrphanChecklists />
-            </section>
-            <section className="space-y-3">
-              <div>
-                <h2 className="font-heading text-base font-semibold">Administrator Tools</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Sensitive tools — use with caution.</p>
-              </div>
+            </TabsContent>
+            <TabsContent value="admin" className="mt-4 space-y-3">
               <Alert variant="destructive" className="py-2.5 px-3">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="text-xs leading-snug">
@@ -125,8 +122,8 @@ export default function SystemRepair() {
                 </AlertDescription>
               </Alert>
               <AdminEmailChange />
-            </section>
-          </div>
+            </TabsContent>
+          </Tabs>
         ) : (
         <EmptyState icon={Wrench} title="Administrator access required" description="Only an Administrator can access System Repair tools." />
         )}
