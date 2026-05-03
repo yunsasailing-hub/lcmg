@@ -979,6 +979,13 @@ export default function Maintenance() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EnrichedMaintenanceAsset | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<EnrichedMaintenanceAsset | null>(null);
+  const [tab, setTab] = useState<string>(defaultTab);
+  const [openRepairId, setOpenRepairId] = useState<string | null>(null);
+
+  const jumpToRepair = (id: string) => {
+    setOpenRepairId(id);
+    setTab('repairs');
+  };
 
   const selected = assets.find(a => a.id === selectedId) ?? null;
 
@@ -1021,7 +1028,7 @@ export default function Maintenance() {
           onEdit={() => { setEditing(selected); setFormOpen(true); }}
         />
       ) : (
-        <Tabs defaultValue={defaultTab} className="space-y-4">
+        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList>
             {!isStaffOnly && <TabsTrigger value="dashboard">{t('maintenance.tabs.dashboard')}</TabsTrigger>}
             <TabsTrigger value="tasks">{t('maintenance.tabs.tasks', 'Tasks')}</TabsTrigger>
@@ -1051,10 +1058,10 @@ export default function Maintenance() {
             <MaintenanceTasksList />
           </TabsContent>
           <TabsContent value="repairs">
-            <RepairsList />
+            <RepairsList openRepairId={openRepairId} onConsumeOpenRepair={() => setOpenRepairId(null)} />
           </TabsContent>
           <TabsContent value="wtbd">
-            <WorkToBeDoneList />
+            <WorkToBeDoneList onJumpToRepair={jumpToRepair} />
           </TabsContent>
           {isOwner && (
             <TabsContent value="settings">
