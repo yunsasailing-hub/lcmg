@@ -135,28 +135,6 @@ export default function Login() {
 
         {/* Card */}
         <div className="rounded-xl bg-card p-6 shadow-lg space-y-5">
-          {/* Toggle */}
-          <div className="flex rounded-lg bg-secondary p-1">
-            <button
-              type="button"
-              onClick={() => { setMode('login'); setRecoveryMode(false); resetForm(); }}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                mode === 'login' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t('login.logIn')}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('signup'); setRecoveryMode(false); resetForm(); }}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
-                mode === 'signup' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t('login.signUp')}
-            </button>
-          </div>
-
           {error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
@@ -164,8 +142,7 @@ export default function Login() {
             <div className="rounded-lg bg-success/10 p-3 text-sm" style={{ color: 'var(--success)' }}>{success}</div>
           )}
 
-          {mode === 'login' ? (
-            recoveryMode ? (
+          {recoveryMode ? (
               <form onSubmit={handleRecoveryLogin} className="space-y-4">
                 <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-800 dark:text-amber-200">
                   Admin recovery login — Administrator accounts only.
@@ -194,7 +171,7 @@ export default function Login() {
                   Back to username login
                 </button>
               </form>
-            ) : (
+          ) : (
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-username">Username</Label>
@@ -231,51 +208,6 @@ export default function Login() {
                   Admin recovery login
                 </button>
               </form>
-            )
-          ) : (
-            <form onSubmit={handleSignup} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="signup-name">{t('login.fullName')}</Label>
-                <Input id="signup-name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="John Doe" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-phone">{t('login.phone')}</Label>
-                  <Input id="signup-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34..." />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-dept">{t('login.department')}</Label>
-                  <Select value={department} onValueChange={setDepartment}>
-                    <SelectTrigger id="signup-dept"><SelectValue placeholder={t('login.selectPlaceholder')} /></SelectTrigger>
-                    <SelectContent>
-                      {DEPARTMENTS.map(d => (
-                        <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-position">{t('login.position')}</Label>
-                <Input id="signup-position" type="text" value={position} onChange={e => setPosition(e.target.value)} placeholder={t('login.positionPlaceholder')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-email">{t('login.email')}</Label>
-                <Input id="signup-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-password">{t('login.password')}</Label>
-                <div className="relative">
-                  <Input id="signup-password" type={showPassword ? 'text' : 'password'} required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder={t('login.passwordPlaceholder')} className="pr-10" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? t('login.creatingAccount') : t('login.signUp')}
-              </Button>
-            </form>
           )}
         </div>
       </div>
