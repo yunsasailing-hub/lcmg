@@ -346,7 +346,7 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<EnrichedProfile | null>(null);
   const [changingRole, setChangingRole] = useState<EnrichedProfile | null>(null);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
-  type SortKey = 'name' | 'role' | 'department' | 'branch' | 'status';
+  type SortKey = 'name' | 'username' | 'role' | 'department' | 'branch' | 'status';
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const isMobile = useIsMobile();
@@ -431,6 +431,11 @@ export default function UserManagement() {
         case 'name':
           av = (a.full_name || '').toLowerCase();
           bv = (b.full_name || '').toLowerCase();
+          break;
+        case 'username':
+          // Missing usernames sort last
+          av = (a.username || '\uffff').toLowerCase();
+          bv = (b.username || '\uffff').toLowerCase();
           break;
         case 'role':
           av = ROLE_RANK[getRole(a)] ?? 99;
@@ -653,6 +658,9 @@ export default function UserManagement() {
                 <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
                   Name<SortIndicator k="name" />
                 </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('username')}>
+                  Username<SortIndicator k="username" />
+                </TableHead>
                 <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('role')}>
                   Role<SortIndicator k="role" />
                 </TableHead>
@@ -676,7 +684,13 @@ export default function UserManagement() {
                 const branchName = user.branch_id ? branchMap[user.branch_id] : null;
                 const isActive = user.is_active !== false;
                 return (
-                  <TableRow key={user.user_id} className={cn(!isActive && 'opacity-60')}>
+                  <TableRow
+                    key={user.user_id}
+                    className={cn(
+                      !isActive && 'opacity-60',
+                      !user.username && 'bg-amber-50 dark:bg-amber-950/20'
+                    )}
+                  >
                     <TableCell className="py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <Avatar className="h-8 w-8 shrink-0">
@@ -687,15 +701,15 @@ export default function UserManagement() {
                           <p className="text-xs text-muted-foreground truncate">
                             {user.email || '—'}{user.phone ? ` · ${user.phone}` : ''}
                           </p>
-                          <p className="text-xs truncate">
-                            {user.username ? (
-                              <span className="font-mono text-muted-foreground">@{user.username}</span>
-                            ) : (
-                              <span className="text-amber-600">No username</span>
-                            )}
-                          </p>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {user.username ? (
+                        <span className="font-mono text-xs whitespace-nowrap">@{user.username}</span>
+                      ) : (
+                        <span className="text-xs whitespace-nowrap text-amber-600 font-medium">⚠️ Missing</span>
+                      )}
                     </TableCell>
                     <TableCell className="py-2">
                       <Badge className={cn('text-[10px] px-1.5 py-0', roleBadge.className)}>{roleBadge.label}</Badge>
