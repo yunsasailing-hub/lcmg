@@ -785,7 +785,7 @@ function BulkAddFromIngredientsDialog({
                   <td className="px-2"><Checkbox checked={picked.has(i.id)} onCheckedChange={() => togglePick(i.id)} /></td>
                   <td className="px-2 font-mono">{i.code ?? '—'}</td>
                   <td className="px-2">{i.name_en}</td>
-                  <td className="px-2">{i.unit_label ?? '—'}</td>
+                  <td className="px-2">{cleanUnit(i.unit_label) || '—'}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
