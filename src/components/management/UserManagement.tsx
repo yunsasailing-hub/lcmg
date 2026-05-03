@@ -100,6 +100,7 @@ function EditUserDialog({
 }) {
   const queryClient = useQueryClient();
   const currentRole: AppRole = getRole(user);
+  const usernameLocked = !!(user.username && user.username.trim() !== '');
   const [form, setForm] = useState({
     full_name: user.full_name || '',
     email: user.email || '',
@@ -125,15 +126,17 @@ function EditUserDialog({
   const updateMutation = useMutation({
     mutationFn: async () => {
       const { role, email: _ignoredEmail, username, ...profileFields } = form;
-      const cleanUsername = username.trim().toLowerCase();
-      // Update profile fields
-      await callManageRoles('update_profile', {
+      const payload: Record<string, any> = {
         user_id: user.user_id,
         ...profileFields,
-        username: cleanUsername,
         branch_id: profileFields.branch_id || null,
         department: profileFields.department || null,
-      });
+      };
+      // Only send username if not locked (i.e. still empty / setup phase)
+      if (!usernameLocked) {
+        payload.username = username.trim().toLowerCase();
+      }
+      await callManageRoles('update_profile', payload);
       // Update role only if changed
       if (role && role !== currentRole) {
         await callManageRoles('set_role', { user_id: user.user_id, role });
@@ -156,10 +159,12 @@ function EditUserDialog({
   };
 
   const handleSave = () => {
-    const err = validateUsername(form.username);
-    if (err) {
-      setUsernameError(err);
-      return;
+    if (!usernameLocked) {
+      const err = validateUsername(form.username);
+      if (err) {
+        setUsernameError(err);
+        return;
+      }
     }
     updateMutation.mutate();
   };
@@ -187,12 +192,19 @@ function EditUserDialog({
             <Label>Username</Label>
             <Input
               value={form.username}
-              onChange={e => onUsernameChange(e.target.value)}
+              onChange={e => !usernameLocked && onUsernameChange(e.target.value)}
               placeholder="e.g. john_doe"
               autoComplete="off"
               spellCheck={false}
+              readOnly={usernameLocked}
+              disabled={usernameLocked}
+              className={usernameLocked ? 'bg-muted cursor-not-allowed font-mono' : ''}
             />
-            {usernameError ? (
+            {usernameLocked ? (
+              <p className="text-xs text-muted-foreground mt-1">
+                Username cannot be changed after creation.
+              </p>
+            ) : usernameError ? (
               <p className="text-xs text-destructive mt-1">{usernameError}</p>
             ) : form.username.trim() === '' ? (
               <p className="text-xs text-amber-600 mt-1">

@@ -177,7 +177,24 @@ Deno.serve(async (req) => {
       if (position !== undefined) updateData.position = position;
       if (username !== undefined) {
         const u = (username ?? "").toString().trim().toLowerCase();
-        updateData.username = u === "" ? null : u;
+        // Lock: once a username exists, it cannot be changed
+        const { data: existing } = await supabaseAdmin
+          .from("profiles")
+          .select("username")
+          .eq("user_id", user_id)
+          .maybeSingle();
+        const currentUsername = (existing?.username ?? "").toString().trim();
+        if (currentUsername !== "") {
+          if (u !== currentUsername.toLowerCase()) {
+            return new Response(JSON.stringify({ ok: false, error: "Username cannot be changed after creation." }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          // Same value — skip writing
+        } else {
+          updateData.username = u === "" ? null : u;
+        }
       }
 
       const { data, error } = await supabaseAdmin
