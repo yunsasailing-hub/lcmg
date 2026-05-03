@@ -18,9 +18,9 @@ export interface AssignmentWithProfile {
   created_at: string;
   last_generated_date: string | null;
   branch_id: string | null;
-  assignee?: { full_name: string | null; avatar_url: string | null; department: string | null; position: string | null } | null;
+  assignee?: { username: string | null; full_name: string | null; avatar_url: string | null; department: string | null; position: string | null } | null;
   warning_recipient_user_ids: string[];
-  effective_warning_recipients?: { user_id: string; full_name: string | null }[];
+  effective_warning_recipients?: { user_id: string; username: string | null; full_name: string | null }[];
   warning_recipients_source?: 'assignment' | 'template' | 'fallback' | 'none';
 }
 
@@ -55,14 +55,14 @@ export function useAssignmentsByTemplate(templateId: string | undefined) {
       for (const id of templateWarningIds) allUserIds.add(id);
 
       const userIds = [...allUserIds];
-      let profilesMap: Record<string, { full_name: string | null; avatar_url: string | null; department: string | null; position: string | null }> = {};
+      let profilesMap: Record<string, { username: string | null; full_name: string | null; avatar_url: string | null; department: string | null; position: string | null }> = {};
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('user_id, full_name, avatar_url, department, position')
+          .select('user_id, username, full_name, avatar_url, department, position')
           .in('user_id', userIds);
         if (profiles) {
-          profilesMap = Object.fromEntries(profiles.map(p => [p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url, department: p.department as string | null, position: p.position }]));
+          profilesMap = Object.fromEntries(profiles.map(p => [p.user_id, { username: p.username, full_name: p.full_name, avatar_url: p.avatar_url, department: p.department as string | null, position: p.position }]));
         }
       }
 
@@ -79,6 +79,7 @@ export function useAssignmentsByTemplate(templateId: string | undefined) {
         }
         const effective_warning_recipients = effectiveIds.map(uid => ({
           user_id: uid,
+          username: profilesMap[uid]?.username ?? null,
           full_name: profilesMap[uid]?.full_name ?? null,
         }));
         return {

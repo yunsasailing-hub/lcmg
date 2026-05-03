@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
 
       const { data: profiles, error: pErr } = await supabaseAdmin
         .from("profiles")
-        .select("user_id, full_name, email, department, position, branch_id, is_active")
+        .select("user_id, username, full_name, email, department, position, branch_id, is_active")
         .eq("is_active", true)
         .order("full_name", { ascending: true });
       if (pErr) throw pErr;

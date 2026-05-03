@@ -224,8 +224,12 @@ function useSubmitterName(userId: string | null | undefined) {
   useEffect(() => {
     let active = true;
     if (!userId) { setName(null); return; }
-    supabase.from('profiles').select('full_name').eq('user_id', userId).maybeSingle()
-      .then(({ data }) => { if (active) setName(data?.full_name ?? null); });
+    supabase.from('profiles').select('username').eq('user_id', userId).maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        const u = (data?.username || '').trim();
+        setName(u ? `@${u}` : '⚠️ no username');
+      });
     return () => { active = false; };
   }, [userId]);
   return name;
@@ -278,7 +282,7 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
   const tpl = instance.template as any;
   const assignee = instance.assignee as any;
   const submitterId = (instance as any).assigned_to ?? null;
-  const submitterName = useSubmitterName(submitterId) ?? assignee?.full_name ?? null;
+  const submitterName = useSubmitterName(submitterId) ?? (assignee?.username ? `@${assignee.username}` : assignee ? '⚠️ no username' : null);
 
   const isSubmitted = !!instance.submitted_at || ['completed', 'verified'].includes(instance.status);
 
@@ -312,7 +316,7 @@ function ManagerDetail({ instanceId, templateId, instance, onBack, isOwner }: {
       {assignee && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <User className="h-4 w-4" />
-          <span>{assignee.full_name || 'Unassigned'}</span>
+          <span className="font-mono">{assignee.username ? `@${assignee.username}` : '⚠️ no username'}</span>
         </div>
       )}
 
@@ -717,7 +721,7 @@ export default function ManagerDashboard() {
                                   {tpl?.title ?? <span className="italic text-muted-foreground">Template deleted</span>}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {assignee?.full_name || 'Unassigned'}
+                                  <span className="font-mono">{assignee?.username ? `@${assignee.username}` : '⚠️ no username'}</span>
                                   {instance.due_datetime && (
                                     <span className="ml-1">· Due {formatDueTime(instance.due_datetime)}</span>
                                   )}

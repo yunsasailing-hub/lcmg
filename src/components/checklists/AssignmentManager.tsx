@@ -18,6 +18,7 @@ import {
   type AssignmentWithProfile,
 } from '@/hooks/useAssignments';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
+import { userHandleAt } from '@/lib/userDisplay';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -29,7 +30,7 @@ function AssignmentRow({ assignment, canManage }: { assignment: AssignmentWithPr
   const updateStatus = useUpdateAssignmentStatus();
   const deleteAssignment = useDeleteAssignment();
 
-  const name = assignment.assignee?.full_name || 'Unknown User';
+  const handle = userHandleAt(assignment.assignee);
   const dept = assignment.assignee?.department;
   const isActive = assignment.status === 'active';
   const isPaused = assignment.status === 'paused';
@@ -69,7 +70,7 @@ function AssignmentRow({ assignment, canManage }: { assignment: AssignmentWithPr
     <div className="rounded-lg border bg-card p-3 space-y-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-medium text-sm text-foreground truncate">{name}</p>
+          <p className="font-mono text-sm text-foreground truncate">{handle}</p>
           {dept && <p className="text-xs text-muted-foreground capitalize">{dept}</p>}
         </div>
         <Badge className={`text-[10px] px-1.5 capitalize shrink-0 ${statusColors[assignment.status] || ''}`}>
@@ -108,8 +109,8 @@ function AssignmentRow({ assignment, canManage }: { assignment: AssignmentWithPr
         {assignment.effective_warning_recipients && assignment.effective_warning_recipients.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {assignment.effective_warning_recipients.map(r => (
-              <Badge key={r.user_id} variant="secondary" className="text-[10px] px-1.5 font-normal">
-                {r.full_name || 'Unknown user'}
+              <Badge key={r.user_id} variant="secondary" className="text-[10px] px-1.5 font-normal font-mono">
+                {userHandleAt(r)}
               </Badge>
             ))}
           </div>

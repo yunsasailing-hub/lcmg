@@ -73,9 +73,9 @@ function useOverdueChecklists() {
 
       if (staffIds.length > 0) {
         fetches.push(
-          supabase.from('profiles').select('user_id, full_name').in('user_id', staffIds)
+          supabase.from('profiles').select('user_id, username').in('user_id', staffIds)
             .then(({ data: profiles }) => {
-              if (profiles) profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p.full_name || 'Unknown']));
+              if (profiles) profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p.username ? `@${p.username}` : '⚠️ no username']));
             }) as Promise<void>
         );
       }

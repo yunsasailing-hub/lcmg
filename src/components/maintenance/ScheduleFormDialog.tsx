@@ -252,7 +252,7 @@ export default function ScheduleFormDialog({ open, onOpenChange, initial, preset
                   <SelectItem value="__none__">— None —</SelectItem>
                   {eligibleStaff.map(s => (
                     <SelectItem key={s.user_id} value={s.user_id}>
-                      {s.full_name || s.user_id.slice(0, 8)}
+                      <span className="font-mono">{s.username ? `@${s.username}` : '⚠️ no username'}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>

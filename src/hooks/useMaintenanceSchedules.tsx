@@ -34,8 +34,8 @@ async function enrich(rows: MaintenanceScheduleTemplate[]): Promise<EnrichedSche
       .select('id, name, code, branch_id')
       .in('id', assetIds.length ? assetIds : ['00000000-0000-0000-0000-000000000000']),
     staffIds.length
-      ? supabase.from('profiles').select('user_id, full_name').in('user_id', staffIds)
-      : Promise.resolve({ data: [] as { user_id: string; full_name: string | null }[] }),
+      ? supabase.from('profiles').select('user_id, username').in('user_id', staffIds)
+      : Promise.resolve({ data: [] as { user_id: string; username: string | null }[] }),
   ]);
 
   const branchIds = Array.from(new Set((assets ?? []).map(a => a.branch_id).filter(Boolean)));
@@ -45,7 +45,9 @@ async function enrich(rows: MaintenanceScheduleTemplate[]): Promise<EnrichedSche
 
   const aMap = new Map((assets ?? []).map(a => [a.id, a]));
   const bMap = new Map((branches ?? []).map(b => [b.id, b.name]));
-  const sMap = new Map((staff ?? []).map(s => [s.user_id, s.full_name]));
+  const sMap = new Map(
+    (staff ?? []).map(s => [s.user_id, s.username ? `@${s.username}` : '⚠️ no username'] as const),
+  );
 
   return rows.map(r => {
     const a = aMap.get(r.asset_id);
@@ -127,12 +129,13 @@ export function useStaffProfiles() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('user_id, full_name, department, branch_id, is_active')
+        .select('user_id, username, full_name, department, branch_id, is_active')
         .eq('is_active', true)
-        .order('full_name');
+        .order('username');
       if (error) throw error;
       return (data ?? []) as Array<{
         user_id: string;
+        username: string | null;
         full_name: string | null;
         department: string | null;
         branch_id: string | null;
