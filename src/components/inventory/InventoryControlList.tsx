@@ -799,7 +799,7 @@ function CopyControlListDialog({
   lists: EnrichedControlList[];
   allItems: EnrichedControlItem[];
   defaultFromListId: string | null;
-  onCreated?: (id: string) => void;
+  onCreated?: (list: SavedControlList) => void | Promise<void>;
 }) {
   const { data: branches = [] } = useBranchesAll();
   const upsertList = useUpsertInventoryControlList();
@@ -873,8 +873,8 @@ function CopyControlListDialog({
       } catch { failed++; }
     }
     toast.success(`Created control list with ${copied} items. Skipped ${skipped} duplicates.${failed ? ` (${failed} failed)` : ''}`);
-    onCreated?.(newListId);
     onOpenChange(false);
+    await onCreated?.(newList);
   };
 
   return (
