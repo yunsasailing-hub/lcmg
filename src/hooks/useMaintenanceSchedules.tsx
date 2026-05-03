@@ -131,10 +131,18 @@ export function useArchiveMaintenanceSchedule() {
         .from('maintenance_schedule_templates')
         .update({ status: archive ? 'archived' : 'active' })
         .eq('id', id)
-        .select()
-        .single();
+        .select();
       if (error) throw error;
-      return data;
+      const rows = (data ?? []) as MaintenanceScheduleTemplate[];
+      if (rows.length === 0) {
+        throw new Error('Archive failed: schedule not found or you lack permission.');
+      }
+      if (rows.length > 1) {
+        console.warn(
+          `[useArchiveMaintenanceSchedule] Expected 1 row for id=${id}, got ${rows.length}. Using first.`,
+        );
+      }
+      return rows[0];
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
