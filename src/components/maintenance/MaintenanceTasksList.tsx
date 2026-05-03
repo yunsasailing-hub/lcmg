@@ -525,12 +525,30 @@ function TaskCompletionDialog({
             )}
           </div>
 
+          <div>
+            <Label htmlFor="execution-date">
+              Execution date <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="execution-date"
+              type="date"
+              value={executionDate}
+              disabled={isDone}
+              onChange={e => setExecutionDate(e.target.value)}
+              required
+            />
+            <div className="text-xs text-muted-foreground mt-1">
+              Defaults to today. Change if maintenance was performed on a different day.
+            </div>
+          </div>
+
           <div className="rounded-md border p-3 space-y-1">
             <div><span className="text-muted-foreground">Equipment:</span> {task.asset_code ? `${task.asset_code} — ` : ''}{task.asset_name}</div>
             {task.asset_type_name && (
               <div><span className="text-muted-foreground">Type:</span> {task.asset_type_name}</div>
             )}
             <div><span className="text-muted-foreground">Branch:</span> {task.asset_branch_name ?? '—'}</div>
+            <div><span className="text-muted-foreground">Department:</span> <span className="capitalize">{task.assigned_department ?? task.asset_department ?? '—'}</span></div>
             <div><span className="text-muted-foreground">Due:</span> {task.due_date} {task.due_time?.slice(0, 5)}</div>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Status:</span> <StatusBadge status={task.status} />
@@ -620,11 +638,14 @@ function TaskCompletionDialog({
 
           {isDone && (task.completed_at || task.completed_by_name) && (
             <div className="rounded-md border bg-muted/40 p-2.5 text-xs space-y-1">
+              {(task as any).execution_date && (
+                <div className="flex items-center gap-1.5"><CalendarCheck className="h-3.5 w-3.5 text-muted-foreground" />Execution date: <span className="font-medium">{(task as any).execution_date}</span></div>
+              )}
               {task.completed_by_name && (
                 <div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-muted-foreground" />Completed by <span className="font-medium">{task.completed_by_name}</span></div>
               )}
               {task.completed_at && (
-                <div className="flex items-center gap-1.5"><CalendarCheck className="h-3.5 w-3.5 text-muted-foreground" />{new Date(task.completed_at).toLocaleString()}</div>
+                <div className="flex items-center gap-1.5"><CalendarCheck className="h-3.5 w-3.5 text-muted-foreground" />Completed at: <span className="font-medium">{new Date(task.completed_at).toLocaleString()}</span></div>
               )}
             </div>
           )}
