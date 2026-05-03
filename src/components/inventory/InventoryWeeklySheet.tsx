@@ -14,6 +14,7 @@ import {
 } from '@/hooks/useInventoryRequests';
 import { useInventoryControlItems } from '@/hooks/useInventoryControlItems';
 import { toast } from 'sonner';
+import { Plus, Trash2 } from 'lucide-react';
 
 const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
 
@@ -30,6 +31,14 @@ interface RowState {
   stock: string;        // editable
   order_request: string; // editable
   note: string;          // editable
+}
+
+interface ExtraRow {
+  key: string;
+  item_name: string;
+  unit: string;
+  qty: string;
+  note: string;
 }
 
 export default function InventoryWeeklySheet({
@@ -87,6 +96,29 @@ export default function InventoryWeeklySheet({
   type Edit = { stock: string; order_request: string; note: string };
   const [edits, setEdits] = useState<Record<string, Edit>>({});
 
+  // Extra (non-control-list) items typed manually by staff.
+  const [extras, setExtras] = useState<ExtraRow[]>(() =>
+    (initial?.items ?? [])
+      .filter((it: any) => it.source_type === 'extra')
+      .map((it: any, i: number) => ({
+        key: it.id ?? `existing-${i}`,
+        item_name: it.item_name ?? '',
+        unit: it.unit ?? '',
+        qty: it.requested_qty?.toString() ?? '',
+        note: it.note ?? '',
+      })),
+  );
+
+  const addExtra = () =>
+    setExtras(prev => [
+      ...prev,
+      { key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, item_name: '', unit: '', qty: '', note: '' },
+    ]);
+  const updateExtra = (key: string, patch: Partial<ExtraRow>) =>
+    setExtras(prev => prev.map(r => (r.key === key ? { ...r, ...patch } : r)));
+  const removeExtra = (key: string) =>
+    setExtras(prev => prev.filter(r => r.key !== key));
+
   // Initialise edits when rows change
   useEffect(() => {
     const next: Record<string, Edit> = {};
@@ -106,7 +138,12 @@ export default function InventoryWeeklySheet({
   const submit = async (status: InventoryRequestStatus) => {
     if (!branchId) return toast.error('Please select a branch');
     if (!department) return toast.error('Please select a department');
-    if (!rows.length) return toast.error('No active items for this branch / department');
+    const cleanedExtras = extras
+      .map(x => ({ ...x, item_name: x.item_name.trim() }))
+      .filter(x => x.item_name.length > 0);
+    if (!rows.length && !cleanedExtras.length) {
+      return toast.error('No items to submit');
+    }
 
     const items = rows
       .map((r, i) => {
@@ -115,7 +152,7 @@ export default function InventoryWeeklySheet({
           id: r.id,
           ingredient_id: r.ingredient_id,
           inventory_control_item_id: r.control_item_id,
-          source_type: 'ingredient' as const,
+          source_type: 'ingredient' as 'ingredient' | 'extra',
           item_code: r.item_code || null,
           item_name: r.item_name,
           unit: r.unit || null,
@@ -125,6 +162,22 @@ export default function InventoryWeeklySheet({
           sort_order: i,
         };
       });
+
+    cleanedExtras.forEach((x, i) => {
+      items.push({
+        id: undefined,
+        ingredient_id: null,
+        inventory_control_item_id: null,
+        source_type: 'extra' as 'ingredient' | 'extra',
+        item_code: null,
+        item_name: x.item_name,
+        unit: x.unit.trim() || null,
+        actual_stock: null,
+        requested_qty: x.qty ? Number(x.qty) : null,
+        note: x.note?.trim() || null,
+        sort_order: rows.length + i,
+      });
+    });
 
     try {
       await upsert.mutateAsync({
@@ -145,7 +198,8 @@ export default function InventoryWeeklySheet({
     }
   };
 
-  const showEmpty = branchId && department && !loadingItems && rows.length === 0;
+  const ready = !!branchId && !!department;
+  const showEmpty = ready && !loadingItems && rows.length === 0;
 
   return (
     <div className="space-y-3">
@@ -192,7 +246,7 @@ export default function InventoryWeeklySheet({
           No inventory items selected for this branch / department.
           Owner must add items in <span className="font-medium text-foreground">Inventory Control List</span>.
         </CardContent></Card>
-      ) : (
+      ) : rows.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-xs sm:text-sm">
             <thead className="bg-muted/40 text-muted-foreground text-[11px] uppercase">
@@ -247,6 +301,72 @@ export default function InventoryWeeklySheet({
             </tbody>
           </table>
         </div>
+      ) : null}
+
+      {/* Additional item request */}
+      {ready && (
+        <Card>
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">Additional item request</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Items not on the Control List. Owner will review separately.
+                </div>
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={addExtra}>
+                <Plus className="h-4 w-4 mr-1" /> Add extra item
+              </Button>
+            </div>
+
+            {extras.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-1">No extra items.</p>
+            ) : (
+              <div className="overflow-x-auto rounded border">
+                <table className="w-full text-xs sm:text-sm">
+                  <thead className="bg-muted/40 text-muted-foreground text-[11px] uppercase">
+                    <tr className="text-left">
+                      <th className="py-2 px-2 min-w-[180px]">Item name *</th>
+                      <th className="py-2 px-2 w-[100px]">Unit</th>
+                      <th className="py-2 px-2 w-[110px]">Qty req.</th>
+                      <th className="py-2 px-2 min-w-[160px]">Note / reason</th>
+                      <th className="py-2 px-2 w-[40px]"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {extras.map(x => (
+                      <tr key={x.key} className="border-t align-middle">
+                        <td className="py-1.5 px-2">
+                          <Input className="h-8" value={x.item_name}
+                            onChange={e => updateExtra(x.key, { item_name: e.target.value })} />
+                        </td>
+                        <td className="py-1.5 px-2">
+                          <Input className="h-8" value={x.unit}
+                            onChange={e => updateExtra(x.key, { unit: e.target.value })} />
+                        </td>
+                        <td className="py-1.5 px-2">
+                          <Input type="number" inputMode="decimal" className="h-8 text-right"
+                            value={x.qty}
+                            onChange={e => updateExtra(x.key, { qty: e.target.value })} />
+                        </td>
+                        <td className="py-1.5 px-2">
+                          <Input className="h-8" value={x.note}
+                            onChange={e => updateExtra(x.key, { note: e.target.value })} />
+                        </td>
+                        <td className="py-1.5 px-1 text-right">
+                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8"
+                            onClick={() => removeExtra(x.key)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Footer actions */}
@@ -254,11 +374,11 @@ export default function InventoryWeeklySheet({
         {onDone && (
           <Button variant="ghost" onClick={onDone}>Cancel</Button>
         )}
-        <Button variant="secondary" disabled={upsert.isPending || !rows.length}
+        <Button variant="secondary" disabled={upsert.isPending || (!rows.length && !extras.length)}
           onClick={() => submit('Draft')}>
           Save Draft
         </Button>
-        <Button disabled={upsert.isPending || !rows.length}
+        <Button disabled={upsert.isPending || (!rows.length && !extras.length)}
           onClick={() => submit('Submitted')}>
           Submit to Owner
         </Button>
