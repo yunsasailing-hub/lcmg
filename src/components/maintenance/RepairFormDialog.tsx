@@ -338,6 +338,7 @@ function buildInitialForm(initial: EnrichedMaintenanceRepair | null | undefined,
     parts_replaced: initial?.parts_replaced ?? '',
     photos,
     downtime_hours: initial?.downtime_hours != null ? String(initial.downtime_hours) : '',
+    work_area: (((initial as any)?.work_area) ?? DEFAULT_WORK_AREA) as WorkArea,
   };
 }
 
