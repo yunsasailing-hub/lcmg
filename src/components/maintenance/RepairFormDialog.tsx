@@ -107,8 +107,9 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
   }, [form.cost_amount]);
 
   const handleSave = async () => {
+    const isFromWtbd = (initial as any)?.source === 'Work To Be Done';
     const errs: Record<string, string> = {};
-    if (!form.asset_id) errs.asset_id = 'Equipment is required';
+    if (!form.asset_id && !isFromWtbd) errs.asset_id = 'Equipment is required';
     if (!form.title.trim()) errs.title = 'Title is required';
     if (!form.severity) errs.severity = 'Severity is required';
     setErrors(errs);
@@ -119,7 +120,7 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
     }
     try {
       const payload: any = {
-        asset_id: form.asset_id,
+        asset_id: form.asset_id || null,
         title: form.title.trim(),
         issue_description: form.issue_description?.trim() || null,
         action_taken: reportOnly ? null : (form.action_taken?.trim() || null),
