@@ -92,18 +92,18 @@ function RepairOrphanChecklists() {
 export default function SystemRepair() {
   const { t } = useTranslation();
   const { hasRole } = useAuth();
-  const isOwner = hasRole('owner');
+  const isAdministrator = hasRole('administrator' as never);
 
   return (
     <AppShell>
       <PageHeader title={t('pages.systemRepair.title')} description={t('pages.systemRepair.subtitle')} />
-      {isOwner ? (
+      {isAdministrator ? (
         <section className="space-y-3">
           <h2 className="font-heading text-lg font-semibold">Repair Tools</h2>
           <RepairOrphanChecklists />
         </section>
       ) : (
-        <EmptyState icon={Wrench} title={t('pages.systemRepair.emptyTitle')} description={t('pages.systemRepair.emptyDesc')} />
+        <EmptyState icon={Wrench} title="Administrator access required" description="Only an Administrator can access System Repair tools." />
       )}
     </AppShell>
   );
