@@ -69,6 +69,7 @@ function Dashboard({ onOpen }: { onOpen: (v: View) => void }) {
 function ConsumableView({ onBack }: { onBack: () => void }) {
   const { hasRole } = useAuth();
   const isOwner = hasRole('owner');
+  const [tab, setTab] = useState<string>('sheet');
 
   return (
     <div className="space-y-4">
@@ -86,7 +87,7 @@ function ConsumableView({ onBack }: { onBack: () => void }) {
       </div>
 
       {isOwner ? (
-        <Tabs defaultValue="sheet">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="sheet"><FileSpreadsheet className="h-4 w-4 mr-1" />Weekly sheet</TabsTrigger>
             <TabsTrigger value="requests"><ClipboardList className="h-4 w-4 mr-1" />All requests</TabsTrigger>
@@ -94,7 +95,7 @@ function ConsumableView({ onBack }: { onBack: () => void }) {
             <TabsTrigger value="control"><ListChecks className="h-4 w-4 mr-1" />Control list</TabsTrigger>
           </TabsList>
           <TabsContent value="sheet" className="mt-3">
-            <InventoryWeeklySheet />
+            <InventoryWeeklySheet onRequestCreateControlList={() => setTab('control')} />
           </TabsContent>
           <TabsContent value="requests" className="mt-3">
             <InventoryRequestList />
