@@ -152,7 +152,7 @@ export default function InventoryWeeklySheet({
           id: r.id,
           ingredient_id: r.ingredient_id,
           inventory_control_item_id: r.control_item_id,
-          source_type: 'ingredient' as const,
+          source_type: 'ingredient' as 'ingredient' | 'extra',
           item_code: r.item_code || null,
           item_name: r.item_name,
           unit: r.unit || null,
@@ -165,9 +165,10 @@ export default function InventoryWeeklySheet({
 
     cleanedExtras.forEach((x, i) => {
       items.push({
+        id: undefined,
         ingredient_id: null,
         inventory_control_item_id: null,
-        source_type: 'extra' as const,
+        source_type: 'extra' as 'ingredient' | 'extra',
         item_code: null,
         item_name: x.item_name,
         unit: x.unit.trim() || null,
