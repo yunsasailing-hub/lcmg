@@ -17,8 +17,6 @@ import { useInventoryControlLists } from '@/hooks/useInventoryControlLists';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 
-const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
-
 interface RowState {
   id?: string;
   control_item_id: string;
