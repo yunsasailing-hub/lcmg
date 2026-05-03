@@ -749,6 +749,7 @@ export default function InventoryControlList() {
         onSaved={async (created) => {
           const visibleList = created as EnrichedControlList;
           setOptimisticList(visibleList);
+          setLastCreatedTableSource('inventory_control_lists');
           setBranchId(created.branch_id);
           setDepartment(created.department);
           setControlListId(created.id);
@@ -783,6 +784,7 @@ export default function InventoryControlList() {
         defaultFromListId={controlListId || null}
         onCreated={async (created) => {
           setOptimisticList(created as EnrichedControlList);
+          setLastCreatedTableSource('inventory_control_lists');
           setBranchId(created.branch_id);
           setDepartment(created.department);
           setControlListId(created.id);
