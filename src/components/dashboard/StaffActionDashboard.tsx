@@ -411,7 +411,13 @@ function ActionRow({ item, onClick }: { item: ActionItem; onClick: () => void })
   );
 }
 
-function PreviewDialog({ item, onClose }: { item: ActionItem | null; onClose: () => void }) {
+function PreviewDialog({
+  item, onClose, onCompleteEarly,
+}: {
+  item: ActionItem | null;
+  onClose: () => void;
+  onCompleteEarly?: (it: ActionItem) => void;
+}) {
   return (
     <Dialog open={!!item} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
@@ -435,8 +441,13 @@ function PreviewDialog({ item, onClose }: { item: ActionItem | null; onClose: ()
                 <div><span className="text-muted-foreground">Due:</span> {item.dueISO}{item.dueTime ? ` · ${item.dueTime.slice(0, 5)}` : ''}</div>
               </div>
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-2.5 text-xs text-amber-900 dark:text-amber-200">
-                This task will be available for completion on its due date.
+                This task is scheduled for a future date. You may complete it early if the work has already been done.
               </div>
+              {onCompleteEarly && item.earlyPayload && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={() => onCompleteEarly(item)}>Complete Early</Button>
+                </div>
+              )}
             </div>
           </>
         )}
