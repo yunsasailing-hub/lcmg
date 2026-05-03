@@ -124,16 +124,21 @@ export default function InventoryControlList() {
     return lists;
   }, [activeLists, branchId, department, optimisticList]);
 
-  // Panel: ALL control lists for the selected branch (active + inactive).
+  // Panel: control lists for selected branch, OR ALL lists when no branch selected.
   const branchPanelLists = useMemo(() => {
-    if (!branchId) return [];
-    const lists = allLists.filter(l => l.branch_id === branchId);
-    if (optimisticList && optimisticList.branch_id === branchId && !lists.some(l => l.id === optimisticList.id)) {
+    let lists = branchId ? allLists.filter(l => l.branch_id === branchId) : [...allLists];
+    if (optimisticList && (!branchId || optimisticList.branch_id === branchId) && !lists.some(l => l.id === optimisticList.id)) {
       lists.unshift(optimisticList);
     }
     lists.sort((a, b) => (a.control_list_code || '').localeCompare(b.control_list_code || '', undefined, { numeric: true }));
     return lists;
   }, [allLists, branchId, optimisticList]);
+
+  // Debug: surface DB vs UI count mismatches in console.
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.debug('[ControlList] DB lists =', allLists.length, '| active =', activeLists.length, '| visible in dropdown =', filteredLists.length, '| filters:', { branchId, department });
+  }, [allLists.length, activeLists.length, filteredLists.length, branchId, department]);
 
   const itemCountByList = useMemo(() => {
     const m = new Map<string, number>();
