@@ -1,5 +1,6 @@
 // Multi-Control-List editor. Each Control List groups items for one Branch + Department.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
 import {
   Plus, Trash2, Power, PowerOff, Save, Upload, Download, FileDown,
@@ -26,7 +27,7 @@ import {
 } from '@/hooks/useInventoryControlItems';
 import {
   useInventoryControlLists, useUpsertInventoryControlList, useDeleteInventoryControlList,
-  type EnrichedControlList,
+  type EnrichedControlList, type SavedControlList,
 } from '@/hooks/useInventoryControlLists';
 import { toast } from 'sonner';
 
@@ -72,9 +73,10 @@ function parseActive(v: any): boolean {
 
 export default function InventoryControlList() {
   const { hasRole } = useAuth();
+  const queryClient = useQueryClient();
   const isOwner = hasRole('owner');
   const { data: branches = [] } = useBranchesAll();
-  const { data: allLists = [] } = useInventoryControlLists();
+  const { data: allLists = [], refetch: refetchAllLists } = useInventoryControlLists();
   const upsertList = useUpsertInventoryControlList();
   const deleteList = useDeleteInventoryControlList();
   const upsert = useUpsertInventoryControlItem();
@@ -84,16 +86,25 @@ export default function InventoryControlList() {
   const [branchId, setBranchId] = useState<string>('');
   const [department, setDepartment] = useState<Department | ''>('');
   const [controlListId, setControlListId] = useState<string>('');
+  const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
 
-  const filteredLists = useMemo(() => allLists.filter(l =>
-    (!branchId || l.branch_id === branchId) &&
-    (!department || l.department === department)
-  ), [allLists, branchId, department]);
+  const { data: branchActiveLists = [], refetch: refetchBranchLists } = useInventoryControlLists({
+    activeOnly: true,
+    branchId: branchId || null,
+  });
 
-  // When context changes, auto-select if only one list is available; else clear
+  const filteredLists = useMemo(() => {
+    if (!branchId) return [];
+    const lists = [...branchActiveLists];
+    if (optimisticList?.branch_id === branchId && optimisticList.is_active && !lists.some(l => l.id === optimisticList.id)) {
+      lists.unshift(optimisticList);
+    }
+    return lists;
+  }, [branchActiveLists, branchId, optimisticList]);
+
+  // Keep selection valid; do not auto-select on Branch changes except after explicit creation/copy.
   useEffect(() => {
     if (controlListId && !filteredLists.find(l => l.id === controlListId)) setControlListId('');
-    if (!controlListId && filteredLists.length === 1) setControlListId(filteredLists[0].id);
   }, [filteredLists, controlListId]);
 
   const { data: items = [], isLoading } = useInventoryControlItems({ controlListId: controlListId || null });
@@ -110,7 +121,11 @@ export default function InventoryControlList() {
   const [editListOpen, setEditListOpen] = useState(false);
 
   const branchName = (id: string | null) => branches.find(b => b.id === id)?.name ?? '';
-  const currentList = useMemo(() => allLists.find(l => l.id === controlListId) ?? null, [allLists, controlListId]);
+  const currentList = useMemo(
+    () => allLists.find(l => l.id === controlListId) ?? (optimisticList?.id === controlListId ? optimisticList : null),
+    [allLists, controlListId, optimisticList],
+  );
+  const hiddenListSafety = !!branchId && filteredLists.length === 0 && allLists.some(l => l.branch_id === branchId && l.is_active);
 
   useEffect(() => { setNewRows([]); setDrafts({}); }, [controlListId]);
 
@@ -259,8 +274,8 @@ export default function InventoryControlList() {
     const listIdMap = new Map<string, string>(); // key=code|branch -> id
     for (const l of importPreview.newLists) {
       try {
-        const id = await upsertList.mutateAsync(l.payload);
-        listIdMap.set(`${l.payload.control_list_code}|${l.payload.branch_id}`, id);
+        const created = await upsertList.mutateAsync(l.payload);
+        listIdMap.set(`${l.payload.control_list_code}|${l.payload.branch_id}`, created.id);
         createdLists++;
       } catch { fail++; }
     }
@@ -287,7 +302,7 @@ export default function InventoryControlList() {
         <CardContent className="py-3 flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Branch</Label>
-            <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); }}>
+            <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); setNewRows([]); setDrafts({}); }}>
               <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="All branches" /></SelectTrigger>
               <SelectContent>
                 {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
@@ -296,7 +311,7 @@ export default function InventoryControlList() {
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Department</Label>
-            <Select value={department} onValueChange={(v) => { setDepartment(v as Department); setControlListId(''); }}>
+            <Select value={department} onValueChange={(v) => setDepartment(v as Department)}>
               <SelectTrigger className="h-9 min-w-[160px] capitalize"><SelectValue placeholder="All departments" /></SelectTrigger>
               <SelectContent>
                 {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
@@ -309,7 +324,7 @@ export default function InventoryControlList() {
               <SelectTrigger className="h-9"><SelectValue placeholder="Select control list" /></SelectTrigger>
               <SelectContent>
                 {filteredLists.length === 0 && (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No control lists for this filter.</div>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No active control lists for this branch.</div>
                 )}
                 {filteredLists.map(l => (
                   <SelectItem key={l.id} value={l.id}>
@@ -319,6 +334,9 @@ export default function InventoryControlList() {
                 ))}
               </SelectContent>
             </Select>
+            {hiddenListSafety && (
+              <p className="mt-1 text-xs text-destructive">Control List exists but not visible. Please refresh.</p>
+            )}
           </div>
           <Button size="sm" variant="default" onClick={() => setNewListOpen(true)}>
             <FilePlus2 className="h-4 w-4 mr-1" /> New Control List
@@ -494,10 +512,15 @@ export default function InventoryControlList() {
         open={newListOpen} onOpenChange={setNewListOpen}
         defaultBranchId={branchId} defaultDepartment={department || null}
         existingLists={allLists}
-        onSaved={({ id, branch_id, department: dep }) => {
-          setBranchId(branch_id);
-          setDepartment(dep);
-          setControlListId(id);
+        onSaved={async (created) => {
+          const visibleList = created as EnrichedControlList;
+          setOptimisticList(visibleList);
+          setBranchId(created.branch_id);
+          setDepartment(created.department);
+          setControlListId(created.id);
+          await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
+          await Promise.all([refetchAllLists(), refetchBranchLists()]);
+          setControlListId(created.id);
           toast.success('Control List created. Add items now.');
         }}
       />
@@ -523,7 +546,15 @@ export default function InventoryControlList() {
         open={copyOpen} onOpenChange={setCopyOpen}
         lists={allLists} allItems={allItems}
         defaultFromListId={controlListId || null}
-        onCreated={(id) => setControlListId(id)}
+        onCreated={async (created) => {
+          setOptimisticList(created as EnrichedControlList);
+          setBranchId(created.branch_id);
+          setDepartment(created.department);
+          setControlListId(created.id);
+          await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
+          await Promise.all([refetchAllLists(), refetchBranchLists()]);
+          setControlListId(created.id);
+        }}
       />
     </div>
   );
@@ -539,7 +570,7 @@ function ControlListFormDialog({
   defaultBranchId?: string;
   defaultDepartment?: Department | null;
   existingLists?: EnrichedControlList[];
-  onSaved?: (list: { id: string; branch_id: string; department: Department }) => void;
+  onSaved?: (list: SavedControlList) => void | Promise<void>;
 }) {
   const { data: branches = [] } = useBranchesAll();
   const upsert = useUpsertInventoryControlList();
@@ -574,14 +605,14 @@ function ControlListFormDialog({
     );
     if (dup) return toast.error('This Control List Code already exists for this branch.');
     try {
-      const id = await upsert.mutateAsync({
+      const saved = await upsert.mutateAsync({
         id: editing?.id, branch_id: branchId, department: department as Department,
         control_list_code: codeTrim, control_list_name: name,
         notes: notes.trim() || null, is_active: isActive,
       });
       if (editing) toast.success('Updated');
-      onSaved?.({ id, branch_id: branchId, department: department as Department });
       onOpenChange(false);
+      await onSaved?.(saved);
     } catch (e: any) { toast.error(e?.message ?? 'Save failed'); }
   };
 
@@ -767,7 +798,7 @@ function CopyControlListDialog({
   lists: EnrichedControlList[];
   allItems: EnrichedControlItem[];
   defaultFromListId: string | null;
-  onCreated?: (id: string) => void;
+  onCreated?: (list: SavedControlList) => void | Promise<void>;
 }) {
   const { data: branches = [] } = useBranchesAll();
   const upsertList = useUpsertInventoryControlList();
@@ -800,12 +831,14 @@ function CopyControlListDialog({
     if (!sourceList) { toast.error('Select source Control List'); return; }
     if (!toBranch || !toDept) { toast.error('Select target Branch and Department'); return; }
     if (!newCode.trim() || !newName.trim()) { toast.error('New Code and Name required'); return; }
+    let newList: SavedControlList;
     let newListId: string;
     try {
-      newListId = await upsertList.mutateAsync({
+      newList = await upsertList.mutateAsync({
         branch_id: toBranch, department: toDept as Department,
         control_list_code: newCode, control_list_name: newName,
       });
+      newListId = newList.id;
     } catch (e: any) { toast.error(e?.message ?? 'Failed to create list'); return; }
 
     let copied = 0, skipped = 0, failed = 0;
@@ -840,8 +873,8 @@ function CopyControlListDialog({
       } catch { failed++; }
     }
     toast.success(`Created control list with ${copied} items. Skipped ${skipped} duplicates.${failed ? ` (${failed} failed)` : ''}`);
-    onCreated?.(newListId);
     onOpenChange(false);
+    await onCreated?.(newList);
   };
 
   return (
