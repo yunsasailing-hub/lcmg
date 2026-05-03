@@ -28,6 +28,7 @@ import {
   todayLocalISO,
 } from '@/hooks/useMaintenanceTasks';
 import { uploadToAppFilesBucket } from '@/lib/appFilesStorage';
+import MaintenancePlanView from './MaintenancePlanView';
 
 const DEPARTMENTS = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
 
@@ -116,12 +117,14 @@ export default function MaintenanceTasksList() {
       {isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading tasks…</div>
       ) : (
-        <Tabs defaultValue="today">
+        <Tabs defaultValue="plan">
           <TabsList>
+            <TabsTrigger value="plan">30-Day Plan</TabsTrigger>
             <TabsTrigger value="today">Today ({todays.length})</TabsTrigger>
             <TabsTrigger value="overdue">Overdue ({overdue.length})</TabsTrigger>
             <TabsTrigger value="done">Completed ({completed.length})</TabsTrigger>
           </TabsList>
+          <TabsContent value="plan" className="mt-3"><MaintenancePlanView onOpenTask={setActive} /></TabsContent>
           <TabsContent value="today" className="mt-3"><TaskView tab="today" items={todays} onOpen={setActive} /></TabsContent>
           <TabsContent value="overdue" className="mt-3"><TaskView tab="overdue" items={overdue} onOpen={setActive} /></TabsContent>
           <TabsContent value="done" className="mt-3"><TaskView tab="done" items={completed} onOpen={setActive} /></TabsContent>
