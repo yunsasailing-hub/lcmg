@@ -404,6 +404,7 @@ export default function UserManagement() {
       result = result.filter(p =>
         (p.full_name || '').toLowerCase().includes(q) ||
         (p.email || '').toLowerCase().includes(q) ||
+        (p.username || '').toLowerCase().includes(q) ||
         (p.phone || '').toLowerCase().includes(q) ||
         (p.position || '').toLowerCase().includes(q)
       );
@@ -620,6 +621,13 @@ export default function UserManagement() {
                       </Badge>
                     </div>
                     {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+                    <p className="text-xs truncate">
+                      {user.username ? (
+                        <span className="font-mono text-foreground">@{user.username}</span>
+                      ) : (
+                        <span className="text-amber-600">No username set</span>
+                      )}
+                    </p>
                     {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
                     <p className="text-xs text-muted-foreground capitalize flex items-center gap-1 flex-wrap">
                       <span>{user.department || 'No department'}</span>
@@ -678,6 +686,13 @@ export default function UserManagement() {
                           <p className="font-medium truncate">{user.full_name || 'Unnamed'}</p>
                           <p className="text-xs text-muted-foreground truncate">
                             {user.email || '—'}{user.phone ? ` · ${user.phone}` : ''}
+                          </p>
+                          <p className="text-xs truncate">
+                            {user.username ? (
+                              <span className="font-mono text-muted-foreground">@{user.username}</span>
+                            ) : (
+                              <span className="text-amber-600">No username</span>
+                            )}
                           </p>
                         </div>
                       </div>
