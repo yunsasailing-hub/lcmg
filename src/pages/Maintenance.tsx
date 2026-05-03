@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
-import { Wrench, Plus, Search, Pencil, Archive, ArchiveRestore, ArrowLeft, Loader2 } from 'lucide-react';
+import { Wrench, Plus, Search, Pencil, Archive, ArchiveRestore, ArrowLeft, Loader2, List as ListIcon, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useIsMobile } from '@/hooks/use-mobile';
 import AssetTypeSettings from '@/components/maintenance/AssetTypeSettings';
 import SchedulesList from '@/components/maintenance/SchedulesList';
 import ScheduleFormDialog from '@/components/maintenance/ScheduleFormDialog';
@@ -676,6 +679,8 @@ function AssetList({
   const [deptFilter, setDeptFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('not_archived');
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list');
+  const isMobile = useIsMobile();
 
   const filtered = useMemo(() => {
     return assets.filter(a => {
@@ -730,11 +735,26 @@ function AssetList({
             </SelectContent>
           </Select>
         </div>
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(v) => v && setViewMode(v as 'list' | 'cards')}
+          className="justify-end sm:justify-start"
+        >
+          <ToggleGroupItem value="list" aria-label="List view" className="h-9 px-3">
+            <ListIcon className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">{t('maintenance.list.viewList', 'List')}</span>
+          </ToggleGroupItem>
+          <ToggleGroupItem value="cards" aria-label="Cards view" className="h-9 px-3">
+            <LayoutGrid className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">{t('maintenance.list.viewCards', 'Cards')}</span>
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       {filtered.length === 0 ? (
         <EmptyState icon={Wrench} title={t('maintenance.list.emptyTitle')} description={t('maintenance.list.emptyDesc')} />
-      ) : (
+      ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map(a => (
             <Card key={a.id} className="cursor-pointer hover:border-primary/40 transition-colors" onClick={() => onOpen(a)}>
@@ -768,6 +788,96 @@ function AssetList({
               </CardContent>
             </Card>
           ))}
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-2">
+          {filtered.map(a => (
+            <div
+              key={a.id}
+              role="button"
+              onClick={() => onOpen(a)}
+              className="rounded-md border p-3 hover:bg-accent/40 transition-colors cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-xs font-mono text-muted-foreground truncate">{a.code}</div>
+                  <div className="font-semibold truncate">{a.name}</div>
+                </div>
+                <Badge variant="outline" className={STATUS_BADGE[a.status]}>{t(`maintenance.status.${a.status}`)}</Badge>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground truncate">
+                {a.type_name_en ?? '—'} · {a.branch_name ?? '—'}
+              </div>
+              {canManage(a) && (
+                <div className="flex gap-1 pt-2" onClick={e => e.stopPropagation()}>
+                  <Button size="sm" variant="outline" onClick={() => onEdit(a)}>
+                    <Pencil className="h-3.5 w-3.5 mr-1" />{t('common.edit')}
+                  </Button>
+                  {(isOwner || a.status !== 'archived') && (
+                    <Button size="sm" variant="outline" onClick={() => onArchiveToggle(a)}>
+                      {a.status === 'archived'
+                        ? <><ArchiveRestore className="h-3.5 w-3.5 mr-1" />{t('maintenance.actions.restore')}</>
+                        : <><Archive className="h-3.5 w-3.5 mr-1" />{t('maintenance.actions.archive')}</>}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="h-10">{t('maintenance.fields.code')}</TableHead>
+                <TableHead className="h-10">{t('maintenance.fields.name')}</TableHead>
+                <TableHead className="h-10">{t('maintenance.fields.branch')}</TableHead>
+                <TableHead className="h-10">{t('maintenance.fields.department')}</TableHead>
+                <TableHead className="h-10">{t('maintenance.fields.type')}</TableHead>
+                <TableHead className="h-10">{t('maintenance.fields.status')}</TableHead>
+                <TableHead className="h-10">{t('maintenance.fields.lastUpdated')}</TableHead>
+                <TableHead className="h-10 text-right">{t('common.actions', 'Actions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(a => (
+                <TableRow
+                  key={a.id}
+                  className="cursor-pointer"
+                  onClick={() => onOpen(a)}
+                >
+                  <TableCell className="py-2 font-mono text-xs text-muted-foreground">{a.code}</TableCell>
+                  <TableCell className="py-2 font-medium">{a.name}</TableCell>
+                  <TableCell className="py-2">{a.branch_name ?? '—'}</TableCell>
+                  <TableCell className="py-2 capitalize">{a.department}</TableCell>
+                  <TableCell className="py-2">{a.type_name_en ?? '—'}</TableCell>
+                  <TableCell className="py-2">
+                    <Badge variant="outline" className={STATUS_BADGE[a.status]}>
+                      {t(`maintenance.status.${a.status}`)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-2 text-muted-foreground text-xs">{fmtDate(a.updated_at)}</TableCell>
+                  <TableCell className="py-2 text-right" onClick={e => e.stopPropagation()}>
+                    {canManage(a) ? (
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => onEdit(a)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        {(isOwner || a.status !== 'archived') && (
+                          <Button size="sm" variant="ghost" onClick={() => onArchiveToggle(a)}>
+                            {a.status === 'archived'
+                              ? <ArchiveRestore className="h-3.5 w-3.5" />
+                              : <Archive className="h-3.5 w-3.5" />}
+                          </Button>
+                        )}
+                      </div>
+                    ) : <span className="text-muted-foreground text-xs">—</span>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>
