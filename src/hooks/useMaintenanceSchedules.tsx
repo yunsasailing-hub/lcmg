@@ -89,18 +89,35 @@ export function useUpsertMaintenanceSchedule() {
           .from('maintenance_schedule_templates')
           .update(cleaned as MaintenanceScheduleTemplateUpdate)
           .eq('id', id)
-          .select()
-          .single();
+          .select();
         if (error) throw error;
-        return data;
+        const rows = (data ?? []) as MaintenanceScheduleTemplate[];
+        if (rows.length === 0) {
+          throw new Error('Update failed: schedule not found or you lack permission to edit it.');
+        }
+        if (rows.length > 1) {
+          // Safety: should never happen because id is the PK, but guard anyway.
+          console.warn(
+            `[useUpsertMaintenanceSchedule] Expected 1 row for id=${id}, got ${rows.length}. Using first.`,
+          );
+        }
+        return rows[0];
       }
       const { data, error } = await supabase
         .from('maintenance_schedule_templates')
         .insert(cleaned as MaintenanceScheduleTemplateInsert)
-        .select()
-        .single();
+        .select();
       if (error) throw error;
-      return data;
+      const rows = (data ?? []) as MaintenanceScheduleTemplate[];
+      if (rows.length === 0) {
+        throw new Error('Insert failed: no row returned.');
+      }
+      if (rows.length > 1) {
+        console.warn(
+          `[useUpsertMaintenanceSchedule] Insert returned ${rows.length} rows. Using first.`,
+        );
+      }
+      return rows[0];
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
