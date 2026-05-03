@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   LayoutDashboard, GraduationCap, ClipboardCheck, CookingPot,
-  Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal, ChefHat, LifeBuoy, FileText,
+  Package, Wrench, Settings, ChevronLeft, Menu, LogOut, MoreHorizontal, ChefHat, LifeBuoy, FileText, KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -156,6 +156,15 @@ function SidebarNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () 
             <LanguageSwitcher />
           </div>
         )}
+        <button
+          type="button"
+          disabled
+          title="Password change will be available later."
+          className={cn('nav-item w-full opacity-60 cursor-not-allowed', collapsed && 'justify-center px-0')}
+        >
+          <KeyRound className="h-5 w-5 shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">Change Password</span>}
+        </button>
         <button
           onClick={() => signOut()}
           className={cn('nav-item w-full', collapsed && 'justify-center px-0')}
