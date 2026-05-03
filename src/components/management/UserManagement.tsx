@@ -14,9 +14,11 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
-  Search, Filter, ChevronDown, ChevronUp, Pencil, Shield, UserCheck, UserX,
+  Search, Filter, ChevronDown, ChevronUp, Pencil, Shield, UserCheck, UserX, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
@@ -246,6 +248,15 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<EnrichedProfile | null>(null);
   const [changingRole, setChangingRole] = useState<EnrichedProfile | null>(null);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
+  type SortKey = 'name' | 'role' | 'department' | 'branch' | 'status';
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const isMobile = useIsMobile();
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
+  };
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['user-management'],
@@ -298,6 +309,68 @@ export default function UserManagement() {
 
     return result;
   }, [profiles, search, filters]);
+
+  const ROLE_RANK: Record<string, number> = { owner: 0, manager: 1, staff: 2 };
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    arr.sort((a, b) => {
+      let av: string | number = '';
+      let bv: string | number = '';
+      switch (sortKey) {
+        case 'name':
+          av = (a.full_name || '').toLowerCase();
+          bv = (b.full_name || '').toLowerCase();
+          break;
+        case 'role':
+          av = ROLE_RANK[a.roles[0] ?? 'staff'] ?? 99;
+          bv = ROLE_RANK[b.roles[0] ?? 'staff'] ?? 99;
+          break;
+        case 'department':
+          av = (a.department || '').toLowerCase();
+          bv = (b.department || '').toLowerCase();
+          break;
+        case 'branch':
+          av = (a.branch_id ? branchMap[a.branch_id] || '' : '').toLowerCase();
+          bv = (b.branch_id ? branchMap[b.branch_id] || '' : '').toLowerCase();
+          break;
+        case 'status':
+          av = a.is_active === false ? 1 : 0;
+          bv = b.is_active === false ? 1 : 0;
+          break;
+      }
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir, branchMap]);
+
+  const SortIndicator = ({ k }: { k: SortKey }) =>
+    sortKey === k ? (
+      sortDir === 'asc' ? <ArrowUp className="inline h-3 w-3 ml-1" /> : <ArrowDown className="inline h-3 w-3 ml-1" />
+    ) : null;
+
+  const renderActions = (user: EnrichedProfile) => (
+    <div className="flex items-center gap-1 shrink-0">
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit user" onClick={() => setEditingUser(user)}>
+        <Pencil className="h-4 w-4" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="Change role" onClick={() => setChangingRole(user)}>
+        <Shield className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        title={user.is_active ? 'Deactivate' : 'Activate'}
+        onClick={() => toggleActiveMutation.mutate({ user_id: user.user_id, is_active: !user.is_active })}
+        disabled={togglingUserId === user.user_id}
+      >
+        {user.is_active ? <UserX className="h-4 w-4 text-destructive" /> : <UserCheck className="h-4 w-4 text-success" />}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -371,7 +444,7 @@ export default function UserManagement() {
 
       {/* Stats */}
       <p className="text-sm text-muted-foreground">
-        {filtered.length} user{filtered.length !== 1 ? 's' : ''} found
+        {sorted.length} user{sorted.length !== 1 ? 's' : ''} found
       </p>
 
       {/* User List */}
@@ -381,96 +454,113 @@ export default function UserManagement() {
         <Alert variant="destructive">
           <AlertDescription>{error instanceof Error ? error.message : 'Failed to load team members.'}</AlertDescription>
         </Alert>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">No users match your criteria.</div>
-      ) : (
+      ) : isMobile ? (
         <div className="space-y-2">
-          {filtered.map(user => {
+          {sorted.map(user => {
             const initials = (user.full_name || '?').slice(0, 2).toUpperCase();
             const primaryRole = user.roles[0];
             const roleBadge = primaryRole ? ROLE_BADGE[primaryRole] : null;
-
+            const branchName = user.branch_id ? branchMap[user.branch_id] : null;
+            const isActive = user.is_active !== false;
             return (
-              <div
-                key={user.user_id}
-                className={cn(
-                  'rounded-lg border bg-card p-4 transition-colors',
-                  !user.is_active && 'opacity-60',
-                )}
-              >
+              <div key={user.user_id} className={cn('rounded-lg border bg-card p-3', !isActive && 'opacity-60')}>
                 <div className="flex items-start gap-3">
-                  <Avatar className="h-10 w-10 shrink-0">
+                  <Avatar className="h-9 w-9 shrink-0">
                     <AvatarFallback className="text-xs font-semibold">{initials}</AvatarFallback>
                   </Avatar>
-
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-foreground truncate">{user.full_name || 'Unnamed'}</p>
                       {roleBadge && (
-                        <Badge className={cn('text-[10px] px-1.5 py-0', roleBadge.className)}>
-                          {roleBadge.label}
-                        </Badge>
+                        <Badge className={cn('text-[10px] px-1.5 py-0', roleBadge.className)}>{roleBadge.label}</Badge>
                       )}
-                      {!user.is_active && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-destructive text-destructive">
-                          Inactive
-                        </Badge>
-                      )}
-                      {!user.department && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-warning text-warning-foreground bg-warning/20" title="This user has no department assigned">
-                          ⚠ No department
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', !isActive && 'border-destructive text-destructive')}>
+                        {isActive ? 'Active' : 'Inactive'}
+                      </Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      {user.email && <p>{user.email}</p>}
-                      <p className="capitalize">
-                        {[user.position, user.department, user.branch_id ? branchMap[user.branch_id] : null]
-                          .filter(Boolean)
-                          .join(' · ') || 'No details'}
-                      </p>
-                      {user.phone && <p>{user.phone}</p>}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      title="Edit user"
-                      onClick={() => setEditingUser(user)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      title="Change role"
-                      onClick={() => setChangingRole(user)}
-                    >
-                      <Shield className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      title={user.is_active ? 'Deactivate' : 'Activate'}
-                      onClick={() => toggleActiveMutation.mutate({ user_id: user.user_id, is_active: !user.is_active })}
-                      disabled={togglingUserId === user.user_id}
-                    >
-                      {user.is_active
-                        ? <UserX className="h-4 w-4 text-destructive" />
-                        : <UserCheck className="h-4 w-4 text-success" />
-                      }
-                    </Button>
+                    {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+                    {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {user.department || 'No department'} · {branchName || 'No branch'}
+                    </p>
+                    <div className="pt-1">{renderActions(user)}</div>
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      ) : (
+        <div className="rounded-lg border bg-card overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
+                  Name<SortIndicator k="name" />
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('role')}>
+                  Role<SortIndicator k="role" />
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('department')}>
+                  Department<SortIndicator k="department" />
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('branch')}>
+                  Branch<SortIndicator k="branch" />
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('status')}>
+                  Status<SortIndicator k="status" />
+                </TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sorted.map(user => {
+                const initials = (user.full_name || '?').slice(0, 2).toUpperCase();
+                const primaryRole = user.roles[0];
+                const roleBadge = primaryRole ? ROLE_BADGE[primaryRole] : null;
+                const branchName = user.branch_id ? branchMap[user.branch_id] : null;
+                const isActive = user.is_active !== false;
+                return (
+                  <TableRow key={user.user_id} className={cn(!isActive && 'opacity-60')}>
+                    <TableCell className="py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar className="h-8 w-8 shrink-0">
+                          <AvatarFallback className="text-[10px] font-semibold">{initials}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{user.full_name || 'Unnamed'}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {user.email || '—'}{user.phone ? ` · ${user.phone}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {roleBadge ? (
+                        <Badge className={cn('text-[10px] px-1.5 py-0', roleBadge.className)}>{roleBadge.label}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2 capitalize text-sm">
+                      {user.department || <span className="text-muted-foreground">No department</span>}
+                    </TableCell>
+                    <TableCell className="py-2 text-sm">
+                      {branchName || <span className="text-muted-foreground">No branch</span>}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', !isActive && 'border-destructive text-destructive')}>
+                        {isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-2 text-right">{renderActions(user)}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
 
