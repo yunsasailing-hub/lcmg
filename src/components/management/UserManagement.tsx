@@ -27,6 +27,9 @@ import { invokeManageRoles } from '@/lib/manageRoles';
 type AppRole = Database['public']['Enums']['app_role'];
 type Department = Database['public']['Enums']['department'];
 
+const ALL_BRANCHES_ID = '00000000-0000-0000-0000-000000000001';
+const ALL_BRANCHES_LABEL = 'ALL BRANCHES';
+
 interface EnrichedProfile {
   id: string;
   user_id: string;
@@ -286,6 +289,17 @@ export default function UserManagement() {
     return map;
   }, [branches]);
 
+  // Sort branches for selectors: ALL BRANCHES first, then alphabetical
+  const sortedBranches = useMemo(() => {
+    const arr = [...branches];
+    arr.sort((a, b) => {
+      if (a.id === ALL_BRANCHES_ID) return -1;
+      if (b.id === ALL_BRANCHES_ID) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    return arr;
+  }, [branches]);
+
   const filtered = useMemo(() => {
     let result = profiles;
 
@@ -331,8 +345,16 @@ export default function UserManagement() {
           bv = (b.department || '').toLowerCase();
           break;
         case 'branch':
-          av = (a.branch_id ? branchMap[a.branch_id] || '' : '').toLowerCase();
-          bv = (b.branch_id ? branchMap[b.branch_id] || '' : '').toLowerCase();
+          // ALL BRANCHES sorts first, then alphabetical, empty last
+          {
+            const rank = (id: string | null) => {
+              if (id === ALL_BRANCHES_ID) return '0';
+              if (!id) return '2';
+              return '1' + (branchMap[id] || '').toLowerCase();
+            };
+            av = rank(a.branch_id);
+            bv = rank(b.branch_id);
+          }
           break;
         case 'status':
           av = a.is_active === false ? 1 : 0;
