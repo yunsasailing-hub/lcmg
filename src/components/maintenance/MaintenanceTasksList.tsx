@@ -416,6 +416,9 @@ function TaskCompletionDialog({
   const [note, setNote] = useState(task.note ?? '');
   const [uploading, setUploading] = useState(false);
   const [attempted, setAttempted] = useState(false);
+  const [executionDate, setExecutionDate] = useState<string>(
+    (task as any).execution_date ?? todayLocalISO(),
+  );
 
   // Advanced / Technical Details (all optional)
   const initialAdv = task as any;
@@ -496,6 +499,7 @@ function TaskCompletionDialog({
         spare_parts: spareParts,
         technical_note: technicalNote,
         additional_photos: restPhotos,
+        execution_date: executionDate || todayLocalISO(),
       });
       toast.success('Maintenance task completed');
       onOpenChange(false);
