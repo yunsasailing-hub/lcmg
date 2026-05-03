@@ -13,6 +13,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
@@ -100,7 +104,11 @@ function EditUserDialog({
 }) {
   const queryClient = useQueryClient();
   const currentRole: AppRole = getRole(user);
-  const usernameLocked = !!(user.username && user.username.trim() !== '');
+  // Administrator can override the lock; for everyone else once a username is set it is locked.
+  const hasExistingUsername = !!(user.username && user.username.trim() !== '');
+  const usernameLocked = hasExistingUsername && !canAssignAdministrator;
+  const isAdminOverride = hasExistingUsername && canAssignAdministrator;
+  const [confirmAdminUsernameOpen, setConfirmAdminUsernameOpen] = useState(false);
   const [form, setForm] = useState({
     full_name: user.full_name || '',
     email: user.email || '',
@@ -132,7 +140,7 @@ function EditUserDialog({
         branch_id: profileFields.branch_id || null,
         department: profileFields.department || null,
       };
-      // Only send username if not locked (i.e. still empty / setup phase)
+      // Send username if editable: setup phase (no existing) OR administrator override.
       if (!usernameLocked) {
         payload.username = username.trim().toLowerCase();
       }
@@ -165,6 +173,14 @@ function EditUserDialog({
         setUsernameError(err);
         return;
       }
+    }
+    // Administrator changing an existing username → confirm first.
+    if (
+      isAdminOverride &&
+      form.username.trim().toLowerCase() !== (user.username || '').trim().toLowerCase()
+    ) {
+      setConfirmAdminUsernameOpen(true);
+      return;
     }
     updateMutation.mutate();
   };
@@ -203,6 +219,10 @@ function EditUserDialog({
             {usernameLocked ? (
               <p className="text-xs text-muted-foreground mt-1">
                 Username cannot be changed after creation.
+              </p>
+            ) : isAdminOverride ? (
+              <p className="text-xs text-amber-600 mt-1">
+                ⚠️ Changing username will affect login access.
               </p>
             ) : usernameError ? (
               <p className="text-xs text-destructive mt-1">{usernameError}</p>
@@ -276,6 +296,27 @@ function EditUserDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <AlertDialog open={confirmAdminUsernameOpen} onOpenChange={setConfirmAdminUsernameOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change username?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Changing username will affect login access. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmAdminUsernameOpen(false);
+                updateMutation.mutate();
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
