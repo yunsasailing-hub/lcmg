@@ -510,8 +510,14 @@ export default function UserManagement() {
                     </div>
                     {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
                     {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
-                    <p className="text-xs text-muted-foreground capitalize">
-                      {user.department || 'No department'} · {branchName || 'No branch'}
+                    <p className="text-xs text-muted-foreground capitalize flex items-center gap-1 flex-wrap">
+                      <span>{user.department || 'No department'}</span>
+                      <span>·</span>
+                      {user.branch_id === ALL_BRANCHES_ID ? (
+                        <Badge className="text-[10px] px-1.5 py-0 bg-primary text-primary-foreground">{ALL_BRANCHES_LABEL}</Badge>
+                      ) : (
+                        <span>{branchName || 'No branch'}</span>
+                      )}
                     </p>
                     <div className="pt-1">{renderActions(user)}</div>
                   </div>
@@ -576,7 +582,11 @@ export default function UserManagement() {
                       {user.department || <span className="text-muted-foreground">No department</span>}
                     </TableCell>
                     <TableCell className="py-2 text-sm">
-                      {branchName || <span className="text-muted-foreground">No branch</span>}
+                      {user.branch_id === ALL_BRANCHES_ID ? (
+                        <Badge className="text-[10px] px-1.5 py-0 bg-primary text-primary-foreground">{ALL_BRANCHES_LABEL}</Badge>
+                      ) : (
+                        branchName || <span className="text-muted-foreground">No branch</span>
+                      )}
                     </TableCell>
                     <TableCell className="py-2">
                       <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', !isActive && 'border-destructive text-destructive')}>
