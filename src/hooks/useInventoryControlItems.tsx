@@ -25,7 +25,8 @@ export function useInventoryControlItems(opts?: {
       let q = supabase
         .from('inventory_control_items')
         .select('*, branches(name)')
-        .order('item_name');
+        .order('item_code', { ascending: true, nullsFirst: false })
+        .order('item_name', { ascending: true });
       if (activeOnly) q = q.eq('is_active', true);
       if (controlListId) q = q.eq('control_list_id', controlListId);
       const { data, error } = await q;

@@ -14,8 +14,15 @@ import {
 } from '@/hooks/useInventoryRequests';
 import { useInventoryControlItems } from '@/hooks/useInventoryControlItems';
 import { useInventoryControlLists } from '@/hooks/useInventoryControlLists';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Trash2, ListChecks } from 'lucide-react';
+
+/** Strip cosmetic suffixes like "_std" or "_€" from unit labels for display only. */
+function cleanUnit(u: string | null | undefined): string {
+  if (!u) return '';
+  return String(u).replace(/_std\b/gi, '').replace(/_€/g, '').replace(/_\$/g, '').trim();
+}
 
 interface RowState {
   id?: string;
@@ -90,7 +97,7 @@ export default function InventoryWeeklySheet({
     (initial?.items ?? []).forEach((it: any) => {
       if (it.inventory_control_item_id) byControlId.set(it.inventory_control_item_id, it);
     });
-    return controlItems.map(ci => {
+    const list = controlItems.map(ci => {
       const existing = byControlId.get(ci.id);
       return {
         id: existing?.id,
@@ -108,6 +115,12 @@ export default function InventoryWeeklySheet({
         note: existing?.note ?? '',
       };
     });
+    list.sort((a, b) => {
+      const ac = a.item_code || '\uffff';
+      const bc = b.item_code || '\uffff';
+      return ac.localeCompare(bc, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    return list;
   }, [controlItems, initial]);
 
   // Local edits keyed by control_item_id
@@ -211,6 +224,33 @@ export default function InventoryWeeklySheet({
         notes: null,
         items,
       });
+
+      // History log: append a snapshot row per coded item on Submit to Owner.
+      if (status === 'Submitted' && user?.id) {
+        const records = rows
+          .filter(r => r.item_code)
+          .map(r => {
+            const e = edits[r.control_item_id] ?? { stock: '', order_request: '', note: '' };
+            return {
+              date: requestDate,
+              branch_id: branchId,
+              control_list_id: controlListId,
+              item_code: r.item_code,
+              item_name: r.item_name,
+              stock: e.stock ? Number(e.stock) : null,
+              min_stock: r.min_stock,
+              recommended_order: r.recommended_order,
+              order_qty: e.order_request ? Number(e.order_request) : null,
+              note: e.note?.trim() || null,
+              created_by: user.id,
+            };
+          });
+        if (records.length) {
+          const { error: recErr } = await (supabase as any).from('inventory_records').insert(records);
+          if (recErr) console.warn('inventory_records insert failed', recErr);
+        }
+      }
+
       toast.success(status === 'Submitted' ? 'Submitted to Owner' : 'Draft saved');
       onDone?.();
     } catch (e: any) {
@@ -313,7 +353,7 @@ export default function InventoryWeeklySheet({
                     <td className="py-1.5 px-2 font-mono text-[11px]">{r.item_code || '—'}</td>
                     <td className="py-1.5 px-2">
                       <div className="font-medium">{r.item_name}</div>
-                      {r.unit && <div className="text-[11px] text-muted-foreground">{r.unit}</div>}
+                      {cleanUnit(r.unit) && <div className="text-[11px] text-muted-foreground">{cleanUnit(r.unit)}</div>}
                     </td>
                     <td className="py-1.5 px-2 text-muted-foreground hidden md:table-cell">{r.remarks || '—'}</td>
                     <td className="py-1.5 px-2">
