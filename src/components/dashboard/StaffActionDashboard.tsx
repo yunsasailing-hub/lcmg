@@ -295,6 +295,13 @@ export default function StaffActionDashboard() {
     else it.onOpen?.();
   };
 
+  const startEarly = (it: ActionItem) => {
+    if (it.earlyPayload) {
+      setPreviewTask(null);
+      setEarlyPayload(it.earlyPayload);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {overdue.length > 0 && (
@@ -313,7 +320,11 @@ export default function StaffActionDashboard() {
         </Section>
       )}
 
-      <PreviewDialog item={previewTask} onClose={() => setPreviewTask(null)} />
+      <PreviewDialog
+        item={previewTask}
+        onClose={() => setPreviewTask(null)}
+        onCompleteEarly={startEarly}
+      />
       {earlyPayload && (
         <TaskCompletionDialog
           preview={earlyPayload}
