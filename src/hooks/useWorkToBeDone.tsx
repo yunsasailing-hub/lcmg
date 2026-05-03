@@ -9,6 +9,20 @@ export type WtbdUpdate = Database['public']['Tables']['maintenance_work_to_be_do
 export type WtbdPriority = Database['public']['Enums']['wtbd_priority'];
 export type WtbdStatus = Database['public']['Enums']['wtbd_status'];
 export type WtbdTargetOccasion = Database['public']['Enums']['wtbd_target_occasion'];
+export type WorkArea = Database['public']['Enums']['work_area'];
+
+export const WORK_AREAS: WorkArea[] = [
+  'Electrical',
+  'Plumbing',
+  'Construction / Finishing',
+  'Carpentry / Metal Work',
+  'Equipment / Machinery',
+  'Cooling & Ventilation',
+  'Cleaning / Pest Control',
+  'IT / System',
+  'General / Other',
+];
+export const DEFAULT_WORK_AREA: WorkArea = 'General / Other';
 
 export const WTBD_PRIORITIES: WtbdPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
 export const WTBD_STATUSES: WtbdStatus[] = ['Open', 'Postponed', 'In Progress', 'Completed', 'Cancelled'];
