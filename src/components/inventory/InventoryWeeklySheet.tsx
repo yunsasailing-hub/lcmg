@@ -15,7 +15,7 @@ import {
 import { useInventoryControlItems } from '@/hooks/useInventoryControlItems';
 import { useInventoryControlLists } from '@/hooks/useInventoryControlLists';
 import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ListChecks } from 'lucide-react';
 
 interface RowState {
   id?: string;
@@ -42,20 +42,29 @@ interface ExtraRow {
 }
 
 export default function InventoryWeeklySheet({
-  initial, onDone,
+  initial, onDone, onRequestCreateControlList,
 }: {
   initial?: InventoryRequestWithItems | null;
   onDone?: () => void;
+  onRequestCreateControlList?: (branchId: string) => void;
 }) {
   const { profile, user } = useAuth();
   const { data: branches = [] } = useBranchesAll();
   const upsert = useUpsertInventoryRequest();
 
+  // Weekly Sheet must target a real branch — exclude the synthetic "ALL BRANCHES" entry.
+  const ALL_BRANCHES_ID = '00000000-0000-0000-0000-000000000001';
+  const selectableBranches = useMemo(
+    () => branches.filter(b => b.id !== ALL_BRANCHES_ID && b.name?.toUpperCase() !== 'ALL BRANCHES'),
+    [branches],
+  );
+
   const [requestDate, setRequestDate] = useState(
     initial?.request_date ?? new Date().toISOString().slice(0, 10),
   );
   const [branchId, setBranchId] = useState<string>(
-    initial?.branch_id ?? profile?.branch_id ?? '',
+    (initial?.branch_id && initial.branch_id !== ALL_BRANCHES_ID ? initial.branch_id : '')
+      || (profile?.branch_id && profile.branch_id !== ALL_BRANCHES_ID ? profile.branch_id : ''),
   );
   const [controlListId, setControlListId] = useState<string>(
     (initial?.items?.find((it: any) => it.control_list_id)?.control_list_id as string) ?? '',
