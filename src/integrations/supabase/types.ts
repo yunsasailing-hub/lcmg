@@ -1015,6 +1015,54 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_records: {
+        Row: {
+          branch_id: string | null
+          control_list_id: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          item_code: string | null
+          item_name: string
+          min_stock: number | null
+          note: string | null
+          order_qty: number | null
+          recommended_order: number | null
+          stock: number | null
+        }
+        Insert: {
+          branch_id?: string | null
+          control_list_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          item_code?: string | null
+          item_name: string
+          min_stock?: number | null
+          note?: string | null
+          order_qty?: number | null
+          recommended_order?: number | null
+          stock?: number | null
+        }
+        Update: {
+          branch_id?: string | null
+          control_list_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          item_code?: string | null
+          item_name?: string
+          min_stock?: number | null
+          note?: string | null
+          order_qty?: number | null
+          recommended_order?: number | null
+          stock?: number | null
+        }
+        Relationships: []
+      }
       inventory_request_items: {
         Row: {
           actual_stock: number | null
