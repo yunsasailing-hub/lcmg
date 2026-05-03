@@ -723,6 +723,7 @@ export default function InventoryControlList() {
         open={bulkOpen} onOpenChange={setBulkOpen}
         controlList={currentList}
         allItems={allItems}
+        allLists={allLists}
       />
 
       <ImportPreviewDialog
