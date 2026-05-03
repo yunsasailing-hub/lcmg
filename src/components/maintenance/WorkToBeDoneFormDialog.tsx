@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Plus, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { useActiveUsersForAssignment } from '@/hooks/useChecklists';
 import {
   useUpsertWtbd,
   useDeleteWtbd,
+  useWtbdUpdates,
+  useAddWtbdUpdate,
   WTBD_PRIORITIES,
   WTBD_STATUSES,
   WTBD_OCCASIONS,
@@ -43,6 +45,41 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
 
   const isLocked = !!initial && (initial.status === 'Completed' || initial.status === 'Cancelled');
   const canDelete = isOwner;
+
+  const { data: updates = [], isLoading: updatesLoading } = useWtbdUpdates(initial?.id);
+  const addUpdate = useAddWtbdUpdate();
+  const [updateOpen, setUpdateOpen] = useState(false);
+  const [updateNote, setUpdateNote] = useState('');
+  const [updatePhoto, setUpdatePhoto] = useState<File | null>(null);
+
+  const handleSaveUpdate = async () => {
+    if (!initial) return;
+    if (!updateNote.trim()) return toast.error('Update note is required');
+    if (!profile?.user_id) return toast.error('Not signed in');
+    try {
+      await addUpdate.mutateAsync({
+        jobId: initial.id,
+        note: updateNote.trim(),
+        photo: updatePhoto,
+        userId: profile.user_id,
+      });
+      toast.success('Progress update added');
+      setUpdateNote('');
+      setUpdatePhoto(null);
+      setUpdateOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to add update');
+    }
+  };
+
+  const fmtDateTime = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh',
+      });
+    } catch { return iso; }
+  };
 
   const [form, setForm] = useState(() => ({
     title: initial?.title ?? '',
@@ -207,8 +244,71 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
 
           {initial && (
             <div className="sm:col-span-2 mt-2 border-t pt-3">
-              <div className="text-sm font-medium mb-2">Progress Updates</div>
-              <p className="text-xs text-muted-foreground">No progress update yet.</p>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium">Progress Updates / Situation History</div>
+                {!isLocked && !updateOpen && (
+                  <Button size="sm" variant="outline" onClick={() => setUpdateOpen(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />Add Update
+                  </Button>
+                )}
+              </div>
+
+              {updateOpen && (
+                <div className="rounded-md border p-3 space-y-2 mb-3 bg-muted/30">
+                  <Textarea
+                    rows={3}
+                    placeholder="Describe progress, blockers, or notes..."
+                    value={updateNote}
+                    onChange={e => setUpdateNote(e.target.value)}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => setUpdatePhoto(e.target.files?.[0] ?? null)}
+                      className="text-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" variant="ghost" onClick={() => { setUpdateOpen(false); setUpdateNote(''); setUpdatePhoto(null); }}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSaveUpdate} disabled={addUpdate.isPending || !updateNote.trim()}>
+                      {addUpdate.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                      Save Update
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {updatesLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : updates.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No progress update yet.</p>
+              ) : (
+                <ol className="space-y-2">
+                  {updates.map(u => (
+                    <li key={u.id} className="rounded-md border p-2.5 bg-card">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {fmtDateTime(u.created_at)} — {u.author_username || 'Unknown'}
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap break-words">{u.update_note}</div>
+                      {u.photo_url && (
+                        <a href={u.photo_url} target="_blank" rel="noreferrer" className="inline-block mt-2">
+                          <img
+                            src={u.photo_url}
+                            alt="Update"
+                            loading="lazy"
+                            className="h-20 w-20 object-cover rounded-md border hover:opacity-90"
+                          />
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           )}
         </div>
