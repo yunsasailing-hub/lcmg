@@ -105,9 +105,104 @@ Deno.serve(async (req) => {
     }
 
     // All remaining actions require owner role
-    if (!isOwner) {
+    // (create_user is administrator-only and checked separately)
+    if (action !== "create_user" && !isOwner) {
       return new Response(JSON.stringify({ error: "Only owners can manage roles" }), {
         status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── CREATE_USER: Administrator only ───
+    if (action === "create_user") {
+      if (!isAdministrator) {
+        return new Response(JSON.stringify({ ok: false, error: "Only Administrator can create users." }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { email, password, full_name, username, phone, department, position, branch_id, role } = params;
+      if (!email || !password || !full_name) {
+        return new Response(JSON.stringify({ ok: false, error: "Email, password, and full name are required." }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const uname = (username ?? "").toString().trim().toLowerCase();
+      if (uname && !/^[a-z0-9_-]{3,32}$/.test(uname)) {
+        return new Response(JSON.stringify({ ok: false, error: "Username must be 3–32 chars: lowercase letters, numbers, dash, underscore only." }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Create auth user with confirmed email so they can log in immediately.
+      const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: String(email).trim(),
+        password: String(password),
+        email_confirm: true,
+        user_metadata: {
+          full_name,
+          phone: phone || null,
+          department: department || null,
+          position: position || null,
+        },
+      });
+      if (createErr || !created?.user) {
+        return new Response(JSON.stringify({ ok: false, error: createErr?.message || "Failed to create user" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const newUserId = created.user.id;
+
+      // Update profile with username + branch (handle_new_user trigger created the row)
+      const profileUpdate: Record<string, any> = {};
+      if (uname) profileUpdate.username = uname;
+      if (branch_id !== undefined) profileUpdate.branch_id = branch_id || null;
+      if (Object.keys(profileUpdate).length > 0) {
+        const { error: pErr } = await supabaseAdmin
+          .from("profiles")
+          .update(profileUpdate)
+          .eq("user_id", newUserId);
+        if (pErr) {
+          // Roll back auth user on failure to keep state consistent
+          await supabaseAdmin.auth.admin.deleteUser(newUserId);
+          const m = (pErr.message || "").toLowerCase();
+          if (m.includes("profiles_username_unique") || (pErr as any).code === "23505") {
+            return new Response(JSON.stringify({ ok: false, error: "This username already exists." }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          if (m.includes("invalid_username")) {
+            return new Response(JSON.stringify({ ok: false, error: "Username must be 3–32 chars: lowercase letters, numbers, dash, underscore only." }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify({ ok: false, error: pErr.message }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // Assign role (default: staff). Administrator role only assignable here by another administrator (which caller is).
+      const assignRole = (role || "staff").toString();
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
+      const { error: rErr } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: newUserId, role: assignRole });
+      if (rErr) {
+        return new Response(JSON.stringify({ ok: true, user_id: newUserId, warning: `User created but role assignment failed: ${rErr.message}` }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true, user_id: newUserId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
