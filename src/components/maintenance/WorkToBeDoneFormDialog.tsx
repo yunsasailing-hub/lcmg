@@ -187,6 +187,19 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
             </Select>
           </div>
           <div>
+            <Label>Work Area *</Label>
+            <Select value={form.work_area} onValueChange={v => update('work_area', v as WorkArea)} disabled={isLocked}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {WORK_AREAS.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Area / Equipment</Label>
+            <Input value={form.area_or_equipment} onChange={e => update('area_or_equipment', e.target.value)} disabled={isLocked} />
+          </div>
+          <div>
             <Label>Priority *</Label>
             <Select value={form.priority} onValueChange={v => update('priority', v as WtbdPriority)} disabled={isLocked}>
               <SelectTrigger><SelectValue /></SelectTrigger>
