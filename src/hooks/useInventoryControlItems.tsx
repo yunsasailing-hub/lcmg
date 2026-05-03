@@ -15,16 +15,18 @@ export function useInventoryControlItems(opts?: {
   activeOnly?: boolean;
   branchId?: string | null;
   department?: string | null;
+  controlListId?: string | null;
 }) {
-  const { activeOnly, branchId, department } = opts ?? {};
+  const { activeOnly, branchId, department, controlListId } = opts ?? {};
   return useQuery({
-    queryKey: ['inventory_control_items', { activeOnly, branchId, department }],
+    queryKey: ['inventory_control_items', { activeOnly, branchId, department, controlListId }],
     queryFn: async (): Promise<EnrichedControlItem[]> => {
       let q = supabase
         .from('inventory_control_items')
         .select('*, branches(name)')
         .order('item_name');
       if (activeOnly) q = q.eq('is_active', true);
+      if (controlListId) q = q.eq('control_list_id', controlListId);
       const { data, error } = await q;
       if (error) throw error;
       let rows = (data ?? []).map((r: any) => ({
@@ -52,6 +54,7 @@ export interface UpsertControlItemPayload {
   remarks?: string | null;
   min_stock?: number | null;
   recommended_order?: number | null;
+  control_list_id?: string | null;
 }
 
 export function useUpsertInventoryControlItem() {
@@ -72,6 +75,7 @@ export function useUpsertInventoryControlItem() {
         remarks: p.remarks ?? null,
         min_stock: p.min_stock ?? null,
         recommended_order: p.recommended_order ?? null,
+        control_list_id: p.control_list_id ?? null,
       };
       if (p.id) {
         const { error } = await supabase
