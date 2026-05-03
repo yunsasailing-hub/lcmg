@@ -125,8 +125,8 @@ function ArchiveRow({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground pl-6">
           <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="text-foreground font-medium">{branchLabel}</span></span>
           <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{instance.checklist_type}</span></span>
-          {instance.assignee?.full_name && (
-            <span className="inline-flex items-center gap-1"><UserIcon className="h-3 w-3" /><span className="text-foreground font-medium truncate max-w-[180px]">{instance.assignee.full_name}</span></span>
+          {instance.assignee && (
+            <span className="inline-flex items-center gap-1"><UserIcon className="h-3 w-3" /><span className="text-foreground font-mono truncate max-w-[180px]">{instance.assignee.username ? `@${instance.assignee.username}` : '⚠️ no username'}</span></span>
           )}
           {completedAt && (
             <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /><span className="text-foreground font-medium">{formatVNDateTime(completedAt)}</span></span>
@@ -210,10 +210,10 @@ function ArchiveDetailDialog({
               <span className="capitalize">{instance?.department}</span>
               <span>·</span>
               <span>{branchLabel}</span>
-              {instance?.assignee?.full_name && (
+              {instance?.assignee && (
                 <>
                   <span>·</span>
-                  <span>By {instance.assignee.full_name}</span>
+                  <span className="font-mono">By {instance.assignee.username ? `@${instance.assignee.username}` : '⚠️ no username'}</span>
                 </>
               )}
               {submittedAt && (
