@@ -1,5 +1,6 @@
 // Multi-Control-List editor. Each Control List groups items for one Branch + Department.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
 import {
   Plus, Trash2, Power, PowerOff, Save, Upload, Download, FileDown,
@@ -26,7 +27,7 @@ import {
 } from '@/hooks/useInventoryControlItems';
 import {
   useInventoryControlLists, useUpsertInventoryControlList, useDeleteInventoryControlList,
-  type EnrichedControlList,
+  type EnrichedControlList, type SavedControlList,
 } from '@/hooks/useInventoryControlLists';
 import { toast } from 'sonner';
 
@@ -72,9 +73,10 @@ function parseActive(v: any): boolean {
 
 export default function InventoryControlList() {
   const { hasRole } = useAuth();
+  const queryClient = useQueryClient();
   const isOwner = hasRole('owner');
   const { data: branches = [] } = useBranchesAll();
-  const { data: allLists = [] } = useInventoryControlLists();
+  const { data: allLists = [], refetch: refetchAllLists } = useInventoryControlLists();
   const upsertList = useUpsertInventoryControlList();
   const deleteList = useDeleteInventoryControlList();
   const upsert = useUpsertInventoryControlItem();
@@ -84,11 +86,21 @@ export default function InventoryControlList() {
   const [branchId, setBranchId] = useState<string>('');
   const [department, setDepartment] = useState<Department | ''>('');
   const [controlListId, setControlListId] = useState<string>('');
+  const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
 
-  const filteredLists = useMemo(() => allLists.filter(l =>
-    (!branchId || l.branch_id === branchId) &&
-    (!department || l.department === department)
-  ), [allLists, branchId, department]);
+  const { data: branchActiveLists = [], refetch: refetchBranchLists } = useInventoryControlLists({
+    activeOnly: true,
+    branchId: branchId || null,
+  });
+
+  const filteredLists = useMemo(() => {
+    if (!branchId) return [];
+    const lists = [...branchActiveLists];
+    if (optimisticList?.branch_id === branchId && optimisticList.is_active && !lists.some(l => l.id === optimisticList.id)) {
+      lists.unshift(optimisticList);
+    }
+    return lists;
+  }, [branchActiveLists, branchId, optimisticList]);
 
   // When context changes, auto-select if only one list is available; else clear
   useEffect(() => {
@@ -110,7 +122,11 @@ export default function InventoryControlList() {
   const [editListOpen, setEditListOpen] = useState(false);
 
   const branchName = (id: string | null) => branches.find(b => b.id === id)?.name ?? '';
-  const currentList = useMemo(() => allLists.find(l => l.id === controlListId) ?? null, [allLists, controlListId]);
+  const currentList = useMemo(
+    () => allLists.find(l => l.id === controlListId) ?? (optimisticList?.id === controlListId ? optimisticList : null),
+    [allLists, controlListId, optimisticList],
+  );
+  const hiddenListSafety = !!branchId && filteredLists.length === 0 && allLists.some(l => l.branch_id === branchId && l.is_active);
 
   useEffect(() => { setNewRows([]); setDrafts({}); }, [controlListId]);
 
