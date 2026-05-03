@@ -2,6 +2,11 @@ import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  occurrencesInRange,
+  localISO as schedLocalISO,
+  startOfDay,
+} from '@/lib/maintenanceSchedule';
 
 export type MaintenanceTask = Database['public']['Tables']['maintenance_tasks']['Row'];
 export type MaintenanceTaskStatus = Database['public']['Enums']['maintenance_task_status'];
@@ -117,15 +122,39 @@ export async function generateTodaysMaintenanceTasks(): Promise<{ created: numbe
     .in('schedule_template_id', tplIds);
   const existingSet = new Set((existing ?? []).map(r => r.schedule_template_id));
 
-  // 4) Build inserts for due templates not already created today
+  // 3b) Look up the latest completion (execution_date) per template so the
+  //     periodic anchor advances after each completion.
+  const { data: doneRows } = await supabase
+    .from('maintenance_tasks')
+    .select('schedule_template_id, execution_date, due_date, status')
+    .eq('status', 'Done')
+    .in('schedule_template_id', tplIds);
+  const lastDone = new Map<string, string>();
+  for (const r of doneRows ?? []) {
+    const iso = (r.execution_date as string | null) ?? (r.due_date as string | null);
+    if (!iso || !r.schedule_template_id) continue;
+    const prev = lastDone.get(r.schedule_template_id);
+    if (!prev || iso > prev) lastDone.set(r.schedule_template_id, iso);
+  }
+
+  // 4) Build inserts for due templates not already created today.
+  // A template is due today if today is the next scheduled occurrence given
+  // the last completed execution_date (or its created_at if never completed).
   const inserts = (templates ?? [])
     .filter(t => !existingSet.has(t.id))
-    .filter(t => isDueToday(
-      t.frequency as MaintenanceFrequency,
-      t.custom_interval_days,
-      new Date(t.created_at),
-      today,
-    ))
+    .filter(t => {
+      const lastISO = lastDone.get(t.id) ?? null;
+      const lastDate = lastISO ? new Date(`${lastISO}T00:00:00`) : null;
+      const occ = occurrencesInRange(
+        t.frequency as MaintenanceFrequency,
+        t.custom_interval_days,
+        new Date(t.created_at),
+        lastDate,
+        todayISO,
+        todayISO,
+      );
+      return occ.includes(todayISO);
+    })
     .map(t => ({
       asset_id: t.asset_id,
       schedule_template_id: t.id,
@@ -276,7 +305,83 @@ export function useCompleteMaintenanceTask() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['maintenance_last_execution_by_template'] });
+    },
+  });
+}
+
+/**
+ * Complete an upcoming (preview) maintenance occurrence early.
+ * Materializes a maintenance_tasks row for the given (schedule_template_id, due_date)
+ * if not already present, then marks it Done with the supplied details.
+ * Idempotent: relies on the unique (schedule_template_id, due_date) constraint.
+ */
+export interface CompleteEarlyPayload extends CompleteTaskPayload {
+  schedule_template_id: string;
+  asset_id: string;
+  title: string;
+  due_date: string;
+  due_time: string;
+  assigned_staff_id: string | null;
+  assigned_department: Database['public']['Enums']['department'] | null;
+}
+
+export function useCompleteEarlyMaintenance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: CompleteEarlyPayload) => {
+      // 1) Upsert (insert or fetch existing) for this occurrence.
+      const { data: upserted, error: upErr } = await supabase
+        .from('maintenance_tasks')
+        .upsert(
+          {
+            asset_id: p.asset_id,
+            schedule_template_id: p.schedule_template_id,
+            title: p.title,
+            due_date: p.due_date,
+            due_time: p.due_time,
+            assigned_staff_id: p.assigned_staff_id,
+            assigned_department: p.assigned_department,
+            status: 'Pending' as MaintenanceTaskStatus,
+          },
+          { onConflict: 'schedule_template_id,due_date' },
+        )
+        .select('id, status')
+        .single();
+      if (upErr) throw upErr;
+      // 2) If already Done, do nothing — avoid duplicates.
+      if (upserted.status === 'Done') return upserted;
+      // 3) Mark Done with supplied details.
+      const { data, error } = await supabase
+        .from('maintenance_tasks')
+        .update({
+          status: 'Done',
+          note: p.note?.trim() || null,
+          photo_url: p.photo_url || null,
+          completed_by: p.user_id,
+          completed_at: new Date().toISOString(),
+          cost_amount: p.cost_amount ?? null,
+          cost_type: p.cost_type ?? null,
+          external_company: p.external_company?.trim() || null,
+          external_contact: p.external_contact?.trim() || null,
+          spare_parts: p.spare_parts?.trim() || null,
+          technical_note: p.technical_note?.trim() || null,
+          additional_photos: p.additional_photos ?? [],
+          execution_date: p.execution_date ?? null,
+        })
+        .eq('id', upserted.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['maintenance_last_execution_by_template'] });
+      qc.invalidateQueries({ queryKey: ['maintenance_plan_schedules'] });
+    },
   });
 }
 
