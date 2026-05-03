@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/collapsible';
 import {
   Search, Filter, ChevronDown, ChevronUp, Pencil, Shield, UserCheck, UserX, ArrowUp, ArrowDown,
+  UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
