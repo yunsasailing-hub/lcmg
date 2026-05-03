@@ -61,6 +61,19 @@ const ROLE_BADGE: Record<AppRole, { label: string; className: string }> = {
   staff: { label: 'Staff', className: 'bg-gray-500 text-white hover:bg-gray-500/90' },
 };
 
+// Normalize role from any source field, with safe fallback to staff.
+function getRole(m: { roles?: AppRole[] | null; position?: string | null }): AppRole {
+  const raw =
+    (m.roles && m.roles.length > 0 ? m.roles[0] : null) ||
+    (m as unknown as { permission_level?: string }).permission_level ||
+    m.position ||
+    'staff';
+  const value = raw.toString().toLowerCase();
+  if (value.includes('owner')) return 'owner';
+  if (value.includes('manager')) return 'manager';
+  return 'staff';
+}
+
 // ─── Edit User Dialog ───
 
 function EditUserDialog({
