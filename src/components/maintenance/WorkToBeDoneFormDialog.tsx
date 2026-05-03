@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2, Plus, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Trash2, Plus, Image as ImageIcon, Loader2, Wrench, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +19,8 @@ import {
   useDeleteWtbd,
   useWtbdUpdates,
   useAddWtbdUpdate,
+  useLinkedRepairForWtbd,
+  useCreateRepairFromWtbd,
   WTBD_PRIORITIES,
   WTBD_STATUSES,
   WTBD_OCCASIONS,
@@ -35,19 +41,26 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial?: EnrichedWtbd | null;
+  onJumpToRepair?: (repairId: string) => void;
 }
 
-export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: Props) {
+export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial, onJumpToRepair }: Props) {
   const { profile, hasRole } = useAuth();
   const isOwner = hasRole('owner');
   const isManager = hasRole('manager');
+  const isStaff = !isOwner && !isManager;
+  const canCreateRepair = isOwner || isManager;
   const { data: branches = [] } = useBranchesAll();
   const { data: users = [] } = useActiveUsersForAssignment({ enabled: open });
   const upsert = useUpsertWtbd();
   const del = useDeleteWtbd();
+  const createRepair = useCreateRepairFromWtbd();
+  const { data: linkedRepair } = useLinkedRepairForWtbd(initial?.id ?? null);
 
   const isLocked = !!initial && (initial.status === 'Completed' || initial.status === 'Cancelled');
   const canDelete = isOwner;
+
+  const [completePromptOpen, setCompletePromptOpen] = useState(false);
 
   const { data: updates = [], isLoading: updatesLoading } = useWtbdUpdates(initial?.id);
   const addUpdate = useAddWtbdUpdate();
