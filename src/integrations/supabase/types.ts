@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_email_change_log: {
+        Row: {
+          changed_at: string
+          changed_by_name: string | null
+          changed_by_user_id: string
+          error_message: string | null
+          id: string
+          member_id: string
+          member_name: string | null
+          new_email: string
+          old_email: string | null
+          reason: string
+          status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by_name?: string | null
+          changed_by_user_id: string
+          error_message?: string | null
+          id?: string
+          member_id: string
+          member_name?: string | null
+          new_email: string
+          old_email?: string | null
+          reason: string
+          status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by_name?: string | null
+          changed_by_user_id?: string
+          error_message?: string | null
+          id?: string
+          member_id?: string
+          member_name?: string | null
+          new_email?: string
+          old_email?: string | null
+          reason?: string
+          status?: string
+        }
+        Relationships: []
+      }
       branches: {
         Row: {
           address: string | null
