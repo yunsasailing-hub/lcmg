@@ -291,6 +291,15 @@ function EditUserDialog({
           </div>
         </div>
         <DialogFooter>
+          <Button
+            variant="outline"
+            disabled
+            title="Password reset will be available later."
+            className="mr-auto"
+          >
+            <KeyRound className="h-4 w-4 mr-2" />
+            Reset Password
+          </Button>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} disabled={updateMutation.isPending || !!usernameError}>
             {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
