@@ -14,6 +14,7 @@ import {
   WTBD_PRIORITIES,
   WTBD_STATUSES,
   WTBD_OCCASIONS,
+  WORK_AREAS,
   type EnrichedWtbd,
   type WtbdPriority,
   type WtbdStatus,
@@ -62,6 +63,7 @@ export default function WorkToBeDoneList() {
   const [fStatus, setFStatus] = useState<string>('all');
   const [fPriority, setFPriority] = useState<string>('all');
   const [fOccasion, setFOccasion] = useState<string>('all');
+  const [fWorkArea, setFWorkArea] = useState<string>('all');
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -74,6 +76,7 @@ export default function WorkToBeDoneList() {
     if (fStatus !== 'all') list = list.filter(i => i.status === fStatus);
     if (fPriority !== 'all') list = list.filter(i => i.priority === fPriority);
     if (fOccasion !== 'all') list = list.filter(i => i.target_occasion === fOccasion);
+    if (fWorkArea !== 'all') list = list.filter(i => (i as any).work_area === fWorkArea);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(i =>
@@ -94,7 +97,7 @@ export default function WorkToBeDoneList() {
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
     return list;
-  }, [items, showArchived, fBranch, fStatus, fPriority, fOccasion, search, today]);
+  }, [items, showArchived, fBranch, fStatus, fPriority, fOccasion, fWorkArea, search, today]);
 
   return (
     <div className="space-y-3">
@@ -134,6 +137,13 @@ export default function WorkToBeDoneList() {
             <SelectContent>
               <SelectItem value="all">All occasions</SelectItem>
               {WTBD_OCCASIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={fWorkArea} onValueChange={setFWorkArea}>
+            <SelectTrigger className="h-9 w-44"><SelectValue placeholder="Work Area" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All work areas</SelectItem>
+              {WORK_AREAS.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button
@@ -191,6 +201,7 @@ export default function WorkToBeDoneList() {
                       {(item.branch_name ?? '—')} · <span className="capitalize">{item.department}</span>
                     </div>
                     {item.area_or_equipment && <div className="truncate">{item.area_or_equipment}</div>}
+                    <div className="truncate">Area: {(item as any).work_area ?? 'General / Other'}</div>
                     <div className="truncate">Occasion: {item.target_occasion}</div>
                     {item.due_date && (
                       <div className="flex items-center gap-1">
