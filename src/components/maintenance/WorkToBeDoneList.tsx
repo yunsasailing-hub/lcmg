@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, ClipboardList, Calendar, Filter, Loader2 } from 'lucide-react';
+import {
+  Plus, ClipboardList, Filter, Loader2, Pencil, Wrench,
+  ArrowUp, ArrowDown, ArrowUpDown,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
 import EmptyState from '@/components/shared/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -13,12 +18,10 @@ import {
   WTBD_ACTIVE_STATUSES,
   WTBD_PRIORITIES,
   WTBD_STATUSES,
-  WTBD_OCCASIONS,
   WORK_AREAS,
   type EnrichedWtbd,
   type WtbdPriority,
   type WtbdStatus,
-  type WtbdTargetOccasion,
 } from '@/hooks/useWorkToBeDone';
 import { useBranchesAll } from '@/hooks/useMaintenance';
 import WorkToBeDoneFormDialog from './WorkToBeDoneFormDialog';
@@ -39,11 +42,20 @@ const PRIORITY_BADGE: Record<WtbdPriority, string> = {
 };
 
 const PRIORITY_RANK: Record<WtbdPriority, number> = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
+const STATUS_RANK: Record<WtbdStatus, number> = {
+  Open: 0, 'In Progress': 1, Postponed: 2, Completed: 3, Cancelled: 4,
+};
 
 function fmtDate(s?: string | null) {
-  if (!s) return null;
+  if (!s) return '—';
   try { return new Date(s).toLocaleDateString(); } catch { return s; }
 }
+
+function shortCode(id: string) {
+  return `WTD-${id.slice(0, 6).toUpperCase()}`;
+}
+
+type SortKey = 'due_date' | 'priority' | 'status' | 'branch' | 'work_area' | 'last_update';
 
 interface WorkToBeDoneListProps {
   onJumpToRepair?: (id: string) => void;
@@ -51,7 +63,7 @@ interface WorkToBeDoneListProps {
 
 export default function WorkToBeDoneList({ onJumpToRepair }: WorkToBeDoneListProps = {}) {
   const { t } = useTranslation();
-  const { hasRole, profile } = useAuth();
+  const { hasRole } = useAuth();
   const isOwner = hasRole('owner');
   const isManager = hasRole('manager');
   const canCreate = isOwner || isManager;
@@ -64,22 +76,36 @@ export default function WorkToBeDoneList({ onJumpToRepair }: WorkToBeDoneListPro
   const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState('');
   const [fBranch, setFBranch] = useState<string>('all');
+  const [fDept, setFDept] = useState<string>('all');
   const [fStatus, setFStatus] = useState<string>('all');
   const [fPriority, setFPriority] = useState<string>('all');
-  const [fOccasion, setFOccasion] = useState<string>('all');
   const [fWorkArea, setFWorkArea] = useState<string>('all');
+
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const handleSort = (k: SortKey) => {
+    if (sortKey !== k) { setSortKey(k); setSortDir('asc'); return; }
+    setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+  };
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
+  const departments = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(i => i.department && set.add(i.department));
+    return Array.from(set).sort();
+  }, [items]);
+
   const filtered = useMemo(() => {
     let list = [...items];
-    if (!showArchived) {
+    const hasStatusFilter = fStatus !== 'all';
+    if (!showArchived && !hasStatusFilter) {
       list = list.filter(i => WTBD_ACTIVE_STATUSES.includes(i.status));
     }
     if (fBranch !== 'all') list = list.filter(i => i.branch_id === fBranch);
-    if (fStatus !== 'all') list = list.filter(i => i.status === fStatus);
+    if (fDept !== 'all') list = list.filter(i => i.department === fDept);
+    if (hasStatusFilter) list = list.filter(i => i.status === fStatus);
     if (fPriority !== 'all') list = list.filter(i => i.priority === fPriority);
-    if (fOccasion !== 'all') list = list.filter(i => i.target_occasion === fOccasion);
     if (fWorkArea !== 'all') list = list.filter(i => (i as any).work_area === fWorkArea);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -89,19 +115,53 @@ export default function WorkToBeDoneList({ onJumpToRepair }: WorkToBeDoneListPro
         (i.description ?? '').toLowerCase().includes(q),
       );
     }
-    list.sort((a, b) => {
-      const aOver = a.due_date && new Date(a.due_date) < today ? 0 : 1;
-      const bOver = b.due_date && new Date(b.due_date) < today ? 0 : 1;
-      if (aOver !== bOver) return aOver - bOver;
-      const pr = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
-      if (pr !== 0) return pr;
-      const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
-      const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
-      if (ad !== bd) return ad - bd;
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-    });
+
+    if (sortKey) {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      list.sort((a, b) => {
+        switch (sortKey) {
+          case 'due_date': {
+            const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+            const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+            return (ad - bd) * dir;
+          }
+          case 'priority': return (PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]) * dir;
+          case 'status': return (STATUS_RANK[a.status] - STATUS_RANK[b.status]) * dir;
+          case 'branch': return ((a.branch_name ?? '').localeCompare(b.branch_name ?? '')) * dir;
+          case 'work_area': return (((a as any).work_area ?? '').localeCompare((b as any).work_area ?? '')) * dir;
+          case 'last_update': return (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()) * dir;
+        }
+      });
+    } else {
+      // Default: overdue → status → priority → due → updated
+      list.sort((a, b) => {
+        const aOver = a.due_date && new Date(a.due_date) < today
+          && !['Completed', 'Cancelled'].includes(a.status) ? 0 : 1;
+        const bOver = b.due_date && new Date(b.due_date) < today
+          && !['Completed', 'Cancelled'].includes(b.status) ? 0 : 1;
+        if (aOver !== bOver) return aOver - bOver;
+        const sr = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+        if (sr !== 0) return sr;
+        const pr = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+        if (pr !== 0) return pr;
+        const ad = a.due_date ? new Date(a.due_date).getTime() : Number.POSITIVE_INFINITY;
+        const bd = b.due_date ? new Date(b.due_date).getTime() : Number.POSITIVE_INFINITY;
+        if (ad !== bd) return ad - bd;
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
+    }
     return list;
-  }, [items, showArchived, fBranch, fStatus, fPriority, fOccasion, fWorkArea, search, today]);
+  }, [items, showArchived, fBranch, fDept, fStatus, fPriority, fWorkArea, search, sortKey, sortDir, today]);
+
+  const SortIcon = ({ k }: { k: SortKey }) =>
+    sortKey !== k
+      ? <ArrowUpDown className="h-3 w-3 opacity-30" />
+      : sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+  const SH = ({ k, label }: { k: SortKey; label: string }) => (
+    <button type="button" onClick={() => handleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+      {label}<SortIcon k={k} />
+    </button>
+  );
 
   return (
     <div className="space-y-3">
@@ -122,6 +182,13 @@ export default function WorkToBeDoneList({ onJumpToRepair }: WorkToBeDoneListPro
               </SelectContent>
             </Select>
           )}
+          <Select value={fDept} onValueChange={setFDept}>
+            <SelectTrigger className="h-9 w-36"><SelectValue placeholder="Department" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All depts</SelectItem>
+              {departments.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={fStatus} onValueChange={setFStatus}>
             <SelectTrigger className="h-9 w-36"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -136,13 +203,6 @@ export default function WorkToBeDoneList({ onJumpToRepair }: WorkToBeDoneListPro
               {WTBD_PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={fOccasion} onValueChange={setFOccasion}>
-            <SelectTrigger className="h-9 w-44"><SelectValue placeholder="Target occasion" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All occasions</SelectItem>
-              {WTBD_OCCASIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-            </SelectContent>
-          </Select>
           <Select value={fWorkArea} onValueChange={setFWorkArea}>
             <SelectTrigger className="h-9 w-44"><SelectValue placeholder="Work Area" /></SelectTrigger>
             <SelectContent>
@@ -151,7 +211,7 @@ export default function WorkToBeDoneList({ onJumpToRepair }: WorkToBeDoneListPro
             </SelectContent>
           </Select>
           <Button
-            variant={showArchived ? 'default' : 'outline'}
+            variant={showArchived ? 'outline' : 'default'}
             size="sm"
             onClick={() => setShowArchived(v => !v)}
           >
@@ -177,48 +237,75 @@ export default function WorkToBeDoneList({ onJumpToRepair }: WorkToBeDoneListPro
           description="Add a job that should be handled later, when ready or during a quiet day."
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map(item => {
-            const overdue = item.due_date && new Date(item.due_date) < today
-              && !['Completed','Cancelled'].includes(item.status);
-            return (
-              <Card
-                key={item.id}
-                className="cursor-pointer hover:border-primary/40 transition-colors"
-                onClick={() => { setEditing(item); setFormOpen(true); }}
-              >
-                <CardContent className="p-3 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="font-semibold leading-tight truncate">{item.title}</div>
-                    <Badge variant="outline" className={PRIORITY_BADGE[item.priority]}>{item.priority}</Badge>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    <Badge variant="outline" className={STATUS_BADGE[item.status]}>{item.status}</Badge>
-                    {overdue && (
-                      <Badge variant="outline" className="bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30">
-                        Overdue
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <div className="truncate">
-                      {(item.branch_name ?? '—')} · <span className="capitalize">{item.department}</span>
-                    </div>
-                    {item.area_or_equipment && <div className="truncate">{item.area_or_equipment}</div>}
-                    <div className="truncate">Area: {(item as any).work_area ?? 'General / Other'}</div>
-                    <div className="truncate">Occasion: {item.target_occasion}</div>
-                    {item.due_date && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />Due {fmtDate(item.due_date)}
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="h-10">Code</TableHead>
+                <TableHead className="h-10">Title</TableHead>
+                <TableHead className="h-10"><SH k="branch" label="Branch" /></TableHead>
+                <TableHead className="h-10">Dept</TableHead>
+                <TableHead className="h-10"><SH k="work_area" label="Work Area" /></TableHead>
+                <TableHead className="h-10">Area / Equipment</TableHead>
+                <TableHead className="h-10"><SH k="priority" label="Priority" /></TableHead>
+                <TableHead className="h-10"><SH k="status" label="Status" /></TableHead>
+                <TableHead className="h-10"><SH k="due_date" label="Due Date" /></TableHead>
+                <TableHead className="h-10">Assigned</TableHead>
+                <TableHead className="h-10">Updates</TableHead>
+                <TableHead className="h-10"><SH k="last_update" label="Last Update" /></TableHead>
+                <TableHead className="h-10 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(item => {
+                const overdue = item.due_date && new Date(item.due_date) < today
+                  && !['Completed', 'Cancelled'].includes(item.status);
+                return (
+                  <TableRow
+                    key={item.id}
+                    className="cursor-pointer"
+                    onClick={() => { setEditing(item); setFormOpen(true); }}
+                  >
+                    <TableCell className="py-2 font-mono text-xs text-muted-foreground">{shortCode(item.id)}</TableCell>
+                    <TableCell className="py-2 font-medium max-w-[16rem] truncate">{item.title}</TableCell>
+                    <TableCell className="py-2 text-xs">{item.branch_name ?? '—'}</TableCell>
+                    <TableCell className="py-2 text-xs capitalize">{item.department ?? '—'}</TableCell>
+                    <TableCell className="py-2 text-xs">{(item as any).work_area ?? 'General / Other'}</TableCell>
+                    <TableCell className="py-2 text-xs max-w-[12rem] truncate">{item.area_or_equipment ?? '—'}</TableCell>
+                    <TableCell className="py-2">
+                      <Badge variant="outline" className={PRIORITY_BADGE[item.priority]}>{item.priority}</Badge>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className={STATUS_BADGE[item.status]}>{item.status}</Badge>
+                        {overdue && (
+                          <Badge variant="outline" className="bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30 text-[10px] px-1.5">
+                            Overdue
+                          </Badge>
+                        )}
                       </div>
-                    )}
-                    {item.assignee_username && <div className="truncate">Assigned: {item.assignee_username}</div>}
-                    <div className="truncate">Updates: {item.updates_count ?? 0}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    </TableCell>
+                    <TableCell className="py-2 text-xs">{fmtDate(item.due_date)}</TableCell>
+                    <TableCell className="py-2 text-xs text-muted-foreground">{item.assignee_username ?? '—'}</TableCell>
+                    <TableCell className="py-2 text-xs">{item.updates_count ?? 0}</TableCell>
+                    <TableCell className="py-2 text-xs text-muted-foreground">{fmtDate(item.updated_at)}</TableCell>
+                    <TableCell className="py-2 text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => { setEditing(item); setFormOpen(true); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        {item.status === 'Completed' && onJumpToRepair && (
+                          <Button size="sm" variant="ghost" title="Open / Create Repair" onClick={() => { setEditing(item); setFormOpen(true); }}>
+                            <Wrench className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
 
