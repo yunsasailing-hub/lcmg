@@ -22,6 +22,7 @@ import {
   type MaintenanceRepairSeverity,
 } from '@/hooks/useMaintenanceRepairs';
 import RepairFormDialog from './RepairFormDialog';
+import { WORK_AREAS } from '@/hooks/useWorkToBeDone';
 
 const SEVERITY_BADGE: Record<MaintenanceRepairSeverity, string> = {
   Low: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
@@ -72,6 +73,7 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
   const [statusFilter, setStatusFilter] = useState<string>('active'); // hide Archived by default
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
+  const [workAreaFilter, setWorkAreaFilter] = useState<string>('all');
   const [open, setOpen] = useState<{ mode: 'new' | 'edit' | 'report'; row?: EnrichedMaintenanceRepair } | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<EnrichedMaintenanceRepair | null>(null);
 
@@ -88,6 +90,7 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
       if (statusFilter !== 'all' && statusFilter !== 'active' && r.status !== statusFilter) return false;
       if (severityFilter !== 'all' && r.severity !== severityFilter) return false;
       if (!filterByAssetId && branchFilter !== 'all' && r.asset_branch_id !== branchFilter) return false;
+      if (workAreaFilter !== 'all' && (r as any).work_area !== workAreaFilter) return false;
       if (q && !`${r.title} ${r.asset_name ?? ''} ${r.asset_code ?? ''} ${r.issue_description ?? ''}`
         .toLowerCase().includes(q)) return false;
       return true;
@@ -95,7 +98,7 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
     // Latest first
     return list.sort((a, b) =>
       new Date(b.reported_at).getTime() - new Date(a.reported_at).getTime());
-  }, [repairs, search, statusFilter, severityFilter, branchFilter, filterByAssetId]);
+  }, [repairs, search, statusFilter, severityFilter, branchFilter, workAreaFilter, filterByAssetId]);
 
   const canAdd = canManage || (!!profile?.user_id); // staff can also report
 
@@ -131,6 +134,13 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
               </SelectContent>
             </Select>
           )}
+          <Select value={workAreaFilter} onValueChange={setWorkAreaFilter}>
+            <SelectTrigger className="sm:w-44"><SelectValue placeholder="Work Area" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All work areas</SelectItem>
+              {WORK_AREAS.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+            </SelectContent>
+          </Select>
           {!hideHeaderAdd && canAdd && (
             <Button onClick={() => setOpen({ mode: canManage ? 'new' : 'report' })}>
               <Plus className="h-4 w-4 mr-1" />{canManage ? 'New Repair' : 'Report Issue'}
@@ -182,6 +192,7 @@ export default function RepairsList({ filterByAssetId, presetAssetId, hideHeader
                 )}
                 {(r as any).cost_type && <span>· {(r as any).cost_type}</span>}
                 {r.downtime_hours != null && <span>Downtime: {r.downtime_hours}h</span>}
+                {(r as any).work_area && <span>Area: {(r as any).work_area}</span>}
               </div>
 
               {(() => {
