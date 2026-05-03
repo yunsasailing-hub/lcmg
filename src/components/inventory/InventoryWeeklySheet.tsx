@@ -231,7 +231,7 @@ export default function InventoryWeeklySheet({
             <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); }}>
               <SelectTrigger className="h-9"><SelectValue placeholder="Select branch" /></SelectTrigger>
               <SelectContent>
-                {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                {selectableBranches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -260,9 +260,26 @@ export default function InventoryWeeklySheet({
       </Card>
 
       {/* Sheet */}
-      {!ready ? (
+      {!branchId ? (
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Select branch and control list to load the weekly inventory sheet.
+          Select a branch to load its Control Lists.
+        </CardContent></Card>
+      ) : lists.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-sm space-y-3">
+            <p className="text-muted-foreground">
+              No Control List found for this branch. Please create one.
+            </p>
+            {onRequestCreateControlList && (
+              <Button size="sm" onClick={() => onRequestCreateControlList(branchId)}>
+                <ListChecks className="h-4 w-4 mr-1" /> Create Control List
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : !controlListId ? (
+        <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
+          Select a Control List to load the weekly inventory sheet.
         </CardContent></Card>
       ) : loadingItems ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
