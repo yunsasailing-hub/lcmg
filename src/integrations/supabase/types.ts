@@ -1513,6 +1513,75 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance_work_to_be_done: {
+        Row: {
+          area_or_equipment: string | null
+          assigned_to: string | null
+          branch_id: string
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"]
+          description: string | null
+          due_date: string | null
+          final_note: string | null
+          id: string
+          notes: string | null
+          photos: string[]
+          priority: Database["public"]["Enums"]["wtbd_priority"]
+          status: Database["public"]["Enums"]["wtbd_status"]
+          target_occasion: Database["public"]["Enums"]["wtbd_target_occasion"]
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          area_or_equipment?: string | null
+          assigned_to?: string | null
+          branch_id: string
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          department: Database["public"]["Enums"]["department"]
+          description?: string | null
+          due_date?: string | null
+          final_note?: string | null
+          id?: string
+          notes?: string | null
+          photos?: string[]
+          priority?: Database["public"]["Enums"]["wtbd_priority"]
+          status?: Database["public"]["Enums"]["wtbd_status"]
+          target_occasion?: Database["public"]["Enums"]["wtbd_target_occasion"]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          area_or_equipment?: string | null
+          assigned_to?: string | null
+          branch_id?: string
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"]
+          description?: string | null
+          due_date?: string | null
+          final_note?: string | null
+          id?: string
+          notes?: string | null
+          photos?: string[]
+          priority?: Database["public"]["Enums"]["wtbd_priority"]
+          status?: Database["public"]["Enums"]["wtbd_status"]
+          target_occasion?: Database["public"]["Enums"]["wtbd_target_occasion"]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           checklist_notices_enabled: boolean
@@ -2442,6 +2511,22 @@ export type Database = {
       recipe_status: "draft" | "active" | "archived"
       storage_type: "dry" | "chilled" | "frozen" | "ambient"
       unit_type: "weight" | "volume" | "count" | "other"
+      wtbd_priority: "Low" | "Medium" | "High" | "Urgent"
+      wtbd_status:
+        | "Open"
+        | "Postponed"
+        | "In Progress"
+        | "Completed"
+        | "Cancelled"
+      wtbd_target_occasion:
+        | "Next technician visit"
+        | "Next quiet day"
+        | "Next renovation"
+        | "Before inspection"
+        | "Waiting for spare parts"
+        | "Waiting for supplier"
+        | "No fixed date"
+        | "Other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2646,6 +2731,24 @@ export const Constants = {
       recipe_status: ["draft", "active", "archived"],
       storage_type: ["dry", "chilled", "frozen", "ambient"],
       unit_type: ["weight", "volume", "count", "other"],
+      wtbd_priority: ["Low", "Medium", "High", "Urgent"],
+      wtbd_status: [
+        "Open",
+        "Postponed",
+        "In Progress",
+        "Completed",
+        "Cancelled",
+      ],
+      wtbd_target_occasion: [
+        "Next technician visit",
+        "Next quiet day",
+        "Next renovation",
+        "Before inspection",
+        "Waiting for spare parts",
+        "Waiting for supplier",
+        "No fixed date",
+        "Other",
+      ],
     },
   },
 } as const
