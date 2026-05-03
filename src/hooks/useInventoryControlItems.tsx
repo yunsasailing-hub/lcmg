@@ -21,6 +21,7 @@ export function useInventoryControlItems(opts?: {
   return useQuery({
     queryKey: ['inventory_control_items', { activeOnly, branchId, department, controlListId }],
     queryFn: async (): Promise<EnrichedControlItem[]> => {
+      if (opts && 'controlListId' in opts && !controlListId && !branchId && !department) return [];
       let q = supabase
         .from('inventory_control_items')
         .select('*, branches(name)')
