@@ -20,6 +20,7 @@ export type EnrichedMaintenanceTask = MaintenanceTask & {
   completed_by_name: string | null;
   note_required: boolean;
   photo_required: boolean;
+  template_description: string | null;
 };
 
 function todayLocalISO(): string {
@@ -159,7 +160,7 @@ async function enrich(rows: MaintenanceTask[]): Promise<EnrichedMaintenanceTask[
 
   const [{ data: assets }, { data: templates }, { data: staff }] = await Promise.all([
     supabase.from('maintenance_assets').select('id, name, code, branch_id, department, asset_type_id').in('id', assetIds),
-    supabase.from('maintenance_schedule_templates').select('id, note_required, photo_required').in('id', tplIds),
+    supabase.from('maintenance_schedule_templates').select('id, note_required, photo_required, description').in('id', tplIds),
     profileIds.length
       ? supabase.from('profiles').select('user_id, full_name').in('user_id', profileIds)
       : Promise.resolve({ data: [] as { user_id: string; full_name: string | null }[] }),
@@ -196,6 +197,7 @@ async function enrich(rows: MaintenanceTask[]): Promise<EnrichedMaintenanceTask[
       completed_by_name: r.completed_by ? sMap.get(r.completed_by) ?? null : null,
       note_required: !!t?.note_required,
       photo_required: !!t?.photo_required,
+      template_description: (t as { description?: string | null } | undefined)?.description ?? null,
     };
   });
 }
