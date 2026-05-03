@@ -279,6 +279,8 @@ function ChangeRoleDialog({
 
 export default function UserManagement() {
   const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  const isAdministrator = hasRole('administrator' as AppRole);
   const [search, setSearch] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<{ department?: string; branch_id?: string; role?: string; status?: string }>({});
