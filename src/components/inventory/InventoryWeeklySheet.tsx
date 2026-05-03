@@ -14,6 +14,7 @@ import {
 } from '@/hooks/useInventoryRequests';
 import { useInventoryControlItems } from '@/hooks/useInventoryControlItems';
 import { useInventoryControlLists } from '@/hooks/useInventoryControlLists';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Trash2, ListChecks } from 'lucide-react';
 
@@ -223,6 +224,33 @@ export default function InventoryWeeklySheet({
         notes: null,
         items,
       });
+
+      // History log: append a snapshot row per coded item on Submit to Owner.
+      if (status === 'Submitted' && user?.id) {
+        const records = rows
+          .filter(r => r.item_code)
+          .map(r => {
+            const e = edits[r.control_item_id] ?? { stock: '', order_request: '', note: '' };
+            return {
+              date: requestDate,
+              branch_id: branchId,
+              control_list_id: controlListId,
+              item_code: r.item_code,
+              item_name: r.item_name,
+              stock: e.stock ? Number(e.stock) : null,
+              min_stock: r.min_stock,
+              recommended_order: r.recommended_order,
+              order_qty: e.order_request ? Number(e.order_request) : null,
+              note: e.note?.trim() || null,
+              created_by: user.id,
+            };
+          });
+        if (records.length) {
+          const { error: recErr } = await (supabase as any).from('inventory_records').insert(records);
+          if (recErr) console.warn('inventory_records insert failed', recErr);
+        }
+      }
+
       toast.success(status === 'Submitted' ? 'Submitted to Owner' : 'Draft saved');
       onDone?.();
     } catch (e: any) {
