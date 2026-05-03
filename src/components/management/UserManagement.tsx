@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { Constants } from '@/integrations/supabase/types';
 import type { Database } from '@/integrations/supabase/types';
 import { invokeManageRoles } from '@/lib/manageRoles';
+import { useAuth } from '@/hooks/useAuth';
 
 type AppRole = Database['public']['Enums']['app_role'];
 type Department = Database['public']['Enums']['department'];
@@ -56,6 +57,7 @@ async function callManageRoles(action: string, params: Record<string, unknown> =
 }
 
 const ROLE_BADGE: Record<AppRole, { label: string; className: string }> = {
+  administrator: { label: 'Administrator', className: 'bg-purple-700 text-white hover:bg-purple-700/90' },
   owner: { label: 'Owner', className: 'bg-red-600 text-white hover:bg-red-600/90' },
   manager: { label: 'Manager', className: 'bg-orange-500 text-white hover:bg-orange-500/90' },
   staff: { label: 'Staff', className: 'bg-gray-500 text-white hover:bg-gray-500/90' },
@@ -63,12 +65,18 @@ const ROLE_BADGE: Record<AppRole, { label: string; className: string }> = {
 
 // Normalize role from any source field, with safe fallback to staff.
 function getRole(m: { roles?: AppRole[] | null; position?: string | null }): AppRole {
+  // Prefer the highest role available
+  const list = (m.roles || []).map(r => r.toString().toLowerCase());
+  if (list.includes('administrator')) return 'administrator';
+  if (list.includes('owner')) return 'owner';
+  if (list.includes('manager')) return 'manager';
+  if (list.length > 0) return 'staff';
   const raw =
-    (m.roles && m.roles.length > 0 ? m.roles[0] : null) ||
     (m as unknown as { permission_level?: string }).permission_level ||
     m.position ||
     'staff';
   const value = raw.toString().toLowerCase();
+  if (value.includes('administrator')) return 'administrator';
   if (value.includes('owner')) return 'owner';
   if (value.includes('manager')) return 'manager';
   return 'staff';
@@ -81,11 +89,13 @@ function EditUserDialog({
   branches,
   open,
   onClose,
+  canAssignAdministrator,
 }: {
   user: EnrichedProfile;
   branches: Branch[];
   open: boolean;
   onClose: () => void;
+  canAssignAdministrator: boolean;
 }) {
   const queryClient = useQueryClient();
   const currentRole: AppRole = getRole(user);
@@ -184,6 +194,9 @@ function EditUserDialog({
             <Select value={form.role} onValueChange={v => update('role', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
+                {(canAssignAdministrator || currentRole === 'administrator') && (
+                  <SelectItem value="administrator">Administrator</SelectItem>
+                )}
                 <SelectItem value="owner">Owner</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
