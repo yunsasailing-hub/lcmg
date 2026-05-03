@@ -33,6 +33,12 @@ import { toast } from 'sonner';
 
 const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
 
+/** Strip cosmetic suffixes like "_std" or "_€" from unit labels for display only. */
+function cleanUnit(u: string | null | undefined): string {
+  if (!u) return '';
+  return String(u).replace(/_std\b/gi, '').replace(/_€/g, '').replace(/_\$/g, '').trim();
+}
+
 type RowDraft = {
   key: string;
   id?: string;
