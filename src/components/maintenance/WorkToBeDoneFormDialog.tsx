@@ -323,6 +323,32 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial, on
             </div>
           )}
 
+          {initial && initial.status === 'Completed' && (
+            <div className="sm:col-span-2 rounded-md border bg-muted/30 p-3 flex items-center justify-between gap-2 flex-wrap">
+              {linkedRepair?.id ? (
+                <>
+                  <div className="text-sm flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-muted-foreground" />
+                    Linked Repair Record
+                  </div>
+                  {onJumpToRepair && (
+                    <Button size="sm" variant="outline" onClick={() => onJumpToRepair(linkedRepair.id)}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" />Open
+                    </Button>
+                  )}
+                </>
+              ) : canCreateRepair ? (
+                <>
+                  <div className="text-sm text-muted-foreground">No repair record linked yet.</div>
+                  <Button size="sm" onClick={handleCreateRepairLater} disabled={createRepair.isPending}>
+                    {createRepair.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                    <Wrench className="h-3.5 w-3.5 mr-1" />Create Repair Record
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          )}
+
           {initial && (
             <div className="sm:col-span-2 mt-2 border-t pt-3">
               <div className="flex items-center justify-between mb-2">
@@ -406,6 +432,32 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial, on
           )}
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={completePromptOpen} onOpenChange={setCompletePromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Do you want to create a Repair / Intervention record from this job?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => { setCompletePromptOpen(false); performSave(); }}
+              disabled={upsert.isPending}
+            >
+              No, complete only
+            </Button>
+            <AlertDialogAction
+              onClick={() => { setCompletePromptOpen(false); performSave({ createRepairAfter: true }); }}
+            >
+              Yes, create repair record
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
