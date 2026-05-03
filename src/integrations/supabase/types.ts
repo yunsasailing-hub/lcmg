@@ -900,6 +900,7 @@ export type Database = {
       inventory_control_items: {
         Row: {
           branch_id: string | null
+          control_list_id: string | null
           created_at: string
           created_by: string | null
           department: Database["public"]["Enums"]["department"] | null
@@ -917,6 +918,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
+          control_list_id?: string | null
           created_at?: string
           created_by?: string | null
           department?: Database["public"]["Enums"]["department"] | null
@@ -934,6 +936,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
+          control_list_id?: string | null
           created_at?: string
           created_by?: string | null
           department?: Database["public"]["Enums"]["department"] | null
@@ -958,6 +961,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_control_items_control_list_id_fkey"
+            columns: ["control_list_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_control_lists"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_control_items_ingredient_id_fkey"
             columns: ["ingredient_id"]
             isOneToOne: false
@@ -966,10 +976,50 @@ export type Database = {
           },
         ]
       }
+      inventory_control_lists: {
+        Row: {
+          branch_id: string
+          control_list_code: string
+          control_list_name: string
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"]
+          id: string
+          is_active: boolean
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          control_list_code: string
+          control_list_name: string
+          created_at?: string
+          created_by?: string | null
+          department: Database["public"]["Enums"]["department"]
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          control_list_code?: string
+          control_list_name?: string
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"]
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_request_items: {
         Row: {
           actual_stock: number | null
           approved_qty: number | null
+          control_list_id: string | null
           created_at: string
           id: string
           ingredient_id: string | null
@@ -987,6 +1037,7 @@ export type Database = {
         Insert: {
           actual_stock?: number | null
           approved_qty?: number | null
+          control_list_id?: string | null
           created_at?: string
           id?: string
           ingredient_id?: string | null
@@ -1004,6 +1055,7 @@ export type Database = {
         Update: {
           actual_stock?: number | null
           approved_qty?: number | null
+          control_list_id?: string | null
           created_at?: string
           id?: string
           ingredient_id?: string | null
@@ -1019,6 +1071,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_request_items_control_list_id_fkey"
+            columns: ["control_list_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_control_lists"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_request_items_ingredient_id_fkey"
             columns: ["ingredient_id"]
