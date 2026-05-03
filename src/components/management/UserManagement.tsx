@@ -658,6 +658,7 @@ export default function UserManagement() {
           branches={branches}
           open
           onClose={() => setEditingUser(null)}
+          canAssignAdministrator={isAdministrator}
         />
       )}
       {changingRole && (
