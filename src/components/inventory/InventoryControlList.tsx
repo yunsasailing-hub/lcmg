@@ -832,9 +832,10 @@ function CopyControlListDialog({
     if (!sourceList) { toast.error('Select source Control List'); return; }
     if (!toBranch || !toDept) { toast.error('Select target Branch and Department'); return; }
     if (!newCode.trim() || !newName.trim()) { toast.error('New Code and Name required'); return; }
+    let newList: SavedControlList;
     let newListId: string;
     try {
-      const newList = await upsertList.mutateAsync({
+      newList = await upsertList.mutateAsync({
         branch_id: toBranch, department: toDept as Department,
         control_list_code: newCode, control_list_name: newName,
       });
