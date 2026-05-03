@@ -325,7 +325,7 @@ export default function InventoryWeeklySheet({
                     <td className="py-1.5 px-2 font-mono text-[11px]">{r.item_code || '—'}</td>
                     <td className="py-1.5 px-2">
                       <div className="font-medium">{r.item_name}</div>
-                      {r.unit && <div className="text-[11px] text-muted-foreground">{r.unit}</div>}
+                      {cleanUnit(r.unit) && <div className="text-[11px] text-muted-foreground">{cleanUnit(r.unit)}</div>}
                     </td>
                     <td className="py-1.5 px-2 text-muted-foreground hidden md:table-cell">{r.remarks || '—'}</td>
                     <td className="py-1.5 px-2">
