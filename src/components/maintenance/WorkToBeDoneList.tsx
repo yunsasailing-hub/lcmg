@@ -45,7 +45,11 @@ function fmtDate(s?: string | null) {
   try { return new Date(s).toLocaleDateString(); } catch { return s; }
 }
 
-export default function WorkToBeDoneList() {
+interface WorkToBeDoneListProps {
+  onJumpToRepair?: (id: string) => void;
+}
+
+export default function WorkToBeDoneList({ onJumpToRepair }: WorkToBeDoneListProps = {}) {
   const { t } = useTranslation();
   const { hasRole, profile } = useAuth();
   const isOwner = hasRole('owner');
@@ -223,6 +227,7 @@ export default function WorkToBeDoneList() {
           open={formOpen}
           onOpenChange={(v) => { setFormOpen(v); if (!v) setEditing(null); }}
           initial={editing}
+          onJumpToRepair={onJumpToRepair}
         />
       )}
     </div>

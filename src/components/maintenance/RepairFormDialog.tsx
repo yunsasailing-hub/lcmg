@@ -107,8 +107,9 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
   }, [form.cost_amount]);
 
   const handleSave = async () => {
+    const isFromWtbd = (initial as any)?.source === 'Work To Be Done';
     const errs: Record<string, string> = {};
-    if (!form.asset_id) errs.asset_id = 'Equipment is required';
+    if (!form.asset_id && !isFromWtbd) errs.asset_id = 'Equipment is required';
     if (!form.title.trim()) errs.title = 'Title is required';
     if (!form.severity) errs.severity = 'Severity is required';
     setErrors(errs);
@@ -119,7 +120,7 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
     }
     try {
       const payload: any = {
-        asset_id: form.asset_id,
+        asset_id: form.asset_id || null,
         title: form.title.trim(),
         issue_description: form.issue_description?.trim() || null,
         action_taken: reportOnly ? null : (form.action_taken?.trim() || null),
@@ -167,6 +168,12 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
         <DialogHeader>
           <DialogTitle>{initial ? 'Edit Repair' : reportOnly ? 'Report an Issue' : 'New Repair'}</DialogTitle>
         </DialogHeader>
+
+        {initial && (initial as any).source === 'Work To Be Done' && (initial as any).source_work_to_be_done_id && (
+          <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+            Source: Work To Be Done · Original job id: {(initial as any).source_work_to_be_done_id}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">

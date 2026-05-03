@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2, Plus, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Trash2, Plus, Image as ImageIcon, Loader2, Wrench, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +19,8 @@ import {
   useDeleteWtbd,
   useWtbdUpdates,
   useAddWtbdUpdate,
+  useLinkedRepairForWtbd,
+  useCreateRepairFromWtbd,
   WTBD_PRIORITIES,
   WTBD_STATUSES,
   WTBD_OCCASIONS,
@@ -35,19 +41,26 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial?: EnrichedWtbd | null;
+  onJumpToRepair?: (repairId: string) => void;
 }
 
-export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: Props) {
+export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial, onJumpToRepair }: Props) {
   const { profile, hasRole } = useAuth();
   const isOwner = hasRole('owner');
   const isManager = hasRole('manager');
+  const isStaff = !isOwner && !isManager;
+  const canCreateRepair = isOwner || isManager;
   const { data: branches = [] } = useBranchesAll();
   const { data: users = [] } = useActiveUsersForAssignment({ enabled: open });
   const upsert = useUpsertWtbd();
   const del = useDeleteWtbd();
+  const createRepair = useCreateRepairFromWtbd();
+  const { data: linkedRepair } = useLinkedRepairForWtbd(initial?.id ?? null);
 
   const isLocked = !!initial && (initial.status === 'Completed' || initial.status === 'Cancelled');
   const canDelete = isOwner;
+
+  const [completePromptOpen, setCompletePromptOpen] = useState(false);
 
   const { data: updates = [], isLoading: updatesLoading } = useWtbdUpdates(initial?.id);
   const addUpdate = useAddWtbdUpdate();
@@ -102,7 +115,7 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
 
   const update = (k: keyof typeof form, v: any) => setForm(s => ({ ...s, [k]: v }));
 
-  const handleSave = async () => {
+  const performSave = async (opts?: { createRepairAfter?: boolean }) => {
     if (!form.title.trim()) return toast.error('Title required');
     if (!form.branch_id) return toast.error('Branch required');
     if (!form.department) return toast.error('Department required');
@@ -119,7 +132,7 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
       : null;
 
     try {
-      await upsert.mutateAsync({
+      const saved = await upsert.mutateAsync({
         id: initial?.id,
         title: form.title.trim(),
         description: form.description || null,
@@ -140,9 +153,62 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
         updated_by: profile?.user_id,
       } as any);
       toast.success(initial ? 'Updated' : 'Created');
+
+      if (opts?.createRepairAfter && saved) {
+        try {
+          const res = await createRepair.mutateAsync({
+            job: { ...(initial as any), ...saved } as EnrichedWtbd,
+            userId: profile?.user_id ?? null,
+          });
+          if (res.alreadyExisted) {
+            toast.info('A repair record already exists for this job.');
+          } else {
+            toast.success('Repair record created from Work To Be Done');
+          }
+          if (onJumpToRepair) onJumpToRepair(res.repairId);
+        } catch (e: any) {
+          toast.error(e?.message || 'Could not create repair record');
+        }
+      }
+
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message || 'Save failed');
+    }
+  };
+
+  const handleSave = () => {
+    // Require explicit confirmation when an active job is being marked Completed
+    const wasActive = !initial || ['Open','Postponed','In Progress'].includes(initial.status);
+    if (form.status === 'Completed' && wasActive) {
+      if (isStaff) {
+        // Staff cannot create repair records → just save and notify
+        performSave().then(() => {
+          toast.message('Completed. Manager/Owner can create the repair record.');
+        });
+        return;
+      }
+      setCompletePromptOpen(true);
+      return;
+    }
+    performSave();
+  };
+
+  const handleCreateRepairLater = async () => {
+    if (!initial) return;
+    try {
+      const res = await createRepair.mutateAsync({
+        job: initial,
+        userId: profile?.user_id ?? null,
+      });
+      if (res.alreadyExisted) {
+        toast.info('A repair record already exists for this job.');
+      } else {
+        toast.success('Repair record created from Work To Be Done');
+      }
+      if (onJumpToRepair) onJumpToRepair(res.repairId);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not create repair record');
     }
   };
 
@@ -257,6 +323,32 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
             </div>
           )}
 
+          {initial && initial.status === 'Completed' && (
+            <div className="sm:col-span-2 rounded-md border bg-muted/30 p-3 flex items-center justify-between gap-2 flex-wrap">
+              {linkedRepair?.id ? (
+                <>
+                  <div className="text-sm flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-muted-foreground" />
+                    Linked Repair Record
+                  </div>
+                  {onJumpToRepair && (
+                    <Button size="sm" variant="outline" onClick={() => onJumpToRepair(linkedRepair.id)}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" />Open
+                    </Button>
+                  )}
+                </>
+              ) : canCreateRepair ? (
+                <>
+                  <div className="text-sm text-muted-foreground">No repair record linked yet.</div>
+                  <Button size="sm" onClick={handleCreateRepairLater} disabled={createRepair.isPending}>
+                    {createRepair.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                    <Wrench className="h-3.5 w-3.5 mr-1" />Create Repair Record
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          )}
+
           {initial && (
             <div className="sm:col-span-2 mt-2 border-t pt-3">
               <div className="flex items-center justify-between mb-2">
@@ -340,6 +432,32 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
           )}
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={completePromptOpen} onOpenChange={setCompletePromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Do you want to create a Repair / Intervention record from this job?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => { setCompletePromptOpen(false); performSave(); }}
+              disabled={upsert.isPending}
+            >
+              No, complete only
+            </Button>
+            <AlertDialogAction
+              onClick={() => { setCompletePromptOpen(false); performSave({ createRepairAfter: true }); }}
+            >
+              Yes, create repair record
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

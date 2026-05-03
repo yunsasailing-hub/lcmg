@@ -1290,14 +1290,17 @@ export type Database = {
         Row: {
           action_taken: string | null
           after_photo_url: string | null
-          asset_id: string
+          area_or_equipment: string | null
+          asset_id: string | null
           assigned_to: string | null
           before_photo_url: string | null
+          branch_id: string | null
           completed_at: string | null
           cost_amount: number | null
           cost_type: string
           created_at: string
           currency: string
+          department: Database["public"]["Enums"]["department"] | null
           downtime_hours: number | null
           id: string
           issue_description: string | null
@@ -1306,6 +1309,8 @@ export type Database = {
           reported_at: string
           reported_by: string | null
           severity: Database["public"]["Enums"]["maintenance_repair_severity"]
+          source: string
+          source_work_to_be_done_id: string | null
           status: Database["public"]["Enums"]["maintenance_repair_status"]
           technician_contact: string | null
           technician_name: string | null
@@ -1317,14 +1322,17 @@ export type Database = {
         Insert: {
           action_taken?: string | null
           after_photo_url?: string | null
-          asset_id: string
+          area_or_equipment?: string | null
+          asset_id?: string | null
           assigned_to?: string | null
           before_photo_url?: string | null
+          branch_id?: string | null
           completed_at?: string | null
           cost_amount?: number | null
           cost_type?: string
           created_at?: string
           currency?: string
+          department?: Database["public"]["Enums"]["department"] | null
           downtime_hours?: number | null
           id?: string
           issue_description?: string | null
@@ -1333,6 +1341,8 @@ export type Database = {
           reported_at?: string
           reported_by?: string | null
           severity?: Database["public"]["Enums"]["maintenance_repair_severity"]
+          source?: string
+          source_work_to_be_done_id?: string | null
           status?: Database["public"]["Enums"]["maintenance_repair_status"]
           technician_contact?: string | null
           technician_name?: string | null
@@ -1344,14 +1354,17 @@ export type Database = {
         Update: {
           action_taken?: string | null
           after_photo_url?: string | null
-          asset_id?: string
+          area_or_equipment?: string | null
+          asset_id?: string | null
           assigned_to?: string | null
           before_photo_url?: string | null
+          branch_id?: string | null
           completed_at?: string | null
           cost_amount?: number | null
           cost_type?: string
           created_at?: string
           currency?: string
+          department?: Database["public"]["Enums"]["department"] | null
           downtime_hours?: number | null
           id?: string
           issue_description?: string | null
@@ -1360,6 +1373,8 @@ export type Database = {
           reported_at?: string
           reported_by?: string | null
           severity?: Database["public"]["Enums"]["maintenance_repair_severity"]
+          source?: string
+          source_work_to_be_done_id?: string | null
           status?: Database["public"]["Enums"]["maintenance_repair_status"]
           technician_contact?: string | null
           technician_name?: string | null
