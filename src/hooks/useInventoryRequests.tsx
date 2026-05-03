@@ -18,7 +18,7 @@ export function useInventoryRequests() {
     queryFn: async (): Promise<InventoryRequestWithItems[]> => {
       const { data: reqs, error } = await supabase
         .from('inventory_requests')
-        .select('*, branches(name), inventory_request_items(*, inventory_control_items(remarks, min_stock, recommended_order))')
+        .select('*, branches(name), inventory_request_items(*, inventory_control_items(remarks, min_stock, recommended_order), inventory_control_lists(control_list_code, control_list_name))')
         .order('request_date', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;

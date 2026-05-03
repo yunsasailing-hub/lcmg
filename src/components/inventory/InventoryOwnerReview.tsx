@@ -170,6 +170,14 @@ export default function InventoryOwnerReview() {
                       <span className="font-semibold">{r.branch_name ?? '—'}</span>
                       <span className="text-muted-foreground">·</span>
                       <span className="capitalize text-sm">{r.department}</span>
+                      {(() => {
+                        const cl = (r.items as any[]).find(it => it.inventory_control_lists)?.inventory_control_lists;
+                        return cl ? (
+                          <span className="text-xs text-muted-foreground">
+                            · <span className="font-mono">{cl.control_list_code}</span> — {cl.control_list_name}
+                          </span>
+                        ) : null;
+                      })()}
                       <Badge variant="outline" className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30">
                         {r.status}
                       </Badge>
