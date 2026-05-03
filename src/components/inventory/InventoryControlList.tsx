@@ -143,6 +143,11 @@ export default function InventoryControlList() {
       const s = search.toLowerCase();
       return r.item_name.toLowerCase().includes(s) || r.item_code.toLowerCase().includes(s);
     });
+    filtered.sort((a, b) => {
+      const ac = a.item_code || '\uffff';
+      const bc = b.item_code || '\uffff';
+      return ac.localeCompare(bc, undefined, { numeric: true, sensitivity: 'base' });
+    });
     return [...newRows, ...filtered];
   }, [items, drafts, newRows, controlListId, search]);
 
