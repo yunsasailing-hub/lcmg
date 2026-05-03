@@ -240,7 +240,8 @@ function SortHeader({
 
 function RequirementsBadges({ task }: { task: EnrichedMaintenanceTask }) {
   const tech = hasTechDetails(task);
-  if (!task.note_required && !task.photo_required && !tech) {
+  const photoCount = (task.photo_url ? 1 : 0) + (Array.isArray(task.additional_photos) ? task.additional_photos.length : 0);
+  if (!task.note_required && !task.photo_required && !tech && photoCount === 0) {
     return <span className="text-muted-foreground/60 text-xs">—</span>;
   }
   return (
@@ -248,6 +249,9 @@ function RequirementsBadges({ task }: { task: EnrichedMaintenanceTask }) {
       {task.note_required && <Badge variant="outline" className="text-[10px] gap-1"><StickyNote className="h-3 w-3" />Note</Badge>}
       {task.photo_required && <Badge variant="outline" className="text-[10px] gap-1"><Camera className="h-3 w-3" />Photo</Badge>}
       {tech && <Badge variant="outline" className="text-[10px] gap-1"><Wrench className="h-3 w-3" />Tech</Badge>}
+      {task.status === 'Done' && photoCount > 0 && (
+        <Badge variant="secondary" className="text-[10px] gap-1"><Camera className="h-3 w-3" />{photoCount} photo{photoCount === 1 ? '' : 's'}</Badge>
+      )}
     </div>
   );
 }
