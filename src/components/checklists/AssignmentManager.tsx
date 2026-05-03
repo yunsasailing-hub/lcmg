@@ -18,7 +18,7 @@ import {
   type AssignmentWithProfile,
 } from '@/hooks/useAssignments';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
-import { userHandle, userHandleAt } from '@/lib/userDisplay';
+import { userHandleAt } from '@/lib/userDisplay';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
