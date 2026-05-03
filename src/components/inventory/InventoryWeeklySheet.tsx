@@ -15,7 +15,7 @@ import {
 import { useInventoryControlItems } from '@/hooks/useInventoryControlItems';
 import { useInventoryControlLists } from '@/hooks/useInventoryControlLists';
 import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ListChecks } from 'lucide-react';
 
 interface RowState {
   id?: string;
@@ -42,20 +42,29 @@ interface ExtraRow {
 }
 
 export default function InventoryWeeklySheet({
-  initial, onDone,
+  initial, onDone, onRequestCreateControlList,
 }: {
   initial?: InventoryRequestWithItems | null;
   onDone?: () => void;
+  onRequestCreateControlList?: (branchId: string) => void;
 }) {
   const { profile, user } = useAuth();
   const { data: branches = [] } = useBranchesAll();
   const upsert = useUpsertInventoryRequest();
 
+  // Weekly Sheet must target a real branch — exclude the synthetic "ALL BRANCHES" entry.
+  const ALL_BRANCHES_ID = '00000000-0000-0000-0000-000000000001';
+  const selectableBranches = useMemo(
+    () => branches.filter(b => b.id !== ALL_BRANCHES_ID && b.name?.toUpperCase() !== 'ALL BRANCHES'),
+    [branches],
+  );
+
   const [requestDate, setRequestDate] = useState(
     initial?.request_date ?? new Date().toISOString().slice(0, 10),
   );
   const [branchId, setBranchId] = useState<string>(
-    initial?.branch_id ?? profile?.branch_id ?? '',
+    (initial?.branch_id && initial.branch_id !== ALL_BRANCHES_ID ? initial.branch_id : '')
+      || (profile?.branch_id && profile.branch_id !== ALL_BRANCHES_ID ? profile.branch_id : ''),
   );
   const [controlListId, setControlListId] = useState<string>(
     (initial?.items?.find((it: any) => it.control_list_id)?.control_list_id as string) ?? '',
@@ -222,7 +231,7 @@ export default function InventoryWeeklySheet({
             <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); }}>
               <SelectTrigger className="h-9"><SelectValue placeholder="Select branch" /></SelectTrigger>
               <SelectContent>
-                {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                {selectableBranches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -251,9 +260,26 @@ export default function InventoryWeeklySheet({
       </Card>
 
       {/* Sheet */}
-      {!ready ? (
+      {!branchId ? (
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Select branch and control list to load the weekly inventory sheet.
+          Select a branch to load its Control Lists.
+        </CardContent></Card>
+      ) : lists.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-sm space-y-3">
+            <p className="text-muted-foreground">
+              No Control List found for this branch. Please create one.
+            </p>
+            {onRequestCreateControlList && (
+              <Button size="sm" onClick={() => onRequestCreateControlList(branchId)}>
+                <ListChecks className="h-4 w-4 mr-1" /> Create Control List
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : !controlListId ? (
+        <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
+          Select a Control List to load the weekly inventory sheet.
         </CardContent></Card>
       ) : loadingItems ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
