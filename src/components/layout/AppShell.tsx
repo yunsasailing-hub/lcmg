@@ -30,7 +30,7 @@ const useNavItems = () => {
     { to: '/documents', icon: FileText, label: 'Documents' },
     { to: '/management', icon: Settings, label: t('nav.management') },
   ];
-  if (hasRole('owner')) {
+  if (hasRole('administrator' as never)) {
     items.push({ to: '/system-repair', icon: LifeBuoy, label: t('nav.systemRepair') });
   }
   return items;
@@ -53,7 +53,7 @@ const useMobileNavItems = () => {
     { to: '/documents', icon: FileText, label: 'Documents' },
     { to: '/management', icon: Settings, label: t('nav.management') },
   ];
-  if (hasRole('owner')) {
+  if (hasRole('administrator' as never)) {
     overflow.push({ to: '/system-repair', icon: LifeBuoy, label: t('nav.systemRepair') });
   }
   return { primary, overflow };
