@@ -493,12 +493,19 @@ export default function InventoryControlList() {
       <ControlListFormDialog
         open={newListOpen} onOpenChange={setNewListOpen}
         defaultBranchId={branchId} defaultDepartment={department || null}
-        onSaved={(id) => setControlListId(id)}
+        existingLists={allLists}
+        onSaved={({ id, branch_id, department: dep }) => {
+          setBranchId(branch_id);
+          setDepartment(dep);
+          setControlListId(id);
+          toast.success('Control List created. Add items now.');
+        }}
       />
       <ControlListFormDialog
         key={currentList?.id ?? 'edit'}
         open={editListOpen} onOpenChange={setEditListOpen}
         editing={currentList}
+        existingLists={allLists}
       />
 
       <BulkAddFromIngredientsDialog
@@ -524,14 +531,15 @@ export default function InventoryControlList() {
 
 // ===================== Control List form (new/edit) =====================
 function ControlListFormDialog({
-  open, onOpenChange, editing, defaultBranchId, defaultDepartment, onSaved,
+  open, onOpenChange, editing, defaultBranchId, defaultDepartment, existingLists, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   editing?: EnrichedControlList | null;
   defaultBranchId?: string;
   defaultDepartment?: Department | null;
-  onSaved?: (id: string) => void;
+  existingLists?: EnrichedControlList[];
+  onSaved?: (list: { id: string; branch_id: string; department: Department }) => void;
 }) {
   const { data: branches = [] } = useBranchesAll();
   const upsert = useUpsertInventoryControlList();
@@ -558,14 +566,22 @@ function ControlListFormDialog({
     if (!department) return toast.error('Department is required');
     if (!code.trim()) return toast.error('Control List Code is required');
     if (!name.trim()) return toast.error('Control List Name is required');
+    const codeTrim = code.trim();
+    const dup = (existingLists ?? []).some(l =>
+      l.id !== editing?.id &&
+      l.branch_id === branchId &&
+      l.control_list_code.trim().toLowerCase() === codeTrim.toLowerCase()
+    );
+    if (dup) return toast.error('This Control List Code already exists for this branch.');
     try {
       const id = await upsert.mutateAsync({
         id: editing?.id, branch_id: branchId, department: department as Department,
-        control_list_code: code, control_list_name: name,
+        control_list_code: codeTrim, control_list_name: name,
         notes: notes.trim() || null, is_active: isActive,
       });
-      toast.success(editing ? 'Updated' : 'Created');
-      onSaved?.(id); onOpenChange(false);
+      if (editing) toast.success('Updated');
+      onSaved?.({ id, branch_id: branchId, department: department as Department });
+      onOpenChange(false);
     } catch (e: any) { toast.error(e?.message ?? 'Save failed'); }
   };
 
