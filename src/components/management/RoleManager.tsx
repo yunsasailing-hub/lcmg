@@ -31,6 +31,7 @@ async function callManageRoles(action: string, params: Record<string, unknown> =
 }
 
 const roleBadgeVariant: Record<AppRole, 'default' | 'secondary' | 'outline'> = {
+  administrator: 'default',
   owner: 'default',
   manager: 'secondary',
   staff: 'outline',
@@ -118,6 +119,7 @@ export default function RoleManager() {
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="administrator">Administrator</SelectItem>
                 <SelectItem value="owner">Owner</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
