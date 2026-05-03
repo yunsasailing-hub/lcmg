@@ -387,13 +387,10 @@ function AssignDialog({ template }: { template: any }) {
   const templateBranchName = branches?.find((b) => b.id === templateBranchId)?.name ?? null;
   const branchMissing = !templateBranchId;
 
-  // Sort users: same department first
-  const sortedUsers = [...(users || [])].sort((a, b) => {
-    const aDept = a.department === template.department ? 0 : 1;
-    const bDept = b.department === template.department ? 0 : 1;
-    if (aDept !== bDept) return aDept - bDept;
-    return (a.username || '\uffff').localeCompare(b.username || '\uffff');
-  });
+  // Only show users with a valid username; sort by username ASC
+  const sortedUsers = [...(users || [])]
+    .filter((u) => !!(u.username && String(u.username).trim()))
+    .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
   const handleAssign = () => {
     if (branchMissing) {
@@ -438,7 +435,7 @@ function AssignDialog({ template }: { template: any }) {
   };
 
   const getUserLabel = (u: any) => {
-    const handle = (u.username && String(u.username).trim()) ? `@${u.username}` : '⚠️ no username';
+    const handle = `@${u.username}`;
     const role = u.roles?.[0] ? u.roles[0].charAt(0).toUpperCase() + u.roles[0].slice(1) : '';
     const dept = u.department ? u.department.charAt(0).toUpperCase() + u.department.slice(1) : '';
     const parts = [handle, role, dept].filter(Boolean);
