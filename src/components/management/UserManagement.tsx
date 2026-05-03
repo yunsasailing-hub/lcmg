@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
+import { Label as UILabel } from '@/components/ui/label';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -254,6 +256,7 @@ export default function UserManagement() {
   const [search, setSearch] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<{ department?: string; branch_id?: string; role?: string; status?: string }>({});
+  const [hideInactive, setHideInactive] = useState(true);
   const [editingUser, setEditingUser] = useState<EnrichedProfile | null>(null);
   const [changingRole, setChangingRole] = useState<EnrichedProfile | null>(null);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
@@ -374,6 +377,12 @@ export default function UserManagement() {
     return arr;
   }, [filtered, sortKey, sortDir, branchMap]);
 
+  // Apply Hide Inactive AFTER search/filters/sorting
+  const visible = useMemo(() => {
+    if (!hideInactive) return sorted;
+    return sorted.filter(p => p.is_active !== false);
+  }, [sorted, hideInactive]);
+
   const SortIndicator = ({ k }: { k: SortKey }) =>
     sortKey === k ? (
       sortDir === 'asc' ? <ArrowUp className="inline h-3 w-3 ml-1" /> : <ArrowDown className="inline h-3 w-3 ml-1" />
@@ -405,14 +414,26 @@ export default function UserManagement() {
       <h3 className="text-lg font-heading font-semibold">Team Members</h3>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, email, phone, position..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, email, phone, position..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 sm:py-0 sm:h-10 shrink-0">
+          <Switch
+            id="hide-inactive"
+            checked={hideInactive}
+            onCheckedChange={setHideInactive}
+          />
+          <UILabel htmlFor="hide-inactive" className="text-xs sm:text-sm cursor-pointer whitespace-nowrap">
+            {hideInactive ? 'Inactive hidden' : 'Showing all'}
+          </UILabel>
+        </div>
       </div>
 
       {/* Filters */}
@@ -472,7 +493,10 @@ export default function UserManagement() {
 
       {/* Stats */}
       <p className="text-sm text-muted-foreground">
-        {sorted.length} user{sorted.length !== 1 ? 's' : ''} found
+        {visible.length} user{visible.length !== 1 ? 's' : ''} found
+        {hideInactive && sorted.length > visible.length && (
+          <span className="ml-1">({sorted.length - visible.length} inactive hidden)</span>
+        )}
       </p>
 
       {/* User List */}
@@ -482,11 +506,11 @@ export default function UserManagement() {
         <Alert variant="destructive">
           <AlertDescription>{error instanceof Error ? error.message : 'Failed to load team members.'}</AlertDescription>
         </Alert>
-      ) : sorted.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">No users match your criteria.</div>
       ) : isMobile ? (
         <div className="space-y-2">
-          {sorted.map(user => {
+          {visible.map(user => {
             const initials = (user.full_name || '?').slice(0, 2).toUpperCase();
             const primaryRole = user.roles[0];
             const roleBadge = primaryRole ? ROLE_BADGE[primaryRole] : null;
@@ -550,7 +574,7 @@ export default function UserManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(user => {
+              {visible.map(user => {
                 const initials = (user.full_name || '?').slice(0, 2).toUpperCase();
                 const primaryRole = user.roles[0];
                 const roleBadge = primaryRole ? ROLE_BADGE[primaryRole] : null;
