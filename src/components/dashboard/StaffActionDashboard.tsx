@@ -137,7 +137,8 @@ export default function StaffActionDashboard() {
       if (t.status === 'Done') return false;
       const mine = t.assigned_staff_id === profile?.user_id;
       const dept = !!t.assigned_department && t.assigned_department === profile?.department;
-      return mine || dept;
+      const branchMatch = !!profile?.branch_id && t.asset_branch_id === profile.branch_id;
+      return mine || (dept && branchMatch);
     });
   }, [maintTasks, profile]);
 
@@ -190,7 +191,8 @@ export default function StaffActionDashboard() {
     const visibleScheds = (schedules as any[]).filter(s => {
       const mine = s.assigned_staff_id === profile?.user_id;
       const dept = !!s.assigned_department && s.assigned_department === profile?.department;
-      return mine || dept;
+      const branchMatch = !!profile?.branch_id && s.asset_branch_id === profile.branch_id;
+      return mine || (dept && branchMatch);
     });
     for (const s of visibleScheds) {
       const anchor = new Date(s.created_at); anchor.setHours(0,0,0,0);
