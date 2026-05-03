@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useActiveUsersForAssignment, type ActiveUser } from '@/hooks/useChecklists';
+import { userHandleAt } from '@/lib/userDisplay';
 
 interface Props {
   value: string[];
@@ -41,7 +42,7 @@ export default function WarningRecipientsField({
         const bB = b.branch_id === preferredBranchId ? 0 : 1;
         if (aB !== bB) return aB - bB;
       }
-      return (a.full_name || '').localeCompare(b.full_name || '');
+      return (a.username || '\uffff').localeCompare(b.username || '\uffff');
     });
   }, [users, preferredBranchId]);
 
@@ -53,9 +54,8 @@ export default function WarningRecipientsField({
   };
 
   const userLabel = (u: ActiveUser) => {
-    const name = u.full_name || u.email || 'Unknown';
     const role = (u.roles || []).find(r => r === 'owner') ? 'Owner' : 'Manager';
-    return `${name} – ${role}`;
+    return `${userHandleAt(u)} – ${role}`;
   };
 
   return (
@@ -93,11 +93,11 @@ export default function WarningRecipientsField({
                   return (
                     <CommandItem
                       key={u.user_id}
-                      value={`${u.full_name || ''} ${u.email || ''}`}
+                      value={`${u.username || ''}`}
                       onSelect={() => toggle(u.user_id)}
                     >
                       <Check className={cn('mr-2 h-4 w-4', checked ? 'opacity-100' : 'opacity-0')} />
-                      <span className="flex-1 truncate">{userLabel(u)}</span>
+                      <span className="flex-1 truncate font-mono">{userLabel(u)}</span>
                       {sameBranch && (
                         <Badge variant="secondary" className="text-[10px] ml-2">same branch</Badge>
                       )}
@@ -114,7 +114,7 @@ export default function WarningRecipientsField({
         <div className="flex flex-wrap gap-1.5 pt-1">
           {selectedUsers.map(u => (
             <Badge key={u.user_id} variant="secondary" className="gap-1 pr-1">
-              <span className="text-xs">{u.full_name || u.email}</span>
+              <span className="text-xs font-mono">{userHandleAt(u)}</span>
               <button
                 type="button"
                 onClick={() => toggle(u.user_id)}
