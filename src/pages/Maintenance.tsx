@@ -29,6 +29,7 @@ import ScheduleFormDialog from '@/components/maintenance/ScheduleFormDialog';
 import MaintenanceTasksList from '@/components/maintenance/MaintenanceTasksList';
 import RepairsList from '@/components/maintenance/RepairsList';
 import RepairFormDialog from '@/components/maintenance/RepairFormDialog';
+import WorkToBeDoneList from '@/components/maintenance/WorkToBeDoneList';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -1027,6 +1028,7 @@ export default function Maintenance() {
             {!isStaffOnly && <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>}
             {!isStaffOnly && <TabsTrigger value="schedules">{t('maintenance.tabs.schedules', 'Schedules')}</TabsTrigger>}
             <TabsTrigger value="repairs">{t('maintenance.tabs.repairs', 'Repairs')}</TabsTrigger>
+            <TabsTrigger value="wtbd">Work To Be Done</TabsTrigger>
             {isOwner && (
               <TabsTrigger value="settings">{t('maintenance.tabs.settings')}</TabsTrigger>
             )}
@@ -1050,6 +1052,9 @@ export default function Maintenance() {
           </TabsContent>
           <TabsContent value="repairs">
             <RepairsList />
+          </TabsContent>
+          <TabsContent value="wtbd">
+            <WorkToBeDoneList />
           </TabsContent>
           {isOwner && (
             <TabsContent value="settings">
