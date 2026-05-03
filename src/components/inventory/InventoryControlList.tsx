@@ -431,9 +431,9 @@ export default function InventoryControlList() {
                     <th className="py-1.5 px-2 w-[120px]">Code</th>
                     <th className="py-1.5 px-2 min-w-[180px]">Name *</th>
                     <th className="py-1.5 px-2 w-[80px]">Unit</th>
-                    <th className="py-1.5 px-2 min-w-[160px]">Remarks</th>
                     <th className="py-1.5 px-2 w-[90px] text-right">Min</th>
                     <th className="py-1.5 px-2 w-[110px] text-right">Recom.</th>
+                    <th className="py-1.5 px-2 w-[160px]">Remarks</th>
                     <th className="py-1.5 px-2 w-[70px] text-center">Active</th>
                     <th className="py-1.5 px-2 w-[90px]">Source</th>
                     <th className="py-1.5 px-2 w-[110px] text-right">Actions</th>
@@ -451,12 +451,8 @@ export default function InventoryControlList() {
                           onChange={e => setField(r, { item_name: e.target.value })} />
                       </td>
                       <td className="px-1 py-1">
-                        <Input className="h-7 text-xs" value={r.unit}
+                        <Input className="h-7 text-xs" value={cleanUnit(r.unit)}
                           onChange={e => setField(r, { unit: e.target.value })} />
-                      </td>
-                      <td className="px-1 py-1">
-                        <Input className="h-7 text-xs" value={r.remarks}
-                          onChange={e => setField(r, { remarks: e.target.value })} />
                       </td>
                       <td className="px-1 py-1">
                         <Input type="number" inputMode="decimal" className="h-7 text-xs text-right"
@@ -466,6 +462,14 @@ export default function InventoryControlList() {
                         <Input type="number" inputMode="decimal" className="h-7 text-xs text-right"
                           value={r.recommended_order}
                           onChange={e => setField(r, { recommended_order: e.target.value })} />
+                      </td>
+                      <td className="px-1 py-1">
+                        <Input
+                          className="h-7 text-[0.85em] max-w-[160px] truncate focus:max-w-none focus:whitespace-normal"
+                          placeholder="notes..."
+                          value={r.remarks}
+                          onChange={e => setField(r, { remarks: e.target.value })}
+                        />
                       </td>
                       <td className="px-1 py-1 text-center">
                         <Checkbox checked={r.is_active}
