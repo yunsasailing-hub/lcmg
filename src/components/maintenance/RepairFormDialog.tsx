@@ -169,6 +169,12 @@ export default function RepairFormDialog({ open, onOpenChange, initial, presetAs
           <DialogTitle>{initial ? 'Edit Repair' : reportOnly ? 'Report an Issue' : 'New Repair'}</DialogTitle>
         </DialogHeader>
 
+        {initial && (initial as any).source === 'Work To Be Done' && (initial as any).source_work_to_be_done_id && (
+          <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+            Source: Work To Be Done · Original job id: {(initial as any).source_work_to_be_done_id}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
             <Label>Equipment *</Label>
