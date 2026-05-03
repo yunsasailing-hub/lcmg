@@ -46,6 +46,7 @@ export interface UpsertRequestPayload {
     id?: string;
     ingredient_id?: string | null;
     inventory_control_item_id?: string | null;
+    control_list_id?: string | null;
     source_type?: 'ingredient' | 'manual' | 'extra';
     item_code?: string | null;
     item_name: string;
@@ -116,6 +117,7 @@ export function useUpsertInventoryRequest() {
           request_id: requestId!,
           ingredient_id: it.ingredient_id ?? null,
           inventory_control_item_id: it.inventory_control_item_id ?? null,
+          control_list_id: it.control_list_id ?? null,
           source_type: (it.source_type ?? 'ingredient') as any,
           item_code: it.item_code ?? null,
           item_name: it.item_name,
