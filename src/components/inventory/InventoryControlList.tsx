@@ -563,7 +563,7 @@ function ControlListFormDialog({
   defaultBranchId?: string;
   defaultDepartment?: Department | null;
   existingLists?: EnrichedControlList[];
-  onSaved?: (list: { id: string; branch_id: string; department: Department }) => void;
+  onSaved?: (list: SavedControlList) => void | Promise<void>;
 }) {
   const { data: branches = [] } = useBranchesAll();
   const upsert = useUpsertInventoryControlList();
@@ -598,13 +598,13 @@ function ControlListFormDialog({
     );
     if (dup) return toast.error('This Control List Code already exists for this branch.');
     try {
-      const id = await upsert.mutateAsync({
+      const saved = await upsert.mutateAsync({
         id: editing?.id, branch_id: branchId, department: department as Department,
         control_list_code: codeTrim, control_list_name: name,
         notes: notes.trim() || null, is_active: isActive,
       });
       if (editing) toast.success('Updated');
-      onSaved?.({ id, branch_id: branchId, department: department as Department });
+      await onSaved?.(saved);
       onOpenChange(false);
     } catch (e: any) { toast.error(e?.message ?? 'Save failed'); }
   };
@@ -826,10 +826,11 @@ function CopyControlListDialog({
     if (!newCode.trim() || !newName.trim()) { toast.error('New Code and Name required'); return; }
     let newListId: string;
     try {
-      newListId = await upsertList.mutateAsync({
+      const newList = await upsertList.mutateAsync({
         branch_id: toBranch, department: toDept as Department,
         control_list_code: newCode, control_list_name: newName,
       });
+      newListId = newList.id;
     } catch (e: any) { toast.error(e?.message ?? 'Failed to create list'); return; }
 
     let copied = 0, skipped = 0, failed = 0;
