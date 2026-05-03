@@ -81,12 +81,14 @@ function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: bool
         )}
       </div>
       {/* Line 3: assignee + overdue, only if any */}
-      {(instance.assignee?.full_name || overdueText) && (
+      {(instance.assignee || overdueText) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs pl-6">
-          {instance.assignee?.full_name && (
+          {instance.assignee && (
             <span className="inline-flex items-center gap-1 text-muted-foreground">
               <UserIcon className="h-3 w-3" />
-              <span className="text-foreground font-medium truncate max-w-[180px]">{instance.assignee.full_name}</span>
+              <span className="text-foreground font-mono truncate max-w-[180px]">
+                {instance.assignee.username ? `@${instance.assignee.username}` : '⚠️ no username'}
+              </span>
             </span>
           )}
           {overdueText && (
