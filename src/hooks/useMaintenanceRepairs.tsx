@@ -38,8 +38,8 @@ async function enrich(rows: MaintenanceRepair[]): Promise<EnrichedMaintenanceRep
   const [{ data: assets }, profilesRes] = await Promise.all([
     supabase.from('maintenance_assets').select('id, name, code, branch_id, department').in('id', assetIds),
     profileIds.length
-      ? supabase.from('profiles').select('user_id, full_name').in('user_id', profileIds)
-      : Promise.resolve({ data: [] as { user_id: string; full_name: string | null }[] }),
+      ? supabase.from('profiles').select('user_id, username').in('user_id', profileIds)
+      : Promise.resolve({ data: [] as { user_id: string; username: string | null }[] }),
   ]);
 
   const branchIds = Array.from(new Set((assets ?? []).map(a => a.branch_id).filter(Boolean)));
@@ -49,7 +49,9 @@ async function enrich(rows: MaintenanceRepair[]): Promise<EnrichedMaintenanceRep
 
   const aMap = new Map((assets ?? []).map(a => [a.id, a]));
   const bMap = new Map((branches ?? []).map(b => [b.id, b.name]));
-  const pMap = new Map((profilesRes.data ?? []).map(p => [p.user_id, p.full_name]));
+  const pMap = new Map(
+    (profilesRes.data ?? []).map(p => [p.user_id, p.username ? `@${p.username}` : '⚠️ no username'] as const),
+  );
 
   return rows.map(r => {
     const a = aMap.get(r.asset_id);
