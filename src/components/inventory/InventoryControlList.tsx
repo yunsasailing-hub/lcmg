@@ -98,6 +98,8 @@ export default function InventoryControlList() {
 
   // Load ALL active control lists once, filter client-side. Active includes NULL (legacy).
   const { data: activeLists = [], refetch: refetchBranchLists } = useInventoryControlLists({ activeOnly: true });
+  const { data: items = [], isLoading } = useInventoryControlItems({ controlListId: controlListId || null });
+  const { data: allItems = [] } = useInventoryControlItems(); // for duplicate checks across branch
 
   const filteredLists = useMemo(() => {
     let lists = [...activeLists];
@@ -188,9 +190,6 @@ export default function InventoryControlList() {
   useEffect(() => {
     if (controlListId && !filteredLists.find(l => l.id === controlListId)) setControlListId('');
   }, [filteredLists, controlListId]);
-
-  const { data: items = [], isLoading } = useInventoryControlItems({ controlListId: controlListId || null });
-  const { data: allItems = [] } = useInventoryControlItems(); // for duplicate checks across branch
 
   const [search, setSearch] = useState('');
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
