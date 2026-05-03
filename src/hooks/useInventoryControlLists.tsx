@@ -20,7 +20,8 @@ export function useInventoryControlLists(opts?: { activeOnly?: boolean; branchId
         .from('inventory_control_lists')
         .select('*, branches(name)')
         .order('control_list_code');
-      if (activeOnly) q = q.eq('is_active', true);
+      // NULL active is treated as active to avoid hiding legacy rows
+      if (activeOnly) q = q.or('is_active.is.null,is_active.eq.true');
       if (branchId) q = q.eq('branch_id', branchId);
       if (department) q = q.eq('department', department);
       const { data, error } = await q;
