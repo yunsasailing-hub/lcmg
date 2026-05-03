@@ -34,17 +34,11 @@ export default function WarningRecipientsField({
 
   const eligible = useMemo<ActiveUser[]>(() => {
     const list = (users || []).filter(u =>
+      !!(u.username && String(u.username).trim()) &&
       (u.roles || []).some(r => r === 'manager' || r === 'owner')
     );
-    return list.sort((a, b) => {
-      if (preferredBranchId) {
-        const aB = a.branch_id === preferredBranchId ? 0 : 1;
-        const bB = b.branch_id === preferredBranchId ? 0 : 1;
-        if (aB !== bB) return aB - bB;
-      }
-      return (a.username || '\uffff').localeCompare(b.username || '\uffff');
-    });
-  }, [users, preferredBranchId]);
+    return list.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+  }, [users]);
 
   const selectedUsers = eligible.filter(u => value.includes(u.user_id));
 
