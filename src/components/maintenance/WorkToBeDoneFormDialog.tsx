@@ -231,10 +231,6 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
             <Input type="date" value={form.due_date ?? ''} onChange={e => update('due_date', e.target.value)} disabled={isLocked} />
           </div>
           <div className="sm:col-span-2">
-            <Label>Area / Equipment</Label>
-            <Input value={form.area_or_equipment} onChange={e => update('area_or_equipment', e.target.value)} disabled={isLocked} />
-          </div>
-          <div className="sm:col-span-2">
             <Label>Assigned person</Label>
             <Select value={form.assigned_to || 'none'} onValueChange={v => update('assigned_to', v === 'none' ? '' : v)} disabled={isLocked}>
               <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
