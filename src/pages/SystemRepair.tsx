@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useCleanupOrphanPendingChecklists } from '@/hooks/useChecklists';
+import AdminEmailChange from '@/components/system-repair/AdminEmailChange';
 
 function RepairOrphanChecklists() {
   const cleanup = useCleanupOrphanPendingChecklists();
@@ -98,10 +99,16 @@ export default function SystemRepair() {
     <AppShell>
       <PageHeader title={t('pages.systemRepair.title')} description={t('pages.systemRepair.subtitle')} />
       {isAdministrator ? (
-        <section className="space-y-3">
-          <h2 className="font-heading text-lg font-semibold">Repair Tools</h2>
-          <RepairOrphanChecklists />
-        </section>
+        <div className="space-y-8">
+          <section className="space-y-3">
+            <h2 className="font-heading text-lg font-semibold">Repair Tools</h2>
+            <RepairOrphanChecklists />
+          </section>
+          <section className="space-y-3">
+            <h2 className="font-heading text-lg font-semibold">Admin Tools</h2>
+            <AdminEmailChange />
+          </section>
+        </div>
       ) : (
         <EmptyState icon={Wrench} title="Administrator access required" description="Only an Administrator can access System Repair tools." />
       )}
