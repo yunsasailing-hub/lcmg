@@ -281,6 +281,7 @@ function TaskTable({
             <TableHead>Assignment</TableHead>
             <TableHead>Requirements</TableHead>
             {showCompleted && <TableHead>Completed by</TableHead>}
+            {showCompleted && <TableHead>Execution date</TableHead>}
             {showCompleted && <SortHeader label="Completed at" k="completed_at" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -305,6 +306,7 @@ function TaskTable({
               </TableCell>
               <TableCell><RequirementsBadges task={t} /></TableCell>
               {showCompleted && <TableCell className="text-xs">{t.completed_by_name ?? '—'}</TableCell>}
+              {showCompleted && <TableCell className="whitespace-nowrap text-xs">{(t as any).execution_date ?? '—'}</TableCell>}
               {showCompleted && (
                 <TableCell className="whitespace-nowrap text-xs">
                   {t.completed_at ? new Date(t.completed_at).toLocaleString() : '—'}
