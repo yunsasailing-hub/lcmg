@@ -111,7 +111,7 @@ function EditUserDialog({
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      const { role, ...profileFields } = form;
+      const { role, email: _ignoredEmail, ...profileFields } = form;
       // Update profile fields
       await callManageRoles('update_profile', {
         user_id: user.user_id,
@@ -149,7 +149,10 @@ function EditUserDialog({
           </div>
           <div>
             <Label>Email</Label>
-            <Input value={form.email} onChange={e => update('email', e.target.value)} />
+            <Input value={form.email} readOnly disabled className="bg-muted cursor-not-allowed" />
+            <p className="text-xs text-muted-foreground mt-1">
+              Email is a system login identity and cannot be changed here.
+            </p>
           </div>
           <div>
             <Label>Phone</Label>
