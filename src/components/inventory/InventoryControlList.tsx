@@ -859,18 +859,23 @@ function ControlListFormDialog({
 
 // ===================== Bulk add from ingredients =====================
 function BulkAddFromIngredientsDialog({
-  open, onOpenChange, controlList, allItems,
+  open, onOpenChange, controlList, allItems, allLists,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   controlList: EnrichedControlList | null;
   allItems: EnrichedControlItem[];
+  allLists: EnrichedControlList[];
 }) {
   const { data: ingredients = [] } = useIngredientPicker();
   const upsert = useUpsertInventoryControlItem();
 
   const [search, setSearch] = useState('');
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [blockedDetails, setBlockedDetails] = useState<
+    { item_code: string; item_name: string; list_code: string; list_name: string; department: string }[]
+  >([]);
+  const [showBlocked, setShowBlocked] = useState(false);
 
   const sorted = useMemo(() => {
     const arr = [...ingredients];
@@ -897,6 +902,7 @@ function BulkAddFromIngredientsDialog({
     if (!controlList) { toast.error('Select a Control List first'); return; }
     if (picked.size === 0) { toast.error('Pick at least one ingredient'); return; }
     let added = 0, blocked = 0, failed = 0;
+    const blockedRows: typeof blockedDetails = [];
     for (const id of picked) {
       const ing = ingredients.find(i => i.id === id);
       if (!ing) continue;
@@ -908,7 +914,23 @@ function BulkAddFromIngredientsDialog({
           (it.item_code ?? '').toLowerCase() === code.toLowerCase() &&
           it.control_list_id !== controlList.id &&
           it.branch_id === controlList.branch_id);
-        if (conflict) { blocked++; continue; }
+        if (conflict) {
+          // Only block if the conflicting list is also active
+          const conflictList = allLists.find(l => l.id === conflict.control_list_id);
+          if (conflictList && conflictList.is_active === false) {
+            // inactive list — do not block
+          } else {
+            blocked++;
+            blockedRows.push({
+              item_code: code,
+              item_name: ing.name_en,
+              list_code: conflictList?.control_list_code ?? '(unknown)',
+              list_name: conflictList?.control_list_name ?? '',
+              department: conflictList?.department ?? '',
+            });
+            continue;
+          }
+        }
       }
       try {
         await upsert.mutateAsync({
@@ -925,9 +947,15 @@ function BulkAddFromIngredientsDialog({
         added++;
       } catch { failed++; }
     }
-    toast.success(`Added ${added}${blocked ? `, blocked ${blocked} (already in another list)` : ''}${failed ? `, ${failed} failed` : ''}`);
+    setBlockedDetails(blockedRows);
+    if (blocked > 0) {
+      toast.warning(`Added ${added}. Blocked ${blocked} (already in another active list).${failed ? ` ${failed} failed.` : ''}`);
+      setShowBlocked(true);
+    } else {
+      toast.success(`Added ${added}${failed ? `, ${failed} failed` : ''}`);
+      onOpenChange(false);
+    }
     setPicked(new Set());
-    onOpenChange(false);
   };
 
   return (
@@ -972,6 +1000,39 @@ function BulkAddFromIngredientsDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={submit} disabled={upsert.isPending || !controlList}>Add selected</Button>
         </DialogFooter>
+        {showBlocked && blockedDetails.length > 0 && (
+          <div className="mt-3 rounded border border-destructive/40 bg-destructive/5 p-2">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs font-semibold text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5" /> Blocked items ({blockedDetails.length})
+              </div>
+              <Button size="sm" variant="ghost" className="h-6 text-xs"
+                onClick={() => { setShowBlocked(false); setBlockedDetails([]); }}>Dismiss</Button>
+            </div>
+            <div className="max-h-[160px] overflow-y-auto text-xs">
+              <table className="w-full">
+                <thead className="bg-muted/40">
+                  <tr className="text-left">
+                    <th className="px-2 py-1">Item Code</th>
+                    <th className="px-2 py-1">Item Name</th>
+                    <th className="px-2 py-1">Existing List</th>
+                    <th className="px-2 py-1">Department</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blockedDetails.map((b, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="px-2 py-0.5 font-mono">{b.item_code}</td>
+                      <td className="px-2 py-0.5">{b.item_name}</td>
+                      <td className="px-2 py-0.5"><span className="font-mono">{b.list_code}</span> — {b.list_name}</td>
+                      <td className="px-2 py-0.5 capitalize">{b.department}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
