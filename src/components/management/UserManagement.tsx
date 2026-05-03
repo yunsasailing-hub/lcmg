@@ -672,6 +672,7 @@ export default function UserManagement() {
           user={changingRole}
           open
           onClose={() => setChangingRole(null)}
+          canAssignAdministrator={isAdministrator}
         />
       )}
     </div>
