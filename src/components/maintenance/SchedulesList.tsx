@@ -101,6 +101,7 @@ export default function SchedulesList({
   const { data: schedules = [], isLoading } = useMaintenanceSchedules();
   const { data: assets = [] } = useMaintenanceAssets();
   const { data: branches = [] } = useBranchesAll();
+  const { data: lastExecMap } = useLastExecutionByTemplate();
   const archive = useArchiveMaintenanceSchedule();
 
   const [search, setSearch] = useState('');
@@ -158,7 +159,7 @@ export default function SchedulesList({
       return true;
     });
     const enriched = base.map(s => {
-      const next = computeNextDue(s);
+      const next = computeNextDue(s, lastExecMap?.get(s.id));
       return { s, next };
     });
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -193,7 +194,7 @@ export default function SchedulesList({
       return String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' }) * dir;
     });
     return enriched;
-  }, [schedules, search, branchFilter, deptFilter, assetFilter, freqFilter, statusFilter, filterByAssetId, sortKey, sortDir]);
+  }, [schedules, search, branchFilter, deptFilter, assetFilter, freqFilter, statusFilter, filterByAssetId, sortKey, sortDir, lastExecMap]);
 
   const handleArchiveConfirm = async () => {
     if (!archiveTarget) return;
