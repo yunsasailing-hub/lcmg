@@ -106,8 +106,7 @@ export default function AdminEmailChange() {
     !mutation.isPending;
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border bg-card">
+    <div className="rounded-lg border bg-card">
         <div className="px-4 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <MailWarning className="h-5 w-5 text-destructive shrink-0" />
@@ -228,12 +227,11 @@ export default function AdminEmailChange() {
             </div>
           </CollapsibleContent>
         </Collapsible>
-      </div>
 
-      <div className="rounded-lg border bg-card/50 px-4 py-3 sm:px-5 sm:py-4">
+      <div className="border-t px-4 py-3 sm:px-5 sm:py-4 bg-card/50 rounded-b-lg">
         <h3 className="text-sm font-heading font-semibold text-muted-foreground mb-2">Email Change History</h3>
         {!logs || logs.length === 0 ? (
-          <p className="text-xs text-muted-foreground/70">No email changes recorded.</p>
+          <p className="text-xs text-muted-foreground/70">No email changes recorded</p>
         ) : (
           <div className="overflow-x-auto">
             <Table>
