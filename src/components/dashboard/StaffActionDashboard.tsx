@@ -11,9 +11,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { todayVN, formatVN } from '@/lib/timezone';
 import {
   useMaintenanceTasks,
-  isDueToday,
   type EnrichedMaintenanceTask,
 } from '@/hooks/useMaintenanceTasks';
+import { useLastExecutionByTemplate, parseLocalDate } from '@/hooks/useLastExecutionByTemplate';
+import { occurrencesInRange } from '@/lib/maintenanceSchedule';
+import TaskCompletionDialog, { type EarlyPreviewPayload } from '@/components/maintenance/TaskCompletionDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type Frequency = Database['public']['Enums']['maintenance_schedule_frequency'];
@@ -30,6 +32,7 @@ type ActionItem = {
   status: 'Overdue' | 'Due Today' | 'Upcoming';
   // navigation / interaction payload
   isPreview?: boolean;
+  earlyPayload?: EarlyPreviewPayload;
   onOpen?: () => void;
   description?: string | null;
 };
@@ -124,8 +127,10 @@ export default function StaffActionDashboard() {
   const { data: checklists = [], isLoading: loadingChk } = useStaffOpenChecklists();
   const { data: maintTasks = [], isLoading: loadingMT } = useMaintenanceTasks();
   const { data: schedules = [], isLoading: loadingSch } = useStaffSchedules();
+  const { data: lastExecMap } = useLastExecutionByTemplate();
 
   const [previewTask, setPreviewTask] = useState<ActionItem | null>(null);
+  const [earlyPayload, setEarlyPayload] = useState<EarlyPreviewPayload | null>(null);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
   const todayISO = todayVN();
@@ -195,12 +200,18 @@ export default function StaffActionDashboard() {
       return mine || (dept && branchMatch);
     });
     for (const s of visibleScheds) {
-      const anchor = new Date(s.created_at); anchor.setHours(0,0,0,0);
-      for (let i = 1; i <= 7; i++) { // start from tomorrow
-        const day = addDays(today, i);
-        const dayISO = localISO(day);
-        if (dayISO > horizonISO) break;
-        if (!isDueToday(s.frequency as Frequency, s.custom_interval_days, anchor, day)) continue;
+      const lastISO = lastExecMap?.get(s.id) ?? null;
+      const lastDate = parseLocalDate(lastISO);
+      const tomorrowISO = localISO(addDays(today, 1));
+      const occISOs = occurrencesInRange(
+        s.frequency as Frequency,
+        s.custom_interval_days,
+        new Date(s.created_at),
+        lastDate,
+        tomorrowISO,
+        horizonISO,
+      );
+      for (const dayISO of occISOs) {
         const key = `${s.id}_${dayISO}`;
         if (realKeys.has(key)) continue;
         out.push({
@@ -214,12 +225,28 @@ export default function StaffActionDashboard() {
           dueTime: s.due_time,
           status: 'Upcoming',
           isPreview: true,
+          earlyPayload: {
+            schedule_template_id: s.id,
+            asset_id: s.asset_id,
+            title: s.title,
+            due_date: dayISO,
+            due_time: s.due_time,
+            assigned_staff_id: s.assigned_staff_id,
+            assigned_department: s.assigned_department,
+            asset_code: s.asset_code,
+            asset_name: s.asset_name,
+            asset_branch_name: s.asset_branch_name,
+            asset_department: s.asset_department,
+            template_description: s.description ?? null,
+            note_required: !!s.note_required,
+            photo_required: !!s.photo_required,
+          },
           description: s.description ?? null,
         });
       }
     }
     return out;
-  }, [checklists, myMaintTasks, schedules, todayISO, horizonISO, today, profile, navigate]);
+  }, [checklists, myMaintTasks, schedules, todayISO, horizonISO, today, profile, navigate, lastExecMap]);
 
   const overdue = useMemo(
     () => items.filter(i => i.status === 'Overdue').sort((a, b) => a.dueISO.localeCompare(b.dueISO)),
@@ -287,6 +314,12 @@ export default function StaffActionDashboard() {
       )}
 
       <PreviewDialog item={previewTask} onClose={() => setPreviewTask(null)} />
+      {earlyPayload && (
+        <TaskCompletionDialog
+          preview={earlyPayload}
+          onOpenChange={(v) => { if (!v) setEarlyPayload(null); }}
+        />
+      )}
     </div>
   );
 }
