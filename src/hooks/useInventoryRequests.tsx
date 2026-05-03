@@ -18,7 +18,7 @@ export function useInventoryRequests() {
     queryFn: async (): Promise<InventoryRequestWithItems[]> => {
       const { data: reqs, error } = await supabase
         .from('inventory_requests')
-        .select('*, branches(name), inventory_request_items(*, inventory_control_items(remarks, min_stock, recommended_order))')
+        .select('*, branches(name), inventory_request_items(*, inventory_control_items(remarks, min_stock, recommended_order), inventory_control_lists(control_list_code, control_list_name))')
         .order('request_date', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -46,6 +46,7 @@ export interface UpsertRequestPayload {
     id?: string;
     ingredient_id?: string | null;
     inventory_control_item_id?: string | null;
+    control_list_id?: string | null;
     source_type?: 'ingredient' | 'manual' | 'extra';
     item_code?: string | null;
     item_name: string;
@@ -116,6 +117,7 @@ export function useUpsertInventoryRequest() {
           request_id: requestId!,
           ingredient_id: it.ingredient_id ?? null,
           inventory_control_item_id: it.inventory_control_item_id ?? null,
+          control_list_id: it.control_list_id ?? null,
           source_type: (it.source_type ?? 'ingredient') as any,
           item_code: it.item_code ?? null,
           item_name: it.item_name,

@@ -1,21 +1,21 @@
-// Excel-style editable Inventory Control List with Branch+Department working context.
+// Multi-Control-List editor. Each Control List groups items for one Branch + Department.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import {
   Plus, Trash2, Power, PowerOff, Save, Upload, Download, FileDown,
-  Sparkles, Settings2, Copy as CopyIcon,
+  Sparkles, Copy as CopyIcon, FilePlus2, Pencil,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { SearchableCombobox } from '@/components/shared/SearchableCombobox';
 import { useAuth } from '@/hooks/useAuth';
 import { useBranchesAll } from '@/hooks/useMaintenance';
 import { useIngredientPicker, type Department } from '@/hooks/useInventoryRequests';
@@ -24,16 +24,17 @@ import {
   useToggleInventoryControlItem, useDeleteInventoryControlItem,
   type EnrichedControlItem, type InventoryControlSource,
 } from '@/hooks/useInventoryControlItems';
+import {
+  useInventoryControlLists, useUpsertInventoryControlList, useDeleteInventoryControlList,
+  type EnrichedControlList,
+} from '@/hooks/useInventoryControlLists';
 import { toast } from 'sonner';
 
 const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
 
-// ---------- Editable row state ----------
 type RowDraft = {
   key: string;
   id?: string;
-  branch_id: string | null;
-  department: Department | null;
   item_code: string;
   item_name: string;
   unit: string;
@@ -49,10 +50,7 @@ type RowDraft = {
 
 function rowFromItem(it: EnrichedControlItem): RowDraft {
   return {
-    key: it.id,
-    id: it.id,
-    branch_id: it.branch_id ?? null,
-    department: (it.department as Department | null) ?? null,
+    key: it.id, id: it.id,
     item_code: it.item_code ?? '',
     item_name: it.item_name,
     unit: it.unit ?? '',
@@ -62,31 +60,44 @@ function rowFromItem(it: EnrichedControlItem): RowDraft {
     is_active: it.is_active,
     source_type: it.source_type,
     ingredient_id: it.ingredient_id ?? null,
-    dirty: false,
-    isNew: false,
+    dirty: false, isNew: false,
   };
 }
 
 function parseActive(v: any): boolean {
   if (typeof v === 'boolean') return v;
   if (typeof v === 'number') return v !== 0;
-  const s = String(v ?? '').trim().toLowerCase();
-  return ['true', 'yes', 'active', '1', 'y'].includes(s);
+  return ['true', 'yes', 'active', '1', 'y'].includes(String(v ?? '').trim().toLowerCase());
 }
 
 export default function InventoryControlList() {
   const { hasRole } = useAuth();
   const isOwner = hasRole('owner');
   const { data: branches = [] } = useBranchesAll();
-  const { data: items = [], isLoading } = useInventoryControlItems();
+  const { data: allLists = [] } = useInventoryControlLists();
+  const upsertList = useUpsertInventoryControlList();
+  const deleteList = useDeleteInventoryControlList();
   const upsert = useUpsertInventoryControlItem();
   const toggle = useToggleInventoryControlItem();
   const del = useDeleteInventoryControlItem();
 
-  // Working context — owner must pick both before editing.
   const [branchId, setBranchId] = useState<string>('');
   const [department, setDepartment] = useState<Department | ''>('');
-  const ctxReady = !!branchId && !!department;
+  const [controlListId, setControlListId] = useState<string>('');
+
+  const filteredLists = useMemo(() => allLists.filter(l =>
+    (!branchId || l.branch_id === branchId) &&
+    (!department || l.department === department)
+  ), [allLists, branchId, department]);
+
+  // When context changes, auto-select if only one list is available; else clear
+  useEffect(() => {
+    if (controlListId && !filteredLists.find(l => l.id === controlListId)) setControlListId('');
+    if (!controlListId && filteredLists.length === 1) setControlListId(filteredLists[0].id);
+  }, [filteredLists, controlListId]);
+
+  const { data: items = [], isLoading } = useInventoryControlItems({ controlListId: controlListId || null });
+  const { data: allItems = [] } = useInventoryControlItems(); // for duplicate checks across branch
 
   const [search, setSearch] = useState('');
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
@@ -94,45 +105,36 @@ export default function InventoryControlList() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advancedEditing, setAdvancedEditing] = useState<EnrichedControlItem | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
+  const [newListOpen, setNewListOpen] = useState(false);
+  const [editListOpen, setEditListOpen] = useState(false);
 
   const branchName = (id: string | null) => branches.find(b => b.id === id)?.name ?? '';
+  const currentList = useMemo(() => allLists.find(l => l.id === controlListId) ?? null, [allLists, controlListId]);
 
-  // Reset transient drafts when context changes
-  useEffect(() => { setNewRows([]); setDrafts({}); }, [branchId, department]);
+  useEffect(() => { setNewRows([]); setDrafts({}); }, [controlListId]);
 
-  // Display rows: only items matching the selected context.
   const displayRows: RowDraft[] = useMemo(() => {
-    if (!ctxReady) return [];
-    const existing = items
-      .filter(it => (it.branch_id ?? null) === branchId && (it.department ?? null) === department)
-      .map(it => drafts[it.id] ?? rowFromItem(it));
+    if (!controlListId) return [];
+    const existing = items.map(it => drafts[it.id] ?? rowFromItem(it));
     const filtered = existing.filter(r => {
       if (!search.trim()) return true;
       const s = search.toLowerCase();
       return r.item_name.toLowerCase().includes(s) || r.item_code.toLowerCase().includes(s);
     });
     return [...newRows, ...filtered];
-  }, [items, drafts, newRows, ctxReady, branchId, department, search]);
+  }, [items, drafts, newRows, controlListId, search]);
 
-  // -------- Edit handlers --------
   const setField = (row: RowDraft, patch: Partial<RowDraft>) => {
-    if (row.isNew) {
-      setNewRows(prev => prev.map(r => r.key === row.key ? { ...r, ...patch, dirty: true } : r));
-    } else {
-      setDrafts(prev => ({ ...prev, [row.key]: { ...row, ...patch, dirty: true } }));
-    }
+    if (row.isNew) setNewRows(prev => prev.map(r => r.key === row.key ? { ...r, ...patch, dirty: true } : r));
+    else setDrafts(prev => ({ ...prev, [row.key]: { ...row, ...patch, dirty: true } }));
   };
 
   const addEmptyRow = () => {
-    if (!ctxReady) return;
+    if (!controlListId) return;
     const key = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setNewRows(prev => [{
       key, isNew: true, dirty: true,
-      branch_id: branchId,
-      department: department as Department,
       item_code: '', item_name: '', unit: '', remarks: '',
       min_stock: '', recommended_order: '',
       is_active: true, source_type: 'manual', ingredient_id: null,
@@ -141,6 +143,7 @@ export default function InventoryControlList() {
 
   const saveRow = async (row: RowDraft) => {
     if (!row.item_name.trim()) { toast.error('Item name is required'); return; }
+    if (!currentList) return;
     try {
       await upsert.mutateAsync({
         id: row.id,
@@ -150,8 +153,9 @@ export default function InventoryControlList() {
         unit: row.unit.trim() || null,
         source_type: row.source_type,
         is_active: row.is_active,
-        branch_id: row.branch_id,
-        department: row.department,
+        branch_id: currentList.branch_id,
+        department: currentList.department,
+        control_list_id: currentList.id,
         remarks: row.remarks.trim() || null,
         min_stock: row.min_stock ? Number(row.min_stock) : null,
         recommended_order: row.recommended_order ? Number(row.recommended_order) : null,
@@ -162,15 +166,16 @@ export default function InventoryControlList() {
     } catch (e: any) { toast.error(e?.message ?? 'Save failed'); }
   };
 
-  const removeNewRow = (row: RowDraft) =>
-    setNewRows(prev => prev.filter(r => r.key !== row.key));
+  const removeNewRow = (row: RowDraft) => setNewRows(prev => prev.filter(r => r.key !== row.key));
 
-  // -------- Export --------
+  // Export
   const exportRows = () => {
-    if (!ctxReady) { toast.error('Select Branch and Department first'); return; }
+    if (!currentList) { toast.error('Select a Control List first'); return; }
     const rows = displayRows.filter(r => !r.isNew).map(r => ({
-      Branch: branchName(r.branch_id) || '',
-      Department: r.department ?? '',
+      'Control List Code': currentList.control_list_code,
+      'Control List Name': currentList.control_list_name,
+      Branch: branchName(currentList.branch_id),
+      Department: currentList.department,
       'Item Code': r.item_code,
       'Item Name': r.item_name,
       Unit: r.unit,
@@ -183,23 +188,28 @@ export default function InventoryControlList() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Control list');
-    const bn = (branchName(branchId) || 'branch').replace(/\s+/g, '_');
-    XLSX.writeFile(wb, `control_list_${bn}_${department}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `${currentList.control_list_code}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const exportAll = () => {
-    const rows = items.map(it => ({
-      Branch: branchName(it.branch_id ?? null) || '',
-      Department: it.department ?? '',
-      'Item Code': it.item_code ?? '',
-      'Item Name': it.item_name,
-      Unit: it.unit ?? '',
-      Remarks: (it as any).remarks ?? '',
-      'Min Stock': (it as any).min_stock ?? '',
-      'Recommended Order': (it as any).recommended_order ?? '',
-      Active: it.is_active ? 'Active' : 'Inactive',
-      'Source Type': it.source_type,
-    }));
+    const listById = new Map(allLists.map(l => [l.id, l]));
+    const rows = allItems.map(it => {
+      const l = it.control_list_id ? listById.get(it.control_list_id) : null;
+      return {
+        'Control List Code': l?.control_list_code ?? '',
+        'Control List Name': l?.control_list_name ?? '',
+        Branch: branchName(l?.branch_id ?? it.branch_id ?? null),
+        Department: l?.department ?? it.department ?? '',
+        'Item Code': it.item_code ?? '',
+        'Item Name': it.item_name,
+        Unit: it.unit ?? '',
+        Remarks: (it as any).remarks ?? '',
+        'Min Stock': (it as any).min_stock ?? '',
+        'Recommended Order': (it as any).recommended_order ?? '',
+        Active: it.is_active ? 'Active' : 'Inactive',
+        'Source Type': it.source_type,
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'All control lists');
@@ -208,8 +218,10 @@ export default function InventoryControlList() {
 
   const exportTemplate = () => {
     const rows = [{
-      Branch: branchName(branchId) || 'LCL',
-      Department: department || 'kitchen',
+      'Control List Code': currentList?.control_list_code ?? 'LCL-KIT-FRESH',
+      'Control List Name': currentList?.control_list_name ?? 'Kitchen Fresh Products',
+      Branch: branchName(currentList?.branch_id ?? branchId) || 'La Cala',
+      Department: currentList?.department ?? department ?? 'kitchen',
       'Item Code': '1010-FLOUR', 'Item Name': 'Flour', Unit: 'kg',
       Remarks: 'Pizza flour', 'Min Stock': 50, 'Recommended Order': 100,
       Active: 'Active',
@@ -220,7 +232,7 @@ export default function InventoryControlList() {
     XLSX.writeFile(wb, 'inventory_control_list_template.xlsx');
   };
 
-  // -------- Import --------
+  // Import
   const fileRef = useRef<HTMLInputElement>(null);
   const onPickFile = () => fileRef.current?.click();
   const onFile = async (f: File) => {
@@ -229,56 +241,88 @@ export default function InventoryControlList() {
       const wb = XLSX.read(buf, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      const preview = buildImportPreview(data, items, branches, {
-        branchId: ctxReady ? branchId : null,
-        department: ctxReady ? (department as Department) : null,
+      const preview = buildImportPreview(data, allItems, allLists, branches, {
+        branchId: branchId || null,
+        department: (department as Department) || null,
+        controlList: currentList,
       });
       setImportPreview(preview);
       setImportOpen(true);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to read file');
-    } finally {
-      if (fileRef.current) fileRef.current.value = '';
-    }
+    } catch (e: any) { toast.error(e?.message ?? 'Failed to read file'); }
+    finally { if (fileRef.current) fileRef.current.value = ''; }
   };
 
   const confirmImport = async () => {
     if (!importPreview) return;
-    let ok = 0, fail = 0;
-    for (const r of [...importPreview.toCreate, ...importPreview.toUpdate]) {
-      try { await upsert.mutateAsync(r.payload); ok++; } catch { fail++; }
+    let createdLists = 0, ok = 0, fail = 0;
+    // Create missing control lists first
+    const listIdMap = new Map<string, string>(); // key=code|branch -> id
+    for (const l of importPreview.newLists) {
+      try {
+        const id = await upsertList.mutateAsync(l.payload);
+        listIdMap.set(`${l.payload.control_list_code}|${l.payload.branch_id}`, id);
+        createdLists++;
+      } catch { fail++; }
     }
-    setImportOpen(false);
-    setImportPreview(null);
-    toast.success(`Imported: ${ok} ok${fail ? `, ${fail} failed` : ''}`);
+    // Items
+    const allRows = [...importPreview.toCreate, ...importPreview.toUpdate];
+    for (const r of allRows) {
+      try {
+        const cid = r.payload.control_list_id ??
+          listIdMap.get(`${r.controlListCode}|${r.branchId}`) ??
+          allLists.find(l => l.branch_id === r.branchId && l.control_list_code === r.controlListCode)?.id;
+        if (!cid) { fail++; continue; }
+        await upsert.mutateAsync({ ...r.payload, control_list_id: cid });
+        ok++;
+      } catch { fail++; }
+    }
+    setImportOpen(false); setImportPreview(null);
+    toast.success(`Imported: ${createdLists} list(s), ${ok} items${fail ? `, ${fail} failed` : ''}`);
   };
 
   return (
     <div className="space-y-3">
-      {/* Working context selector */}
+      {/* Top context selectors */}
       <Card>
         <CardContent className="py-3 flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Branch *</Label>
-            <Select value={branchId} onValueChange={setBranchId}>
-              <SelectTrigger className="h-9 min-w-[200px]"><SelectValue placeholder="Select branch" /></SelectTrigger>
+            <Label className="text-xs">Branch</Label>
+            <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); }}>
+              <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="All branches" /></SelectTrigger>
               <SelectContent>
                 {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Department *</Label>
-            <Select value={department} onValueChange={v => setDepartment(v as Department)}>
-              <SelectTrigger className="h-9 min-w-[180px] capitalize"><SelectValue placeholder="Select department" /></SelectTrigger>
+            <Label className="text-xs">Department</Label>
+            <Select value={department} onValueChange={(v) => { setDepartment(v as Department); setControlListId(''); }}>
+              <SelectTrigger className="h-9 min-w-[160px] capitalize"><SelectValue placeholder="All departments" /></SelectTrigger>
               <SelectContent>
                 {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <p className="text-xs text-muted-foreground flex-1 min-w-[260px]">
-            Select Branch and Department first. Then add items to create the Control List for that area.
-          </p>
+          <div className="flex flex-col gap-1 flex-1 min-w-[260px]">
+            <Label className="text-xs">Control List</Label>
+            <Select value={controlListId} onValueChange={setControlListId}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Select control list" /></SelectTrigger>
+              <SelectContent>
+                {filteredLists.length === 0 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No control lists for this filter.</div>
+                )}
+                {filteredLists.map(l => (
+                  <SelectItem key={l.id} value={l.id}>
+                    <span className="font-mono">{l.control_list_code}</span> — {l.control_list_name}
+                    {!l.is_active && ' (inactive)'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button size="sm" variant="default" onClick={() => setNewListOpen(true)}>
+            <FilePlus2 className="h-4 w-4 mr-1" /> New Control List
+          </Button>
           {isOwner && (
             <Button size="sm" variant="outline" onClick={() => setCopyOpen(true)}>
               <CopyIcon className="h-4 w-4 mr-1" /> Copy Control List
@@ -287,14 +331,39 @@ export default function InventoryControlList() {
         </CardContent>
       </Card>
 
-      {!ctxReady ? (
+      {!controlListId ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Choose a Branch and a Department above to view or build its Control List.
+            Select a Control List above, or click <span className="font-medium text-foreground">New Control List</span> to create one.
           </CardContent>
         </Card>
       ) : (
         <>
+          {/* Header for current list */}
+          <div className="flex flex-wrap items-center gap-2 px-1">
+            <Badge variant="outline" className="font-mono">{currentList?.control_list_code}</Badge>
+            <span className="text-sm font-semibold">{currentList?.control_list_name}</span>
+            <span className="text-xs text-muted-foreground">
+              {branchName(currentList?.branch_id ?? null)} · <span className="capitalize">{currentList?.department}</span>
+            </span>
+            {!currentList?.is_active && (
+              <Badge variant="outline" className="bg-muted text-muted-foreground">Inactive</Badge>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setEditListOpen(true)}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            {isOwner && (
+              <Button size="sm" variant="ghost" onClick={async () => {
+                if (!currentList) return;
+                if (!confirm(`Delete control list "${currentList.control_list_name}" and all its items?`)) return;
+                try { await deleteList.mutateAsync(currentList.id); setControlListId(''); toast.success('Deleted'); }
+                catch (e: any) { toast.error(e?.message ?? 'Delete failed'); }
+              }}>
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            )}
+          </div>
+
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <Input placeholder="Search code or name…" value={search}
@@ -322,18 +391,13 @@ export default function InventoryControlList() {
             <Button size="sm" onClick={addEmptyRow}>
               <Plus className="h-4 w-4 mr-1" /> Add Empty Row
             </Button>
-            <Button size="sm" variant="ghost" title="Advanced add (modal)"
-              onClick={() => { setAdvancedEditing(null); setAdvancedOpen(true); }}>
-              <Settings2 className="h-4 w-4" />
-            </Button>
           </div>
 
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : displayRows.length === 0 ? (
             <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No items in this Control List yet. Click <span className="font-medium text-foreground">+ Add Empty Row</span> or
-              <span className="font-medium text-foreground"> Bulk Add from Ingredients</span>.
+              No items in this Control List yet.
             </CardContent></Card>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
@@ -409,7 +473,7 @@ export default function InventoryControlList() {
                         ) : isOwner && r.id ? (
                           <Button size="sm" variant="ghost" title="Delete"
                             onClick={async () => {
-                              if (!confirm('Delete this item from the control list?')) return;
+                              if (!confirm('Delete this item?')) return;
                               try { await del.mutateAsync(r.id!); toast.success('Deleted'); }
                               catch (e: any) { toast.error(e?.message ?? 'Delete failed'); }
                             }}>
@@ -426,12 +490,21 @@ export default function InventoryControlList() {
         </>
       )}
 
+      <ControlListFormDialog
+        open={newListOpen} onOpenChange={setNewListOpen}
+        defaultBranchId={branchId} defaultDepartment={department || null}
+        onSaved={(id) => setControlListId(id)}
+      />
+      <ControlListFormDialog
+        key={currentList?.id ?? 'edit'}
+        open={editListOpen} onOpenChange={setEditListOpen}
+        editing={currentList}
+      />
+
       <BulkAddFromIngredientsDialog
         open={bulkOpen} onOpenChange={setBulkOpen}
-        existingItems={items}
-        branchId={branchId || null}
-        department={(department as Department) || null}
-        branchLabel={branchName(branchId) || '—'}
+        controlList={currentList}
+        allItems={allItems}
       />
 
       <ImportPreviewDialog
@@ -439,34 +512,124 @@ export default function InventoryControlList() {
         preview={importPreview} onConfirm={confirmImport}
       />
 
-      <AdvancedItemFormDialog
-        key={advancedEditing?.id ?? 'new-adv'}
-        open={advancedOpen} onOpenChange={setAdvancedOpen}
-        initial={advancedEditing}
-        defaultBranchId={branchId || null}
-        defaultDepartment={(department as Department) || null}
-      />
-
       <CopyControlListDialog
         open={copyOpen} onOpenChange={setCopyOpen}
-        existingItems={items}
-        defaultFromBranch={branchId || null}
-        defaultFromDept={(department as Department) || null}
+        lists={allLists} allItems={allItems}
+        defaultFromListId={controlListId || null}
+        onCreated={(id) => setControlListId(id)}
       />
     </div>
   );
 }
 
-// ===================== Bulk add from ingredients =====================
-function BulkAddFromIngredientsDialog({
-  open, onOpenChange, existingItems, branchId, department, branchLabel,
+// ===================== Control List form (new/edit) =====================
+function ControlListFormDialog({
+  open, onOpenChange, editing, defaultBranchId, defaultDepartment, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  existingItems: EnrichedControlItem[];
-  branchId: string | null;
-  department: Department | null;
-  branchLabel: string;
+  editing?: EnrichedControlList | null;
+  defaultBranchId?: string;
+  defaultDepartment?: Department | null;
+  onSaved?: (id: string) => void;
+}) {
+  const { data: branches = [] } = useBranchesAll();
+  const upsert = useUpsertInventoryControlList();
+  const [branchId, setBranchId] = useState(editing?.branch_id ?? defaultBranchId ?? '');
+  const [department, setDepartment] = useState<Department | ''>(editing?.department ?? defaultDepartment ?? '');
+  const [code, setCode] = useState(editing?.control_list_code ?? '');
+  const [name, setName] = useState(editing?.control_list_name ?? '');
+  const [notes, setNotes] = useState(editing?.notes ?? '');
+  const [isActive, setIsActive] = useState(editing?.is_active ?? true);
+
+  useEffect(() => {
+    if (open) {
+      setBranchId(editing?.branch_id ?? defaultBranchId ?? '');
+      setDepartment(editing?.department ?? defaultDepartment ?? '');
+      setCode(editing?.control_list_code ?? '');
+      setName(editing?.control_list_name ?? '');
+      setNotes(editing?.notes ?? '');
+      setIsActive(editing?.is_active ?? true);
+    }
+  }, [open, editing, defaultBranchId, defaultDepartment]);
+
+  const save = async () => {
+    if (!branchId) return toast.error('Branch is required');
+    if (!department) return toast.error('Department is required');
+    if (!code.trim()) return toast.error('Control List Code is required');
+    if (!name.trim()) return toast.error('Control List Name is required');
+    try {
+      const id = await upsert.mutateAsync({
+        id: editing?.id, branch_id: branchId, department: department as Department,
+        control_list_code: code, control_list_name: name,
+        notes: notes.trim() || null, is_active: isActive,
+      });
+      toast.success(editing ? 'Updated' : 'Created');
+      onSaved?.(id); onOpenChange(false);
+    } catch (e: any) { toast.error(e?.message ?? 'Save failed'); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{editing ? 'Edit Control List' : 'New Control List'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Branch *</Label>
+              <Select value={branchId} onValueChange={setBranchId}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Branch" /></SelectTrigger>
+                <SelectContent>
+                  {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Department *</Label>
+              <Select value={department} onValueChange={v => setDepartment(v as Department)}>
+                <SelectTrigger className="h-9 capitalize"><SelectValue placeholder="Department" /></SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Control List Code *</Label>
+            <Input value={code} onChange={e => setCode(e.target.value.toUpperCase())}
+              placeholder="LCL-KIT-FRESH" className="font-mono" />
+          </div>
+          <div>
+            <Label className="text-xs">Control List Name *</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Kitchen Fresh Products" />
+          </div>
+          <div>
+            <Label className="text-xs">Notes</Label>
+            <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={isActive} onCheckedChange={v => setIsActive(!!v)} /> Active
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={save} disabled={upsert.isPending}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ===================== Bulk add from ingredients =====================
+function BulkAddFromIngredientsDialog({
+  open, onOpenChange, controlList, allItems,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  controlList: EnrichedControlList | null;
+  allItems: EnrichedControlItem[];
 }) {
   const { data: ingredients = [] } = useIngredientPicker();
   const upsert = useUpsertInventoryControlItem();
@@ -474,15 +637,12 @@ function BulkAddFromIngredientsDialog({
   const [search, setSearch] = useState('');
   const [picked, setPicked] = useState<Set<string>>(new Set());
 
-  // Sort by item code ascending; items without code go to bottom.
   const sorted = useMemo(() => {
     const arr = [...ingredients];
     arr.sort((a, b) => {
-      const ac = (a.code ?? '').toString();
-      const bc = (b.code ?? '').toString();
+      const ac = (a.code ?? ''), bc = (b.code ?? '');
       if (!ac && !bc) return a.name_en.localeCompare(b.name_en);
-      if (!ac) return 1;
-      if (!bc) return -1;
+      if (!ac) return 1; if (!bc) return -1;
       return ac.localeCompare(bc, undefined, { numeric: true, sensitivity: 'base' });
     });
     return arr;
@@ -495,29 +655,26 @@ function BulkAddFromIngredientsDialog({
       i.name_en.toLowerCase().includes(s) || (i.code ?? '').toLowerCase().includes(s));
   }, [sorted, search]);
 
-  const togglePick = (id: string) => {
-    setPicked(prev => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
-  };
+  const togglePick = (id: string) =>
+    setPicked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const submit = async () => {
-    if (!branchId || !department) {
-      toast.error('Select Branch and Department first'); return;
-    }
+    if (!controlList) { toast.error('Select a Control List first'); return; }
     if (picked.size === 0) { toast.error('Pick at least one ingredient'); return; }
-    let added = 0, skipped = 0, failed = 0;
+    let added = 0, blocked = 0, failed = 0;
     for (const id of picked) {
       const ing = ingredients.find(i => i.id === id);
       if (!ing) continue;
-      const code = ing.code ?? '';
-      const dup = existingItems.some(it =>
-        (it.branch_id ?? null) === branchId &&
-        (it.department ?? null) === department &&
-        ((it.item_code ?? '') === code) && code !== '');
-      if (dup) { skipped++; continue; }
+      const code = (ing.code ?? '').trim();
+      // duplicate rule: same item_code active in another list of same branch
+      if (code) {
+        const conflict = allItems.find(it =>
+          it.is_active && it.source_type === 'ingredient' &&
+          (it.item_code ?? '').toLowerCase() === code.toLowerCase() &&
+          it.control_list_id !== controlList.id &&
+          it.branch_id === controlList.branch_id);
+        if (conflict) { blocked++; continue; }
+      }
       try {
         await upsert.mutateAsync({
           ingredient_id: ing.id,
@@ -526,13 +683,14 @@ function BulkAddFromIngredientsDialog({
           unit: ing.unit_label || null,
           source_type: 'ingredient',
           is_active: true,
-          branch_id: branchId,
-          department,
+          branch_id: controlList.branch_id,
+          department: controlList.department,
+          control_list_id: controlList.id,
         });
         added++;
       } catch { failed++; }
     }
-    toast.success(`Added ${added}${skipped ? `, skipped ${skipped} duplicate(s)` : ''}${failed ? `, ${failed} failed` : ''}`);
+    toast.success(`Added ${added}${blocked ? `, blocked ${blocked} (already in another list)` : ''}${failed ? `, ${failed} failed` : ''}`);
     setPicked(new Set());
     onOpenChange(false);
   };
@@ -543,8 +701,7 @@ function BulkAddFromIngredientsDialog({
         <DialogHeader>
           <DialogTitle>Bulk add from Ingredients</DialogTitle>
           <DialogDescription>
-            Adding to <span className="font-medium text-foreground">{branchLabel}</span> /
-            <span className="font-medium text-foreground capitalize"> {department ?? '—'}</span>
+            Adding to <span className="font-mono font-medium text-foreground">{controlList?.control_list_code}</span> — {controlList?.control_list_name}
           </DialogDescription>
         </DialogHeader>
         <Input placeholder="Search ingredients by code or name…"
@@ -578,7 +735,7 @@ function BulkAddFromIngredientsDialog({
         <DialogFooter>
           <span className="text-xs text-muted-foreground mr-auto">{picked.size} selected</span>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={upsert.isPending || !branchId || !department}>Add selected</Button>
+          <Button onClick={submit} disabled={upsert.isPending || !controlList}>Add selected</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -587,54 +744,69 @@ function BulkAddFromIngredientsDialog({
 
 // ===================== Copy Control List =====================
 function CopyControlListDialog({
-  open, onOpenChange, existingItems, defaultFromBranch, defaultFromDept,
+  open, onOpenChange, lists, allItems, defaultFromListId, onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  existingItems: EnrichedControlItem[];
-  defaultFromBranch: string | null;
-  defaultFromDept: Department | null;
+  lists: EnrichedControlList[];
+  allItems: EnrichedControlItem[];
+  defaultFromListId: string | null;
+  onCreated?: (id: string) => void;
 }) {
   const { data: branches = [] } = useBranchesAll();
+  const upsertList = useUpsertInventoryControlList();
   const upsert = useUpsertInventoryControlItem();
 
-  const [fromBranch, setFromBranch] = useState<string>(defaultFromBranch ?? '');
-  const [fromDept, setFromDept] = useState<Department | ''>(defaultFromDept ?? '');
-  const [toBranch, setToBranch] = useState<string>('');
+  const [fromListId, setFromListId] = useState(defaultFromListId ?? '');
+  const [toBranch, setToBranch] = useState('');
   const [toDept, setToDept] = useState<Department | ''>('');
+  const [newCode, setNewCode] = useState('');
+  const [newName, setNewName] = useState('');
   const [activeOnly, setActiveOnly] = useState(true);
-  const [overwrite, setOverwrite] = useState(false); // false = skip existing, true = update
+  const [skipDup, setSkipDup] = useState(true);
 
   useEffect(() => {
     if (open) {
-      setFromBranch(defaultFromBranch ?? '');
-      setFromDept(defaultFromDept ?? '');
+      setFromListId(defaultFromListId ?? '');
+      const src = lists.find(l => l.id === defaultFromListId);
+      setNewCode(src ? `${src.control_list_code}-COPY` : '');
+      setNewName(src ? `${src.control_list_name} (Copy)` : '');
+      setToBranch(''); setToDept(''); setActiveOnly(true); setSkipDup(true);
     }
-  }, [open, defaultFromBranch, defaultFromDept]);
+  }, [open, defaultFromListId, lists]);
 
-  const sourceItems = useMemo(() => existingItems.filter(it =>
-    (it.branch_id ?? null) === (fromBranch || null) &&
-    (it.department ?? null) === (fromDept || null) &&
-    (!activeOnly || it.is_active)
-  ), [existingItems, fromBranch, fromDept, activeOnly]);
+  const sourceList = lists.find(l => l.id === fromListId);
+  const sourceItems = useMemo(() => allItems.filter(it =>
+    it.control_list_id === fromListId && (!activeOnly || it.is_active)
+  ), [allItems, fromListId, activeOnly]);
 
   const run = async () => {
-    if (!fromBranch || !fromDept) { toast.error('Select source Branch and Department'); return; }
+    if (!sourceList) { toast.error('Select source Control List'); return; }
     if (!toBranch || !toDept) { toast.error('Select target Branch and Department'); return; }
-    if (fromBranch === toBranch && fromDept === toDept) {
-      toast.error('Source and target are the same'); return;
-    }
+    if (!newCode.trim() || !newName.trim()) { toast.error('New Code and Name required'); return; }
+    let newListId: string;
+    try {
+      newListId = await upsertList.mutateAsync({
+        branch_id: toBranch, department: toDept as Department,
+        control_list_code: newCode, control_list_name: newName,
+      });
+    } catch (e: any) { toast.error(e?.message ?? 'Failed to create list'); return; }
+
     let copied = 0, skipped = 0, failed = 0;
     for (const it of sourceItems) {
-      const code = it.item_code ?? '';
-      const existing = existingItems.find(e =>
-        (e.branch_id ?? null) === toBranch &&
-        (e.department ?? null) === toDept &&
-        ((e.item_code ?? '') === code) && code !== '');
-      if (existing && !overwrite) { skipped++; continue; }
+      const code = (it.item_code ?? '').trim();
+      if (code && it.source_type === 'ingredient') {
+        const conflict = allItems.find(o =>
+          o.is_active && o.source_type === 'ingredient' &&
+          (o.item_code ?? '').toLowerCase() === code.toLowerCase() &&
+          o.branch_id === toBranch && o.control_list_id !== newListId);
+        if (conflict) {
+          if (skipDup) { skipped++; continue; }
+          else { failed++; continue; }
+        }
+      }
       try {
         await upsert.mutateAsync({
-          id: existing && overwrite ? existing.id : undefined,
           ingredient_id: it.ingredient_id ?? null,
           item_code: it.item_code,
           item_name: it.item_name,
@@ -643,6 +815,7 @@ function CopyControlListDialog({
           is_active: it.is_active,
           branch_id: toBranch,
           department: toDept as Department,
+          control_list_id: newListId,
           remarks: (it as any).remarks ?? null,
           min_stock: (it as any).min_stock ?? null,
           recommended_order: (it as any).recommended_order ?? null,
@@ -650,7 +823,8 @@ function CopyControlListDialog({
         copied++;
       } catch { failed++; }
     }
-    toast.success(`Copied ${copied} items. Skipped ${skipped} existing items.${failed ? ` (${failed} failed)` : ''}`);
+    toast.success(`Created control list with ${copied} items. Skipped ${skipped} duplicates.${failed ? ` (${failed} failed)` : ''}`);
+    onCreated?.(newListId);
     onOpenChange(false);
   };
 
@@ -659,27 +833,21 @@ function CopyControlListDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Copy Control List</DialogTitle>
-          <DialogDescription>
-            Copy items from one Branch/Department to another.
-          </DialogDescription>
+          <DialogDescription>Duplicate a list to another Branch / Department.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
             <Label className="text-xs uppercase text-muted-foreground">From</Label>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              <Select value={fromBranch} onValueChange={setFromBranch}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Source branch" /></SelectTrigger>
-                <SelectContent>
-                  {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={fromDept} onValueChange={v => setFromDept(v as Department)}>
-                <SelectTrigger className="h-9 capitalize"><SelectValue placeholder="Source department" /></SelectTrigger>
-                <SelectContent>
-                  {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={fromListId} onValueChange={setFromListId}>
+              <SelectTrigger className="h-9 mt-1"><SelectValue placeholder="Source control list" /></SelectTrigger>
+              <SelectContent>
+                {lists.map(l => (
+                  <SelectItem key={l.id} value={l.id}>
+                    <span className="font-mono">{l.control_list_code}</span> — {l.control_list_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label className="text-xs uppercase text-muted-foreground">To</Label>
@@ -697,22 +865,26 @@ function CopyControlListDialog({
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <Input value={newCode} onChange={e => setNewCode(e.target.value.toUpperCase())} placeholder="New code" className="font-mono" />
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New name" />
+            </div>
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={activeOnly} onCheckedChange={v => setActiveOnly(!!v)} />
             Copy active items only
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={overwrite} onCheckedChange={v => setOverwrite(!!v)} />
-            If item already exists in target: update (otherwise skip)
+            <Checkbox checked={skipDup} onCheckedChange={v => setSkipDup(!!v)} />
+            Skip items already active in target branch
           </label>
           <p className="text-xs text-muted-foreground">
-            Source contains <span className="font-medium text-foreground">{sourceItems.length}</span> item(s) to copy.
+            Source contains <span className="font-medium text-foreground">{sourceItems.length}</span> item(s).
           </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={run} disabled={upsert.isPending || sourceItems.length === 0}>Copy</Button>
+          <Button onClick={run} disabled={upsert.isPending || upsertList.isPending}>Copy</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -720,71 +892,100 @@ function CopyControlListDialog({
 }
 
 // ===================== Import preview =====================
-type ImportRow = {
+type ImportItemRow = {
   payload: any;
-  display: { branch: string; department: string; code: string; name: string; unit: string };
+  controlListCode: string;
+  branchId: string;
+  display: { list: string; branch: string; dept: string; code: string; name: string; unit: string };
   reason?: string;
 };
+type NewListRow = {
+  payload: { branch_id: string; department: Department; control_list_code: string; control_list_name: string };
+  display: { code: string; name: string; branch: string; dept: string };
+};
 type ImportPreview = {
-  toCreate: ImportRow[];
-  toUpdate: ImportRow[];
-  invalid: ImportRow[];
-  duplicates: ImportRow[];
+  newLists: NewListRow[];
+  toCreate: ImportItemRow[];
+  toUpdate: ImportItemRow[];
+  invalid: ImportItemRow[];
+  duplicates: ImportItemRow[];
 };
 
 function buildImportPreview(
   data: any[],
-  existing: EnrichedControlItem[],
+  existingItems: EnrichedControlItem[],
+  existingLists: EnrichedControlList[],
   branches: { id: string; name: string }[],
-  fallback: { branchId: string | null; department: Department | null },
+  fallback: { branchId: string | null; department: Department | null; controlList: EnrichedControlList | null },
 ): ImportPreview {
-  const out: ImportPreview = { toCreate: [], toUpdate: [], invalid: [], duplicates: [] };
+  const out: ImportPreview = { newLists: [], toCreate: [], toUpdate: [], invalid: [], duplicates: [] };
   const branchByName = new Map(branches.map(b => [b.name.toLowerCase().trim(), b.id]));
   const seen = new Set<string>();
+  const newListByKey = new Map<string, NewListRow>(); // `${branch}|${code}`
 
   for (const raw of data) {
+    const listCode = String(raw['Control List Code'] ?? raw.control_list_code ?? '').trim();
+    const listName = String(raw['Control List Name'] ?? raw.control_list_name ?? '').trim();
     const branchRaw = String(raw.Branch ?? raw.branch ?? '').trim();
     const deptRaw = String(raw.Department ?? raw.department ?? '').trim().toLowerCase();
-    const item_code = String(raw['Item Code'] ?? raw.item_code ?? raw.Code ?? '').trim();
-    const item_name = String(raw['Item Name'] ?? raw.item_name ?? raw.Name ?? '').trim();
+    const item_code = String(raw['Item Code'] ?? raw.item_code ?? '').trim();
+    const item_name = String(raw['Item Name'] ?? raw.item_name ?? '').trim();
     const unit = String(raw.Unit ?? raw.unit ?? '').trim();
     const remarks = String(raw.Remarks ?? raw.remarks ?? '').trim();
     const min_stock = raw['Min Stock'] ?? raw.min_stock ?? '';
     const recommended_order = raw['Recommended Order'] ?? raw.recommended_order ?? '';
-    const activeRaw = raw.Active ?? raw.active ?? 'Active';
-    const is_active = parseActive(activeRaw);
+    const is_active = parseActive(raw.Active ?? raw.active ?? 'Active');
 
-    const branch_id = branchRaw
-      ? (branchByName.get(branchRaw.toLowerCase()) ?? null)
-      : fallback.branchId;
+    const branch_id = branchRaw ? (branchByName.get(branchRaw.toLowerCase()) ?? null) : fallback.branchId;
     const department = (deptRaw || (fallback.department ?? '')) as string;
-
+    const effectiveCode = listCode || fallback.controlList?.control_list_code || '';
+    const effectiveName = listName || fallback.controlList?.control_list_name || effectiveCode;
     const branchDisplay = branchRaw || (branch_id ? (branches.find(b => b.id === branch_id)?.name ?? '') : '');
-    const display = { branch: branchDisplay, department, code: item_code, name: item_name, unit };
+    const display = { list: effectiveCode, branch: branchDisplay, dept: department, code: item_code, name: item_name, unit };
 
     const missing: string[] = [];
     if (!branch_id) missing.push('Branch');
     if (!department) missing.push('Department');
+    if (!effectiveCode) missing.push('Control List Code');
     if (!item_name) missing.push('Item Name');
-    if (!unit) missing.push('Unit');
-    if (branchRaw && !branch_id) missing.push('Branch not found');
     if (department && !DEPARTMENTS.includes(department as Department)) missing.push('Department invalid');
+    if (missing.length) { out.invalid.push({ payload: null, controlListCode: effectiveCode, branchId: branch_id ?? '', display, reason: missing.join(', ') }); continue; }
 
-    if (missing.length) {
-      out.invalid.push({ payload: null, display, reason: missing.join(', ') });
-      continue;
+    // Find or queue creation of control list
+    const existingList = existingLists.find(l => l.branch_id === branch_id && l.control_list_code === effectiveCode);
+    let control_list_id: string | null = existingList?.id ?? null;
+    const newKey = `${branch_id}|${effectiveCode}`;
+    if (!existingList && !newListByKey.has(newKey)) {
+      const nl: NewListRow = {
+        payload: { branch_id: branch_id!, department: department as Department, control_list_code: effectiveCode, control_list_name: effectiveName },
+        display: { code: effectiveCode, name: effectiveName, branch: branchDisplay, dept: department },
+      };
+      newListByKey.set(newKey, nl);
+      out.newLists.push(nl);
     }
 
-    const dedupeKey = `${branch_id}|${department}|${item_code}`;
+    // duplicate (same item code already in different active list of branch)
+    if (item_code) {
+      const conflict = existingItems.find(it =>
+        it.is_active && it.source_type === 'ingredient' &&
+        (it.item_code ?? '').toLowerCase() === item_code.toLowerCase() &&
+        it.branch_id === branch_id &&
+        (control_list_id ? it.control_list_id !== control_list_id : true));
+      if (conflict) {
+        out.duplicates.push({ payload: null, controlListCode: effectiveCode, branchId: branch_id!, display, reason: 'Item active in another list of this branch' });
+        continue;
+      }
+    }
+
+    const dedupeKey = `${branch_id}|${effectiveCode}|${item_code}`;
     if (seen.has(dedupeKey) && item_code) {
-      out.duplicates.push({ payload: null, display, reason: 'Duplicate row in file' });
+      out.duplicates.push({ payload: null, controlListCode: effectiveCode, branchId: branch_id!, display, reason: 'Duplicate row in file' });
       continue;
     }
     seen.add(dedupeKey);
 
-    const match = existing.find(e =>
-      (e.branch_id ?? null) === branch_id &&
-      (e.department ?? null) === department &&
+    const match = existingItems.find(e =>
+      e.control_list_id === control_list_id &&
       ((e.item_code ?? '') === item_code) && item_code !== '');
 
     const payload = {
@@ -793,17 +994,19 @@ function buildImportPreview(
       item_code: item_code || null,
       item_name,
       unit: unit || null,
-      source_type: (match?.source_type ?? 'manual') as InventoryControlSource,
+      source_type: (match?.source_type ?? (item_code ? 'ingredient' : 'manual')) as InventoryControlSource,
       is_active,
       branch_id,
       department,
+      control_list_id,
       remarks: remarks || null,
       min_stock: min_stock !== '' ? Number(min_stock) : null,
       recommended_order: recommended_order !== '' ? Number(recommended_order) : null,
     };
 
-    if (match) out.toUpdate.push({ payload, display });
-    else out.toCreate.push({ payload, display });
+    const row: ImportItemRow = { payload, controlListCode: effectiveCode, branchId: branch_id!, display };
+    if (match) out.toUpdate.push(row);
+    else out.toCreate.push(row);
   }
   return out;
 }
@@ -817,29 +1020,26 @@ function ImportPreviewDialog({
   onConfirm: () => void;
 }) {
   if (!preview) return null;
-  const sec = (title: string, rows: ImportRow[], color: string) => (
+  const sec = (title: string, rows: ImportItemRow[], color: string) => (
     <div>
       <div className={`text-xs font-medium mb-1 ${color}`}>{title} ({rows.length})</div>
-      {rows.length === 0 ? (
-        <p className="text-xs text-muted-foreground">None</p>
-      ) : (
+      {rows.length === 0 ? <p className="text-xs text-muted-foreground">None</p> : (
         <div className="max-h-[120px] overflow-y-auto rounded border text-xs">
           <table className="w-full">
             <thead className="bg-muted/40">
               <tr className="text-left">
-                <th className="px-2 py-1">Branch</th><th className="px-2 py-1">Dept</th>
+                <th className="px-2 py-1">List</th><th className="px-2 py-1">Branch</th>
                 <th className="px-2 py-1">Code</th><th className="px-2 py-1">Name</th>
-                <th className="px-2 py-1">Unit</th><th className="px-2 py-1">Reason</th>
+                <th className="px-2 py-1">Reason</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i} className="border-t">
+                  <td className="px-2 py-0.5 font-mono">{r.display.list}</td>
                   <td className="px-2 py-0.5">{r.display.branch}</td>
-                  <td className="px-2 py-0.5">{r.display.department}</td>
                   <td className="px-2 py-0.5 font-mono">{r.display.code}</td>
                   <td className="px-2 py-0.5">{r.display.name}</td>
-                  <td className="px-2 py-0.5">{r.display.unit}</td>
                   <td className="px-2 py-0.5 text-muted-foreground">{r.reason ?? ''}</td>
                 </tr>
               ))}
@@ -854,137 +1054,37 @@ function ImportPreviewDialog({
       <DialogContent className="max-w-3xl">
         <DialogHeader><DialogTitle>Import preview</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          {sec('New rows', preview.toCreate, 'text-emerald-600')}
-          {sec('Updated rows', preview.toUpdate, 'text-blue-600')}
-          {sec('Invalid / missing fields', preview.invalid, 'text-amber-600')}
-          {sec('Duplicates in file', preview.duplicates, 'text-rose-600')}
+          <div>
+            <div className="text-xs font-medium mb-1 text-violet-600">New Control Lists ({preview.newLists.length})</div>
+            {preview.newLists.length === 0 ? <p className="text-xs text-muted-foreground">None</p> : (
+              <div className="max-h-[100px] overflow-y-auto rounded border text-xs">
+                <table className="w-full">
+                  <thead className="bg-muted/40"><tr className="text-left"><th className="px-2 py-1">Code</th><th className="px-2 py-1">Name</th><th className="px-2 py-1">Branch</th><th className="px-2 py-1">Dept</th></tr></thead>
+                  <tbody>
+                    {preview.newLists.map((l, i) => (
+                      <tr key={i} className="border-t">
+                        <td className="px-2 py-0.5 font-mono">{l.display.code}</td>
+                        <td className="px-2 py-0.5">{l.display.name}</td>
+                        <td className="px-2 py-0.5">{l.display.branch}</td>
+                        <td className="px-2 py-0.5 capitalize">{l.display.dept}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          {sec('New items', preview.toCreate, 'text-emerald-600')}
+          {sec('Updated items', preview.toUpdate, 'text-blue-600')}
+          {sec('Skipped duplicates', preview.duplicates, 'text-rose-600')}
+          {sec('Invalid', preview.invalid, 'text-amber-600')}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={onConfirm}
-            disabled={preview.toCreate.length === 0 && preview.toUpdate.length === 0}>
-            Import {preview.toCreate.length + preview.toUpdate.length} rows
+            disabled={preview.toCreate.length === 0 && preview.toUpdate.length === 0 && preview.newLists.length === 0}>
+            Import
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ===================== Advanced (fallback) modal =====================
-function AdvancedItemFormDialog({
-  open, onOpenChange, initial, defaultBranchId, defaultDepartment,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  initial?: EnrichedControlItem | null;
-  defaultBranchId: string | null;
-  defaultDepartment: Department | null;
-}) {
-  const { data: branches = [] } = useBranchesAll();
-  const { data: ingredients = [] } = useIngredientPicker();
-  const upsert = useUpsertInventoryControlItem();
-
-  const [sourceType, setSourceType] = useState<'ingredient' | 'manual'>(
-    (initial?.source_type as any) ?? 'ingredient',
-  );
-  const [ingredientId, setIngredientId] = useState<string>(initial?.ingredient_id ?? '');
-  const [itemCode, setItemCode] = useState(initial?.item_code ?? '');
-  const [itemName, setItemName] = useState(initial?.item_name ?? '');
-  const [unit, setUnit] = useState(initial?.unit ?? '');
-  const [branchId, setBranchId] = useState(initial?.branch_id ?? defaultBranchId ?? '');
-  const [department, setDepartment] = useState<string>(initial?.department ?? defaultDepartment ?? '');
-  const [isActive, setIsActive] = useState(initial?.is_active ?? true);
-
-  const ingredientOptions = useMemo(
-    () => ingredients.map(ing => ({
-      id: ing.id,
-      label: `${ing.code ? ing.code + ' — ' : ''}${ing.name_en}`,
-      sublabel: ing.unit_label || undefined,
-    })),
-    [ingredients],
-  );
-
-  const onPickIngredient = (id: string) => {
-    setIngredientId(id);
-    const ing = ingredients.find(i => i.id === id);
-    if (ing) {
-      setItemCode(ing.code ?? '');
-      setItemName(ing.name_en);
-      setUnit(ing.unit_label ?? '');
-    }
-  };
-
-  const save = async () => {
-    if (!itemName.trim()) return toast.error('Item name is required');
-    try {
-      await upsert.mutateAsync({
-        id: initial?.id,
-        ingredient_id: sourceType === 'ingredient' ? (ingredientId || null) : null,
-        item_code: itemCode.trim() || null,
-        item_name: itemName.trim(),
-        unit: unit.trim() || null,
-        source_type: sourceType,
-        is_active: isActive,
-        branch_id: branchId || null,
-        department: department || null,
-      });
-      toast.success(initial ? 'Item updated' : 'Item added');
-      onOpenChange(false);
-    } catch (e: any) { toast.error(e?.message ?? 'Save failed'); }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{initial ? 'Edit control item' : 'Advanced add'}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <Select value={sourceType} onValueChange={v => setSourceType(v as any)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ingredient">From Ingredients</SelectItem>
-              <SelectItem value="manual">Manual entry</SelectItem>
-            </SelectContent>
-          </Select>
-          {sourceType === 'ingredient' && (
-            <SearchableCombobox
-              value={ingredientId}
-              onChange={onPickIngredient}
-              options={ingredientOptions}
-              placeholder="Search ingredient by code or name"
-              searchPlaceholder="Type to search…"
-              emptyText="No ingredient found"
-            />
-          )}
-          <div className="grid grid-cols-3 gap-2">
-            <Input value={itemCode} placeholder="Code" onChange={e => setItemCode(e.target.value)} />
-            <Input className="col-span-2" value={itemName} placeholder="Name *" onChange={e => setItemName(e.target.value)} />
-            <Input className="col-span-3" value={unit} placeholder="Unit (kg, pcs…)" onChange={e => setUnit(e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Select value={branchId || 'global'} onValueChange={v => setBranchId(v === 'global' ? '' : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="global">Global (all branches)</SelectItem>
-                {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={department || 'global'} onValueChange={v => setDepartment(v === 'global' ? '' : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="global">Global (all departments)</SelectItem>
-                {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
-            Active
-          </label>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={upsert.isPending}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

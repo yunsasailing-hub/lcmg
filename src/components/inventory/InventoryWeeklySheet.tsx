@@ -13,14 +13,14 @@ import {
   type InventoryRequestStatus, type InventoryRequestWithItems, type Department,
 } from '@/hooks/useInventoryRequests';
 import { useInventoryControlItems } from '@/hooks/useInventoryControlItems';
+import { useInventoryControlLists } from '@/hooks/useInventoryControlLists';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
-
-const DEPARTMENTS: Department[] = ['kitchen', 'pizza', 'bar', 'service', 'office', 'management', 'bakery'];
 
 interface RowState {
   id?: string;
   control_item_id: string;
+  control_list_id: string | null;
   ingredient_id: string | null;
   item_code: string;
   item_name: string;
@@ -57,14 +57,22 @@ export default function InventoryWeeklySheet({
   const [branchId, setBranchId] = useState<string>(
     initial?.branch_id ?? profile?.branch_id ?? '',
   );
-  const [department, setDepartment] = useState<Department | ''>(
-    (initial?.department as Department) ?? (profile?.department as Department) ?? '',
+  const [controlListId, setControlListId] = useState<string>(
+    (initial?.items?.find((it: any) => it.control_list_id)?.control_list_id as string) ?? '',
   );
+
+  const { data: lists = [] } = useInventoryControlLists({ activeOnly: true, branchId: branchId || null });
+  const currentList = useMemo(() => lists.find(l => l.id === controlListId) ?? null, [lists, controlListId]);
+  const department: Department | '' = (currentList?.department ?? (initial?.department as Department) ?? '') as any;
+
+  // Reset control list when branch changes if it no longer matches
+  useEffect(() => {
+    if (controlListId && !lists.find(l => l.id === controlListId)) setControlListId('');
+  }, [lists, controlListId]);
 
   const { data: controlItems = [], isLoading: loadingItems } = useInventoryControlItems({
     activeOnly: true,
-    branchId: branchId || null,
-    department: department || null,
+    controlListId: controlListId || null,
   });
 
   // Build editable rows: one per active control item, merged with any existing values from `initial`.
@@ -78,6 +86,7 @@ export default function InventoryWeeklySheet({
       return {
         id: existing?.id,
         control_item_id: ci.id,
+        control_list_id: ci.control_list_id ?? null,
         ingredient_id: ci.ingredient_id ?? null,
         item_code: ci.item_code ?? '',
         item_name: ci.item_name,
@@ -129,7 +138,7 @@ export default function InventoryWeeklySheet({
     });
     setEdits(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows.length, branchId, department]);
+  }, [rows.length, branchId, controlListId]);
 
   const setEdit = (cid: string, patch: Partial<Edit>) => {
     setEdits(prev => ({ ...prev, [cid]: { ...prev[cid], ...patch } }));
@@ -137,7 +146,7 @@ export default function InventoryWeeklySheet({
 
   const submit = async (status: InventoryRequestStatus) => {
     if (!branchId) return toast.error('Please select a branch');
-    if (!department) return toast.error('Please select a department');
+    if (!controlListId || !currentList) return toast.error('Please select a Control List');
     const cleanedExtras = extras
       .map(x => ({ ...x, item_name: x.item_name.trim() }))
       .filter(x => x.item_name.length > 0);
@@ -152,6 +161,7 @@ export default function InventoryWeeklySheet({
           id: r.id,
           ingredient_id: r.ingredient_id,
           inventory_control_item_id: r.control_item_id,
+          control_list_id: r.control_list_id,
           source_type: 'ingredient' as 'ingredient' | 'extra',
           item_code: r.item_code || null,
           item_name: r.item_name,
@@ -168,6 +178,7 @@ export default function InventoryWeeklySheet({
         id: undefined,
         ingredient_id: null,
         inventory_control_item_id: null,
+        control_list_id: controlListId,
         source_type: 'extra' as 'ingredient' | 'extra',
         item_code: null,
         item_name: x.item_name,
@@ -184,7 +195,7 @@ export default function InventoryWeeklySheet({
         id: initial?.id,
         request_date: requestDate,
         branch_id: branchId,
-        department: department as Department,
+        department: currentList.department,
         status,
         staff_user_id: user?.id ?? null,
         staff_name: profile?.full_name ?? null,
@@ -198,7 +209,7 @@ export default function InventoryWeeklySheet({
     }
   };
 
-  const ready = !!branchId && !!department;
+  const ready = !!branchId && !!controlListId;
   const showEmpty = ready && !loadingItems && rows.length === 0;
 
   return (
@@ -208,7 +219,7 @@ export default function InventoryWeeklySheet({
         <CardContent className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <Label className="text-xs">Branch *</Label>
-            <Select value={branchId} onValueChange={setBranchId}>
+            <Select value={branchId} onValueChange={(v) => { setBranchId(v); setControlListId(''); }}>
               <SelectTrigger className="h-9"><SelectValue placeholder="Select branch" /></SelectTrigger>
               <SelectContent>
                 {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
@@ -216,12 +227,17 @@ export default function InventoryWeeklySheet({
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Department *</Label>
-            <Select value={department} onValueChange={v => setDepartment(v as Department)}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Select department" /></SelectTrigger>
+            <Label className="text-xs">Control List *</Label>
+            <Select value={controlListId} onValueChange={setControlListId} disabled={!branchId}>
+              <SelectTrigger className="h-9"><SelectValue placeholder={branchId ? 'Select control list' : 'Pick branch first'} /></SelectTrigger>
               <SelectContent>
-                {DEPARTMENTS.map(d => (
-                  <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
+                {lists.length === 0 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No active control lists for this branch.</div>
+                )}
+                {lists.map(l => (
+                  <SelectItem key={l.id} value={l.id}>
+                    <span className="font-mono">{l.control_list_code}</span> — {l.control_list_name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -235,9 +251,9 @@ export default function InventoryWeeklySheet({
       </Card>
 
       {/* Sheet */}
-      {!branchId || !department ? (
+      {!ready ? (
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Select branch and department to load the weekly inventory sheet.
+          Select branch and control list to load the weekly inventory sheet.
         </CardContent></Card>
       ) : loadingItems ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
