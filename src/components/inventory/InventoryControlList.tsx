@@ -94,19 +94,23 @@ export default function InventoryControlList() {
   const [controlListId, setControlListId] = useState<string>('');
   const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
 
-  const { data: branchActiveLists = [], refetch: refetchBranchLists } = useInventoryControlLists({
-    activeOnly: true,
-    branchId: branchId || null,
-  });
+  // Load ALL active control lists once, filter client-side. Active includes NULL (legacy).
+  const { data: activeLists = [], refetch: refetchBranchLists } = useInventoryControlLists({ activeOnly: true });
 
   const filteredLists = useMemo(() => {
-    if (!branchId) return [];
-    const lists = [...branchActiveLists];
-    if (optimisticList?.branch_id === branchId && optimisticList.is_active && !lists.some(l => l.id === optimisticList.id)) {
+    let lists = [...activeLists];
+    if (branchId) lists = lists.filter(l => l.branch_id === branchId);
+    if (department) lists = lists.filter(l => l.department === department);
+    if (
+      optimisticList &&
+      (!branchId || optimisticList.branch_id === branchId) &&
+      (!department || optimisticList.department === department) &&
+      !lists.some(l => l.id === optimisticList.id)
+    ) {
       lists.unshift(optimisticList);
     }
     return lists;
-  }, [branchActiveLists, branchId, optimisticList]);
+  }, [activeLists, branchId, department, optimisticList]);
 
   // Keep selection valid; do not auto-select on Branch changes except after explicit creation/copy.
   useEffect(() => {
@@ -127,11 +131,28 @@ export default function InventoryControlList() {
   const [editListOpen, setEditListOpen] = useState(false);
 
   const branchName = (id: string | null) => branches.find(b => b.id === id)?.name ?? '';
+
+  // Auto-select when only one list matches; runs after filter results settle.
+  useEffect(() => {
+    if (!controlListId && filteredLists.length === 1) {
+      setControlListId(filteredLists[0].id);
+    }
+  }, [filteredLists, controlListId]);
+
+  const clearFilters = () => {
+    setBranchId('');
+    setDepartment('');
+    setControlListId('');
+    setNewRows([]);
+    setDrafts({});
+  };
   const currentList = useMemo(
     () => allLists.find(l => l.id === controlListId) ?? (optimisticList?.id === controlListId ? optimisticList : null),
     [allLists, controlListId, optimisticList],
   );
-  const hiddenListSafety = !!branchId && filteredLists.length === 0 && allLists.some(l => l.branch_id === branchId && l.is_active);
+  const hiddenListSafety =
+    filteredLists.length === 0 &&
+    activeLists.length > 0;
 
   useEffect(() => { setNewRows([]); setDrafts({}); }, [controlListId]);
 
@@ -335,18 +356,29 @@ export default function InventoryControlList() {
               <SelectTrigger className="h-9"><SelectValue placeholder="Select control list" /></SelectTrigger>
               <SelectContent>
                 {filteredLists.length === 0 && (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No active control lists for this branch.</div>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No control lists match the filters.</div>
                 )}
                 {filteredLists.map(l => (
                   <SelectItem key={l.id} value={l.id}>
                     <span className="font-mono">{l.control_list_code}</span> — {l.control_list_name}
-                    {!l.is_active && ' (inactive)'}
+                    {' — '}
+                    <span className="text-muted-foreground">
+                      {branchName(l.branch_id) || '—'} / <span className="capitalize">{l.department}</span>
+                    </span>
+                    {l.is_active === false && ' (inactive)'}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {hiddenListSafety && (
-              <p className="mt-1 text-xs text-destructive">Control List exists but not visible. Please refresh.</p>
+              <div className="mt-1 flex items-center gap-2 flex-wrap">
+                <p className="text-xs text-destructive">
+                  Control Lists exist but are hidden by filters. Clear filters or select the correct branch.
+                </p>
+                <Button size="sm" variant="outline" className="h-7" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              </div>
             )}
           </div>
           <Button size="sm" variant="default" onClick={() => setNewListOpen(true)}>
@@ -618,7 +650,7 @@ function ControlListFormDialog({
       l.branch_id === branchId &&
       l.control_list_code.trim().toLowerCase() === codeTrim.toLowerCase()
     );
-    if (dup) return toast.error('This Control List Code already exists for this branch.');
+    if (dup) return toast.error('This Control List already exists. Please select it from the dropdown or clear filters.');
     try {
       const saved = await upsert.mutateAsync({
         id: editing?.id, branch_id: branchId, department: department as Department,
