@@ -20,7 +20,6 @@ import { ChevronDown, Trash2, Upload } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPreview';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useMaintenanceTasks,
