@@ -968,6 +968,8 @@ export default function Maintenance() {
   const isOwner = hasRole('owner');
   const isManager = hasRole('manager');
   const canCreate = isOwner || isManager;
+  const isStaffOnly = !isOwner && !isManager;
+  const defaultTab = isStaffOnly ? 'tasks' : 'dashboard';
 
   const { data: assets = [], isLoading } = useMaintenanceAssets();
   const archive = useArchiveMaintenanceAsset();
@@ -1018,18 +1020,18 @@ export default function Maintenance() {
           onEdit={() => { setEditing(selected); setFormOpen(true); }}
         />
       ) : (
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="dashboard">{t('maintenance.tabs.dashboard')}</TabsTrigger>
-            <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>
-            <TabsTrigger value="schedules">{t('maintenance.tabs.schedules', 'Schedules')}</TabsTrigger>
+            {!isStaffOnly && <TabsTrigger value="dashboard">{t('maintenance.tabs.dashboard')}</TabsTrigger>}
             <TabsTrigger value="tasks">{t('maintenance.tabs.tasks', 'Tasks')}</TabsTrigger>
+            {!isStaffOnly && <TabsTrigger value="list">{t('maintenance.tabs.list')}</TabsTrigger>}
+            {!isStaffOnly && <TabsTrigger value="schedules">{t('maintenance.tabs.schedules', 'Schedules')}</TabsTrigger>}
             <TabsTrigger value="repairs">{t('maintenance.tabs.repairs', 'Repairs')}</TabsTrigger>
             {isOwner && (
               <TabsTrigger value="settings">{t('maintenance.tabs.settings')}</TabsTrigger>
             )}
           </TabsList>
-          <TabsContent value="dashboard"><MaintenanceDashboard assets={assets} /></TabsContent>
+          {!isStaffOnly && <TabsContent value="dashboard"><MaintenanceDashboard assets={assets} /></TabsContent>}
           <TabsContent value="list">
             <AssetList
               assets={assets}
