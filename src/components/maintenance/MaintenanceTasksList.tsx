@@ -129,7 +129,9 @@ export default function MaintenanceTasksList() {
             <TabsTrigger value="overdue">Overdue ({overdue.length})</TabsTrigger>
             <TabsTrigger value="done">Completed ({completed.length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="plan" className="mt-3"><MaintenancePlanView onOpenTask={setActive} /></TabsContent>
+          <TabsContent value="plan" className="mt-3">
+            <MaintenancePlanView onOpenTask={setActive} onOpenPreview={setActivePreview} />
+          </TabsContent>
           <TabsContent value="today" className="mt-3"><TaskView tab="today" items={todays} onOpen={setActive} /></TabsContent>
           <TabsContent value="overdue" className="mt-3"><TaskView tab="overdue" items={overdue} onOpen={setActive} /></TabsContent>
           <TabsContent value="done" className="mt-3"><TaskView tab="done" items={completed} onOpen={setActive} /></TabsContent>
