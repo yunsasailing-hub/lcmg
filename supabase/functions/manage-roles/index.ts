@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
       if (position !== undefined) updateData.position = position;
       if (username !== undefined) {
         const u = (username ?? "").toString().trim().toLowerCase();
-        // Lock: once a username exists, it cannot be changed
+        // Lock: once a username exists, it cannot be changed — UNLESS caller is administrator.
         const { data: existing } = await supabaseAdmin
           .from("profiles")
           .select("username")
@@ -185,13 +185,14 @@ Deno.serve(async (req) => {
           .maybeSingle();
         const currentUsername = (existing?.username ?? "").toString().trim();
         if (currentUsername !== "") {
-          if (u !== currentUsername.toLowerCase()) {
+          if (u !== currentUsername.toLowerCase() && !isAdministrator) {
             return new Response(JSON.stringify({ ok: false, error: "Username cannot be changed after creation." }), {
               status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          // Same value — skip writing
+          // Administrator override (or same value): write through (validation trigger enforces format/uniqueness)
+          updateData.username = u === "" ? null : u;
         } else {
           updateData.username = u === "" ? null : u;
         }
