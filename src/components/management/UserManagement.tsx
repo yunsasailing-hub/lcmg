@@ -721,7 +721,14 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-heading font-semibold">Team Members</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-lg font-heading font-semibold">Team Members</h3>
+        {isAdministrator && (
+          <Button size="sm" onClick={() => setCreatingUser(true)}>
+            <UserPlus className="h-4 w-4 mr-1" /> Create User
+          </Button>
+        )}
+      </div>
 
       {/* Search */}
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -973,6 +980,14 @@ export default function UserManagement() {
           user={changingRole}
           open
           onClose={() => setChangingRole(null)}
+          canAssignAdministrator={isAdministrator}
+        />
+      )}
+      {creatingUser && isAdministrator && (
+        <CreateUserDialog
+          branches={branches}
+          open
+          onClose={() => setCreatingUser(false)}
           canAssignAdministrator={isAdministrator}
         />
       )}
