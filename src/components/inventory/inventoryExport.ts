@@ -9,20 +9,21 @@ export function exportRequestsToXlsx(requests: InventoryRequestWithItems[]) {
   for (const r of requests) {
     for (const it of r.items as any[]) {
       const ci = it.inventory_control_items ?? null;
+      const isExtra = it.source_type === 'extra';
       rows.push({
         Branch: r.branch_name ?? '',
         Department: r.department,
         Date: r.request_date,
-        'Item code': it.item_code ?? '',
+        'Item code': isExtra ? 'EXTRA' : (it.item_code ?? ''),
         'Item name': it.item_name,
-        Remarks: ci?.remarks ?? '',
+        Remarks: isExtra ? 'Extra / Not coded' : (ci?.remarks ?? ''),
         Stock: it.actual_stock ?? '',
-        'Min stock': ci?.min_stock ?? '',
-        'Recommended order': ci?.recommended_order ?? '',
+        'Min stock': isExtra ? '' : (ci?.min_stock ?? ''),
+        'Recommended order': isExtra ? '' : (ci?.recommended_order ?? ''),
         'Order request': it.approved_qty ?? it.requested_qty ?? '',
         Note: it.note ?? '',
         'Submitted by': r.staff_name ?? '',
-        'Owner status': r.status,
+        'Owner status': isExtra ? 'Extra / Not coded' : r.status,
       });
     }
   }
