@@ -424,7 +424,7 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge className="bg-amber-500 hover:bg-amber-500 text-white gap-1 px-2 py-0.5 text-[11px] font-semibold"><Clock className="h-3.5 w-3.5" />Pending</Badge>;
 }
 
-function TaskCompletionDialog({
+function _LegacyTaskCompletionDialog({
   task, onOpenChange,
 }: { task: EnrichedMaintenanceTask; onOpenChange: (v: boolean) => void }) {
   const { profile } = useAuth();
