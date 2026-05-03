@@ -16,17 +16,24 @@ export function useInventoryControlLists(opts?: { activeOnly?: boolean; branchId
   return useQuery({
     queryKey: ['inventory_control_lists', { activeOnly, branchId, department }],
     queryFn: async (): Promise<EnrichedControlList[]> => {
-      let q = supabase
+      // RAW READ: no filters at the query level. Filtering is done client-side
+      // by consumers so we can never hide rows by accident.
+      const { data, error } = await supabase
         .from('inventory_control_lists')
         .select('*, branches(name)')
         .order('control_list_code');
-      // NULL active is treated as active to avoid hiding legacy rows
-      if (activeOnly) q = q.or('is_active.is.null,is_active.eq.true');
-      if (branchId) q = q.eq('branch_id', branchId);
-      if (department) q = q.eq('department', department);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data ?? []).map((r: any) => ({ ...r, branch_name: r.branches?.name ?? null }));
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.error('CONTROL LIST RAW ERROR:', error);
+        throw error;
+      }
+      // eslint-disable-next-line no-console
+      console.log('CONTROL LIST RAW:', (data ?? []).length, data);
+      let rows = (data ?? []) as any[];
+      if (activeOnly) rows = rows.filter(r => r.is_active === true || r.is_active === null);
+      if (branchId) rows = rows.filter(r => r.branch_id === branchId);
+      if (department) rows = rows.filter(r => r.department === department);
+      return rows.map((r: any) => ({ ...r, branch_name: r.branches?.name ?? null }));
     },
   });
 }
