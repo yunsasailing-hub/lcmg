@@ -481,6 +481,27 @@ export default function InventoryControlList() {
         </CardContent>
       </Card>
 
+      {canViewInventoryDebug && (
+        <Card>
+          <CardContent className="py-3">
+            <div className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Inventory Debug</div>
+            <div className="grid gap-2 text-xs sm:grid-cols-4">
+              <div><span className="text-muted-foreground">Control Lists count:</span> <span className="font-mono">{allLists.length}</span></div>
+              <div><span className="text-muted-foreground">Control Items count:</span> <span className="font-mono">{allItems.length}</span></div>
+              <div><span className="text-muted-foreground">Last created Control List code:</span> <span className="font-mono">{lastCreatedControlList?.control_list_code ?? '—'}</span></div>
+              <div><span className="text-muted-foreground">Last created table source:</span> <span className="font-mono">{lastCreatedTableSource}</span></div>
+            </div>
+            <div className="mt-2 max-h-24 overflow-y-auto rounded border p-2 text-xs">
+              {allLists.length === 0 ? (
+                <span className="text-muted-foreground">No raw Control List rows returned.</span>
+              ) : allLists.map(l => (
+                <div key={l.id}><span className="font-mono">{l.control_list_code}</span> - {l.control_list_name}</div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Existing Control Lists panel */}
       <Card>
         <CardContent className="py-3">
