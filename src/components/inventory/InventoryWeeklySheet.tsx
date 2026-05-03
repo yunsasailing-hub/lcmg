@@ -17,6 +17,12 @@ import { useInventoryControlLists } from '@/hooks/useInventoryControlLists';
 import { toast } from 'sonner';
 import { Plus, Trash2, ListChecks } from 'lucide-react';
 
+/** Strip cosmetic suffixes like "_std" or "_€" from unit labels for display only. */
+function cleanUnit(u: string | null | undefined): string {
+  if (!u) return '';
+  return String(u).replace(/_std\b/gi, '').replace(/_€/g, '').replace(/_\$/g, '').trim();
+}
+
 interface RowState {
   id?: string;
   control_item_id: string;
@@ -90,7 +96,7 @@ export default function InventoryWeeklySheet({
     (initial?.items ?? []).forEach((it: any) => {
       if (it.inventory_control_item_id) byControlId.set(it.inventory_control_item_id, it);
     });
-    return controlItems.map(ci => {
+    const list = controlItems.map(ci => {
       const existing = byControlId.get(ci.id);
       return {
         id: existing?.id,
@@ -108,6 +114,12 @@ export default function InventoryWeeklySheet({
         note: existing?.note ?? '',
       };
     });
+    list.sort((a, b) => {
+      const ac = a.item_code || '\uffff';
+      const bc = b.item_code || '\uffff';
+      return ac.localeCompare(bc, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    return list;
   }, [controlItems, initial]);
 
   // Local edits keyed by control_item_id
