@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Fragment } from 'react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -250,7 +250,7 @@ export default function AdminEmailChange() {
               </TableHeader>
               <TableBody>
                 {logs.map((l: any) => (
-                  <>
+                  <Fragment key={l.id}>
                     <TableRow key={l.id}>
                       <TableCell className="text-xs whitespace-nowrap">{new Date(l.changed_at).toLocaleString()}</TableCell>
                       <TableCell className="text-sm">{l.member_name || l.member_id}</TableCell>
@@ -287,7 +287,7 @@ export default function AdminEmailChange() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
