@@ -38,6 +38,7 @@ interface EnrichedProfile {
   user_id: string;
   full_name: string | null;
   email: string | null;
+  username: string | null;
   phone: string | null;
   position: string | null;
   department: Department | null;
@@ -102,20 +103,34 @@ function EditUserDialog({
   const [form, setForm] = useState({
     full_name: user.full_name || '',
     email: user.email || '',
+    username: user.username || '',
     phone: user.phone || '',
     position: user.position || '',
     department: user.department || '',
     branch_id: user.branch_id || '',
     role: currentRole as string,
   });
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+
+  const USERNAME_RE = /^[a-z0-9_-]{3,32}$/;
+  const validateUsername = (v: string): string | null => {
+    const trimmed = v.trim();
+    if (trimmed === '') return null; // empty allowed (warning shown separately)
+    if (/\s/.test(v)) return 'Username cannot contain spaces.';
+    if (v !== v.toLowerCase()) return 'Username must be lowercase only.';
+    if (!USERNAME_RE.test(trimmed)) return 'Only letters, numbers, dash, underscore (3–32 chars).';
+    return null;
+  };
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      const { role, email: _ignoredEmail, ...profileFields } = form;
+      const { role, email: _ignoredEmail, username, ...profileFields } = form;
+      const cleanUsername = username.trim().toLowerCase();
       // Update profile fields
       await callManageRoles('update_profile', {
         user_id: user.user_id,
         ...profileFields,
+        username: cleanUsername,
         branch_id: profileFields.branch_id || null,
         department: profileFields.department || null,
       });
@@ -135,6 +150,20 @@ function EditUserDialog({
 
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
 
+  const onUsernameChange = (v: string) => {
+    update('username', v);
+    setUsernameError(validateUsername(v));
+  };
+
+  const handleSave = () => {
+    const err = validateUsername(form.username);
+    if (err) {
+      setUsernameError(err);
+      return;
+    }
+    updateMutation.mutate();
+  };
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
@@ -153,6 +182,27 @@ function EditUserDialog({
             <p className="text-xs text-muted-foreground mt-1">
               Email is a system login identity and cannot be changed here.
             </p>
+          </div>
+          <div>
+            <Label>Username</Label>
+            <Input
+              value={form.username}
+              onChange={e => onUsernameChange(e.target.value)}
+              placeholder="e.g. john_doe"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {usernameError ? (
+              <p className="text-xs text-destructive mt-1">{usernameError}</p>
+            ) : form.username.trim() === '' ? (
+              <p className="text-xs text-amber-600 mt-1">
+                Username required before username login can be activated.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-1">
+                Lowercase letters, numbers, dash, underscore. Must be unique.
+              </p>
+            )}
           </div>
           <div>
             <Label>Phone</Label>
@@ -209,7 +259,7 @@ function EditUserDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+          <Button onClick={handleSave} disabled={updateMutation.isPending || !!usernameError}>
             {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
           </Button>
         </DialogFooter>
@@ -354,6 +404,7 @@ export default function UserManagement() {
       result = result.filter(p =>
         (p.full_name || '').toLowerCase().includes(q) ||
         (p.email || '').toLowerCase().includes(q) ||
+        (p.username || '').toLowerCase().includes(q) ||
         (p.phone || '').toLowerCase().includes(q) ||
         (p.position || '').toLowerCase().includes(q)
       );
@@ -570,6 +621,13 @@ export default function UserManagement() {
                       </Badge>
                     </div>
                     {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+                    <p className="text-xs truncate">
+                      {user.username ? (
+                        <span className="font-mono text-foreground">@{user.username}</span>
+                      ) : (
+                        <span className="text-amber-600">No username set</span>
+                      )}
+                    </p>
                     {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
                     <p className="text-xs text-muted-foreground capitalize flex items-center gap-1 flex-wrap">
                       <span>{user.department || 'No department'}</span>
@@ -628,6 +686,13 @@ export default function UserManagement() {
                           <p className="font-medium truncate">{user.full_name || 'Unnamed'}</p>
                           <p className="text-xs text-muted-foreground truncate">
                             {user.email || '—'}{user.phone ? ` · ${user.phone}` : ''}
+                          </p>
+                          <p className="text-xs truncate">
+                            {user.username ? (
+                              <span className="font-mono text-muted-foreground">@{user.username}</span>
+                            ) : (
+                              <span className="text-amber-600">No username</span>
+                            )}
                           </p>
                         </div>
                       </div>

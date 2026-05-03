@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
 
     // ─── UPDATE_PROFILE: edit user details ───
     if (action === "update_profile") {
-      const { user_id, full_name, phone, email, department, branch_id, position } = params;
+      const { user_id, full_name, phone, email, department, branch_id, position, username } = params;
       if (!user_id) throw new Error("user_id required");
 
       const updateData: Record<string, any> = {};
@@ -175,6 +175,10 @@ Deno.serve(async (req) => {
       if (department !== undefined) updateData.department = department;
       if (branch_id !== undefined) updateData.branch_id = branch_id || null;
       if (position !== undefined) updateData.position = position;
+      if (username !== undefined) {
+        const u = (username ?? "").toString().trim().toLowerCase();
+        updateData.username = u === "" ? null : u;
+      }
 
       const { data, error } = await supabaseAdmin
         .from("profiles")
@@ -182,7 +186,22 @@ Deno.serve(async (req) => {
         .eq("user_id", user_id)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        const msg = (error.message || "").toLowerCase();
+        if (msg.includes("profiles_username_unique") || (error as any).code === "23505") {
+          return new Response(JSON.stringify({ ok: false, error: "This username already exists." }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (msg.includes("invalid_username")) {
+          return new Response(JSON.stringify({ ok: false, error: "Username must be 3–32 chars: lowercase letters, numbers, dash, underscore only." }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        throw error;
+      }
 
       return new Response(JSON.stringify({ ok: true, profile: data }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
