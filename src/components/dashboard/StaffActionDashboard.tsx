@@ -153,6 +153,15 @@ export default function StaffActionDashboard() {
 
     // Checklists -> overdue or due today
     for (const c of checklists as any[]) {
+      // Branch+department scope (staff). Direct assignment always allowed.
+      const mine = c.assigned_to === profile?.user_id;
+      if (!mine) {
+        // Require branch match AND department match for non-direct assignments.
+        if (!profile?.branch_id) continue;
+        if (!c.branch_id) continue; // missing branch -> hide from staff
+        if (c.branch_id !== profile.branch_id) continue;
+        if (!c.department || c.department !== profile?.department) continue;
+      }
       const dueISO = c.scheduled_date as string;
       const isOverdue = dueISO < todayISO || c.status === 'late' || c.status === 'escalated';
       const status: ActionItem['status'] = isOverdue ? 'Overdue' : 'Due Today';
