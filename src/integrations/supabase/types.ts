@@ -2527,7 +2527,7 @@ export type Database = {
         | "office"
         | "bakery"
       ingredient_type: "batch_recipe" | "bottled_drink" | "ingredient" | "other"
-      inventory_control_source: "ingredient" | "manual"
+      inventory_control_source: "ingredient" | "manual" | "extra"
       inventory_request_status:
         | "Draft"
         | "Submitted"
@@ -2753,7 +2753,7 @@ export const Constants = {
         "bakery",
       ],
       ingredient_type: ["batch_recipe", "bottled_drink", "ingredient", "other"],
-      inventory_control_source: ["ingredient", "manual"],
+      inventory_control_source: ["ingredient", "manual", "extra"],
       inventory_request_status: [
         "Draft",
         "Submitted",

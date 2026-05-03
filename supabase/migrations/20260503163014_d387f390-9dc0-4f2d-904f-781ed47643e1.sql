@@ -1,0 +1,1 @@
+ALTER TYPE public.inventory_control_source ADD VALUE IF NOT EXISTS 'extra';
