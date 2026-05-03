@@ -115,7 +115,7 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial, on
 
   const update = (k: keyof typeof form, v: any) => setForm(s => ({ ...s, [k]: v }));
 
-  const handleSave = async () => {
+  const performSave = async (opts?: { createRepairAfter?: boolean }) => {
     if (!form.title.trim()) return toast.error('Title required');
     if (!form.branch_id) return toast.error('Branch required');
     if (!form.department) return toast.error('Department required');
@@ -132,7 +132,7 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial, on
       : null;
 
     try {
-      await upsert.mutateAsync({
+      const saved = await upsert.mutateAsync({
         id: initial?.id,
         title: form.title.trim(),
         description: form.description || null,
@@ -153,9 +153,62 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial, on
         updated_by: profile?.user_id,
       } as any);
       toast.success(initial ? 'Updated' : 'Created');
+
+      if (opts?.createRepairAfter && saved) {
+        try {
+          const res = await createRepair.mutateAsync({
+            job: { ...(initial as any), ...saved } as EnrichedWtbd,
+            userId: profile?.user_id ?? null,
+          });
+          if (res.alreadyExisted) {
+            toast.info('A repair record already exists for this job.');
+          } else {
+            toast.success('Repair record created from Work To Be Done');
+          }
+          if (onJumpToRepair) onJumpToRepair(res.repairId);
+        } catch (e: any) {
+          toast.error(e?.message || 'Could not create repair record');
+        }
+      }
+
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message || 'Save failed');
+    }
+  };
+
+  const handleSave = () => {
+    // Require explicit confirmation when an active job is being marked Completed
+    const wasActive = !initial || ['Open','Postponed','In Progress'].includes(initial.status);
+    if (form.status === 'Completed' && wasActive) {
+      if (isStaff) {
+        // Staff cannot create repair records → just save and notify
+        performSave().then(() => {
+          toast.message('Completed. Manager/Owner can create the repair record.');
+        });
+        return;
+      }
+      setCompletePromptOpen(true);
+      return;
+    }
+    performSave();
+  };
+
+  const handleCreateRepairLater = async () => {
+    if (!initial) return;
+    try {
+      const res = await createRepair.mutateAsync({
+        job: initial,
+        userId: profile?.user_id ?? null,
+      });
+      if (res.alreadyExisted) {
+        toast.info('A repair record already exists for this job.');
+      } else {
+        toast.success('Repair record created from Work To Be Done');
+      }
+      if (onJumpToRepair) onJumpToRepair(res.repairId);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not create repair record');
     }
   };
 
