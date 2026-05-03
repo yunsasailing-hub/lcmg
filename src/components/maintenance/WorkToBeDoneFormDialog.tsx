@@ -18,10 +18,13 @@ import {
   WTBD_PRIORITIES,
   WTBD_STATUSES,
   WTBD_OCCASIONS,
+  WORK_AREAS,
+  DEFAULT_WORK_AREA,
   type EnrichedWtbd,
   type WtbdPriority,
   type WtbdStatus,
   type WtbdTargetOccasion,
+  type WorkArea,
 } from '@/hooks/useWorkToBeDone';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -90,6 +93,7 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
     priority: (initial?.priority ?? 'Medium') as WtbdPriority,
     status: (initial?.status ?? 'Open') as WtbdStatus,
     target_occasion: (initial?.target_occasion ?? 'No fixed date') as WtbdTargetOccasion,
+    work_area: (initial?.work_area ?? DEFAULT_WORK_AREA) as WorkArea,
     due_date: initial?.due_date ?? '',
     assigned_to: initial?.assigned_to ?? '',
     notes: initial?.notes ?? '',
@@ -102,6 +106,7 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
     if (!form.title.trim()) return toast.error('Title required');
     if (!form.branch_id) return toast.error('Branch required');
     if (!form.department) return toast.error('Department required');
+    if (!form.work_area) return toast.error('Work Area required');
     const requiresFinalNote = (form.status === 'Cancelled') && !form.final_note.trim();
     if (requiresFinalNote) return toast.error('Cancellation reason / final note required');
 
@@ -124,6 +129,7 @@ export default function WorkToBeDoneFormDialog({ open, onOpenChange, initial }: 
         priority: form.priority,
         status: form.status,
         target_occasion: form.target_occasion,
+        work_area: form.work_area,
         due_date: form.due_date || null,
         assigned_to: form.assigned_to || null,
         notes: form.notes || null,
