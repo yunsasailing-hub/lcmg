@@ -275,8 +275,8 @@ export default function InventoryControlList() {
     const listIdMap = new Map<string, string>(); // key=code|branch -> id
     for (const l of importPreview.newLists) {
       try {
-        const id = await upsertList.mutateAsync(l.payload);
-        listIdMap.set(`${l.payload.control_list_code}|${l.payload.branch_id}`, id);
+        const created = await upsertList.mutateAsync(l.payload);
+        listIdMap.set(`${l.payload.control_list_code}|${l.payload.branch_id}`, created.id);
         createdLists++;
       } catch { fail++; }
     }
@@ -312,7 +312,7 @@ export default function InventoryControlList() {
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Department</Label>
-            <Select value={department} onValueChange={(v) => { setDepartment(v as Department); setControlListId(''); }}>
+            <Select value={department} onValueChange={(v) => setDepartment(v as Department)}>
               <SelectTrigger className="h-9 min-w-[160px] capitalize"><SelectValue placeholder="All departments" /></SelectTrigger>
               <SelectContent>
                 {DEPARTMENTS.map(d => <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>)}
@@ -335,6 +335,9 @@ export default function InventoryControlList() {
                 ))}
               </SelectContent>
             </Select>
+            {hiddenListSafety && (
+              <p className="mt-1 text-xs text-destructive">Control List exists but not visible. Please refresh.</p>
+            )}
           </div>
           <Button size="sm" variant="default" onClick={() => setNewListOpen(true)}>
             <FilePlus2 className="h-4 w-4 mr-1" /> New Control List
@@ -510,10 +513,15 @@ export default function InventoryControlList() {
         open={newListOpen} onOpenChange={setNewListOpen}
         defaultBranchId={branchId} defaultDepartment={department || null}
         existingLists={allLists}
-        onSaved={({ id, branch_id, department: dep }) => {
-          setBranchId(branch_id);
-          setDepartment(dep);
-          setControlListId(id);
+        onSaved={async (created) => {
+          const visibleList = created as EnrichedControlList;
+          setOptimisticList(visibleList);
+          setBranchId(created.branch_id);
+          setDepartment(created.department);
+          setControlListId(created.id);
+          await queryClient.invalidateQueries({ queryKey: ['inventory_control_lists'] });
+          await Promise.all([refetchAllLists(), refetchBranchLists()]);
+          setControlListId(created.id);
           toast.success('Control List created. Add items now.');
         }}
       />
