@@ -152,9 +152,15 @@ function EditUserDialog({
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No branch</SelectItem>
-                {branches.map(b => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
+                {[...branches]
+                  .sort((a, b) => {
+                    if (a.id === ALL_BRANCHES_ID) return -1;
+                    if (b.id === ALL_BRANCHES_ID) return 1;
+                    return a.name.localeCompare(b.name);
+                  })
+                  .map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -432,8 +438,8 @@ export default function UserManagement() {
             <Select value={filters.branch_id || 'all'} onValueChange={v => setFilters(f => ({ ...f, branch_id: v === 'all' ? undefined : v }))}>
               <SelectTrigger><SelectValue placeholder="All branches" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All branches</SelectItem>
-                {branches.map(b => (
+                <SelectItem value="all">All</SelectItem>
+                {sortedBranches.map(b => (
                   <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                 ))}
               </SelectContent>
