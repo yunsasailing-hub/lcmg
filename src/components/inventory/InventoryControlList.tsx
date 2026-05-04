@@ -755,7 +755,7 @@ export default function InventoryControlList() {
             </div>
           )}
         </>
-      )}
+      ) : null}
 
       <ControlListFormDialog
         open={newListOpen} onOpenChange={setNewListOpen}
