@@ -85,6 +85,12 @@ export default function InventoryControlList() {
   const isOwner = hasRole('owner');
   const canViewInventoryDebug = hasRole('owner') || hasRole('administrator');
   const { data: branches = [] } = useBranchesAll();
+  // Strictly filter out the synthetic "ALL BRANCHES" sentinel — Control Lists are branch-scoped.
+  const ALL_BRANCHES_ID = '00000000-0000-0000-0000-000000000001';
+  const realBranches = useMemo(
+    () => branches.filter(b => b.id !== ALL_BRANCHES_ID && b.name?.toUpperCase() !== 'ALL BRANCHES'),
+    [branches],
+  );
   // SINGLE SOURCE OF TRUTH for Control Lists. Same query feeds dropdown,
   // "Existing Control Lists" table, and (via the same hook key) the Weekly Sheet.
   const { data: allLists = [], refetch: refetchAllLists } = useInventoryControlLists();
@@ -97,12 +103,17 @@ export default function InventoryControlList() {
   const [branchId, setBranchId] = useState<string>('');
   const [department, setDepartment] = useState<Department | ''>('');
 
-  // Auto-select user's branch when available. Branch is REQUIRED for this module.
+  // Auto-select user's branch when available (must be a real branch, never the ALL sentinel).
   useEffect(() => {
-    if (!branchId && profile?.branch_id && branches.some(b => b.id === profile.branch_id)) {
+    if (
+      !branchId &&
+      profile?.branch_id &&
+      profile.branch_id !== ALL_BRANCHES_ID &&
+      realBranches.some(b => b.id === profile.branch_id)
+    ) {
       setBranchId(profile.branch_id);
     }
-  }, [profile?.branch_id, branches, branchId]);
+  }, [profile?.branch_id, realBranches, branchId]);
   const [controlListId, setControlListId] = useState<string>('');
   const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
   const [lastCreatedTableSource, setLastCreatedTableSource] = useState('inventory_control_lists');
@@ -112,9 +123,11 @@ export default function InventoryControlList() {
 
   // Derive the dropdown list from the SAME `allLists` data the table uses.
   // Active = is_active true OR null (legacy rows). Filters are applied client-side
-  // so "All branches" / "All departments" simply skip filtering.
+  // so "All departments" simply skips department filtering. Branch is always required.
   const filteredLists = useMemo(() => {
-    if (!branchId) return [];
+    if (!branchId || branchId === ALL_BRANCHES_ID) return [];
+    // eslint-disable-next-line no-console
+    console.log('Branch used:', branchId);
     let lists = allLists.filter(l =>
       (l.is_active === true || l.is_active === null) && l.branch_id === branchId,
     );
@@ -429,7 +442,7 @@ export default function InventoryControlList() {
             }}>
               <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="Select branch…" /></SelectTrigger>
               <SelectContent>
-                {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                {realBranches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
