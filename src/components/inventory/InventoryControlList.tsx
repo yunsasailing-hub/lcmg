@@ -525,23 +525,17 @@ export default function InventoryControlList() {
       )}
 
       {/* Existing Control Lists panel */}
+      {branchId && (
       <Card>
         <CardContent className="py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-semibold uppercase text-muted-foreground">
-              Existing Control Lists {branchId ? `for ${branchName(branchId)}` : '(all branches)'}
+              Existing Control Lists for {branchName(branchId)}
             </div>
             <span className="text-xs text-muted-foreground">{branchPanelLists.length} list(s)</span>
           </div>
           {branchPanelLists.length === 0 ? (
-            allLists.length > 0 ? (
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-xs text-destructive">Control lists exist but are hidden by filters.</p>
-                <Button size="sm" variant="outline" className="h-7" onClick={clearFilters}>Reset filters</Button>
-              </div>
-          ) : (
-              <p className="text-xs text-muted-foreground">Create your first Control List.</p>
-            )
+            <p className="text-xs text-muted-foreground">No Control Lists for this branch yet — create one.</p>
           ) : (
               <div className="overflow-x-auto rounded border">
                 <table className="w-full text-xs">
@@ -549,7 +543,6 @@ export default function InventoryControlList() {
                     <tr className="text-left">
                       <th className="px-2 py-1.5">Code</th>
                       <th className="px-2 py-1.5">Name</th>
-                      {!branchId && <th className="px-2 py-1.5">Branch</th>}
                       <th className="px-2 py-1.5">Department</th>
                       <th className="px-2 py-1.5 text-center">Active</th>
                       <th className="px-2 py-1.5 text-right">Items</th>
@@ -563,7 +556,6 @@ export default function InventoryControlList() {
                         <tr key={l.id} className={`border-t ${!l.is_active ? 'opacity-60' : ''}`}>
                           <td className="px-2 py-1 font-mono">{l.control_list_code}</td>
                           <td className="px-2 py-1">{l.control_list_name}</td>
-                          {!branchId && <td className="px-2 py-1">{branchName(l.branch_id)}</td>}
                           <td className="px-2 py-1 capitalize">{l.department}</td>
                           <td className="px-2 py-1 text-center">
                             {l.is_active
@@ -600,14 +592,15 @@ export default function InventoryControlList() {
             )}
           </CardContent>
         </Card>
+      )}
 
-      {!controlListId ? (
+      {branchId && !controlListId ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             Select a Control List above, or click <span className="font-medium text-foreground">New Control List</span> to create one.
           </CardContent>
         </Card>
-      ) : (
+      ) : branchId && controlListId ? (
         <>
           {/* Header for current list */}
           <div className="flex flex-wrap items-center gap-2 px-1">
