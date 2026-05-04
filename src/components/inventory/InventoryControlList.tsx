@@ -242,9 +242,7 @@ export default function InventoryControlList() {
     () => allLists.find(l => l.id === controlListId) ?? (optimisticList?.id === controlListId ? optimisticList : null),
     [allLists, controlListId, optimisticList],
   );
-  const hiddenListSafety =
-    filteredLists.length === 0 &&
-    allLists.some(l => l.is_active !== false);
+  // (Removed misleading "hidden by department filter" warning per spec.)
 
   useEffect(() => { setNewRows([]); setDrafts({}); }, [controlListId]);
 
@@ -459,10 +457,8 @@ export default function InventoryControlList() {
                 {filteredLists.length === 0 && (
                   <div className="px-2 py-1.5 text-xs text-muted-foreground">
                     {!branchId
-                      ? 'Select a branch to see Control Lists.'
-                      : (branchPanelLists.length === 0
-                          ? 'No Control Lists for this branch yet — create one.'
-                          : 'No Control Lists match the department filter.')}
+                      ? 'Select a branch to load Control Lists'
+                      : 'No Control Lists for this branch'}
                   </div>
                 )}
                 {filteredLists.map(l => (
@@ -473,16 +469,6 @@ export default function InventoryControlList() {
                 ))}
               </SelectContent>
             </Select>
-            {hiddenListSafety && (
-              <div className="mt-1 flex items-center gap-2 flex-wrap">
-                <p className="text-xs text-destructive">
-                  Control Lists exist for this branch but are hidden by the department filter.
-                </p>
-                <Button size="sm" variant="outline" className="h-7" onClick={clearFilters}>
-                  Clear department
-                </Button>
-              </div>
-            )}
           </div>
           <Button size="sm" variant="default" onClick={() => setNewListOpen(true)} disabled={!branchId}>
             <FilePlus2 className="h-4 w-4 mr-1" /> New Control List
