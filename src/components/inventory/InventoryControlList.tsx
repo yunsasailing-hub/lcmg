@@ -83,7 +83,9 @@ export default function InventoryControlList() {
   const { hasRole, profile } = useAuth();
   const queryClient = useQueryClient();
   const isOwner = hasRole('owner');
-  const canViewInventoryDebug = hasRole('owner') || hasRole('administrator');
+  // Inventory Debug is hidden by default. Administrators can enable it via ?debug=1 in the URL.
+  const debugMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1';
+  const canViewInventoryDebug = hasRole('administrator') && debugMode;
   const { data: branches = [] } = useBranchesAll();
   // Strictly filter out the synthetic "ALL BRANCHES" sentinel — Control Lists are branch-scoped.
   const ALL_BRANCHES_ID = '00000000-0000-0000-0000-000000000001';
