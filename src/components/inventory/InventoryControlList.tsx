@@ -80,7 +80,7 @@ function parseActive(v: any): boolean {
 }
 
 export default function InventoryControlList() {
-  const { hasRole } = useAuth();
+  const { hasRole, profile } = useAuth();
   const queryClient = useQueryClient();
   const isOwner = hasRole('owner');
   const canViewInventoryDebug = hasRole('owner') || hasRole('administrator');
@@ -96,6 +96,13 @@ export default function InventoryControlList() {
 
   const [branchId, setBranchId] = useState<string>('');
   const [department, setDepartment] = useState<Department | ''>('');
+
+  // Auto-select user's branch when available. Branch is REQUIRED for this module.
+  useEffect(() => {
+    if (!branchId && profile?.branch_id && branches.some(b => b.id === profile.branch_id)) {
+      setBranchId(profile.branch_id);
+    }
+  }, [profile?.branch_id, branches, branchId]);
   const [controlListId, setControlListId] = useState<string>('');
   const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
   const [lastCreatedTableSource, setLastCreatedTableSource] = useState('inventory_control_lists');
@@ -107,12 +114,14 @@ export default function InventoryControlList() {
   // Active = is_active true OR null (legacy rows). Filters are applied client-side
   // so "All branches" / "All departments" simply skip filtering.
   const filteredLists = useMemo(() => {
-    let lists = allLists.filter(l => l.is_active === true || l.is_active === null);
-    if (branchId) lists = lists.filter(l => l.branch_id === branchId);
+    if (!branchId) return [];
+    let lists = allLists.filter(l =>
+      (l.is_active === true || l.is_active === null) && l.branch_id === branchId,
+    );
     if (department) lists = lists.filter(l => l.department === department);
     if (
       optimisticList &&
-      (!branchId || optimisticList.branch_id === branchId) &&
+      optimisticList.branch_id === branchId &&
       (!department || optimisticList.department === department) &&
       !lists.some(l => l.id === optimisticList.id)
     ) {
@@ -124,10 +133,11 @@ export default function InventoryControlList() {
     return lists;
   }, [allLists, branchId, department, optimisticList]);
 
-  // Panel: control lists for selected branch, OR ALL lists when no branch selected.
+  // Panel: control lists for selected branch only (branch is required).
   const branchPanelLists = useMemo(() => {
-    let lists = branchId ? allLists.filter(l => l.branch_id === branchId) : [...allLists];
-    if (optimisticList && (!branchId || optimisticList.branch_id === branchId) && !lists.some(l => l.id === optimisticList.id)) {
+    if (!branchId) return [];
+    let lists = allLists.filter(l => l.branch_id === branchId);
+    if (optimisticList && optimisticList.branch_id === branchId && !lists.some(l => l.id === optimisticList.id)) {
       lists.unshift(optimisticList);
     }
     lists.sort((a, b) => (a.control_list_code || '').localeCompare(b.control_list_code || '', undefined, { numeric: true }));
@@ -222,7 +232,7 @@ export default function InventoryControlList() {
   }, [filteredLists, controlListId]);
 
   const clearFilters = () => {
-    setBranchId('');
+    // Branch stays required; only clear department + selection.
     setDepartment('');
     setControlListId('');
     setNewRows([]);
@@ -415,21 +425,23 @@ export default function InventoryControlList() {
       <Card>
         <CardContent className="py-3 flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Branch</Label>
-            <Select value={branchId || '__all__'} onValueChange={(v) => {
-              const next = v === '__all__' ? '' : v;
-              setBranchId(next); setControlListId(''); setNewRows([]); setDrafts({});
+            <Label className="text-xs">Branch <span className="text-destructive">*</span></Label>
+            <Select value={branchId} onValueChange={(v) => {
+              setBranchId(v); setControlListId(''); setNewRows([]); setDrafts({});
             }}>
-              <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="All branches" /></SelectTrigger>
+              <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="Select branch…" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All branches</SelectItem>
                 {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Department</Label>
-            <Select value={department || '__all__'} onValueChange={(v) => setDepartment(v === '__all__' ? '' : (v as Department))}>
+            <Select
+              value={department || '__all__'}
+              onValueChange={(v) => setDepartment(v === '__all__' ? '' : (v as Department))}
+              disabled={!branchId}
+            >
               <SelectTrigger className="h-9 min-w-[160px] capitalize"><SelectValue placeholder="All departments" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All departments</SelectItem>
@@ -439,14 +451,18 @@ export default function InventoryControlList() {
           </div>
           <div className="flex flex-col gap-1 flex-1 min-w-[260px]">
             <Label className="text-xs">Control List</Label>
-            <Select value={controlListId} onValueChange={setControlListId}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Select control list" /></SelectTrigger>
+            <Select value={controlListId} onValueChange={setControlListId} disabled={!branchId}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={branchId ? 'Select control list' : 'Select a branch first'} />
+              </SelectTrigger>
               <SelectContent>
                 {filteredLists.length === 0 && (
                   <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    {allLists.length === 0
-                      ? 'Create your first Control List'
-                      : 'No control lists match the filters.'}
+                    {!branchId
+                      ? 'Select a branch to see Control Lists.'
+                      : (branchPanelLists.length === 0
+                          ? 'No Control Lists for this branch yet — create one.'
+                          : 'No Control Lists match the department filter.')}
                   </div>
                 )}
                 {filteredLists.map(l => (
@@ -460,24 +476,32 @@ export default function InventoryControlList() {
             {hiddenListSafety && (
               <div className="mt-1 flex items-center gap-2 flex-wrap">
                 <p className="text-xs text-destructive">
-                  Control Lists exist but are hidden by filters. Clear filters or select the correct branch.
+                  Control Lists exist for this branch but are hidden by the department filter.
                 </p>
                 <Button size="sm" variant="outline" className="h-7" onClick={clearFilters}>
-                  Clear filters
+                  Clear department
                 </Button>
               </div>
             )}
           </div>
-          <Button size="sm" variant="default" onClick={() => setNewListOpen(true)}>
+          <Button size="sm" variant="default" onClick={() => setNewListOpen(true)} disabled={!branchId}>
             <FilePlus2 className="h-4 w-4 mr-1" /> New Control List
           </Button>
           {isOwner && (
-            <Button size="sm" variant="outline" onClick={() => setCopyOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => setCopyOpen(true)} disabled={!branchId}>
               <CopyIcon className="h-4 w-4 mr-1" /> Copy Control List
             </Button>
           )}
         </CardContent>
       </Card>
+
+      {!branchId && (
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Select a branch to continue.
+          </CardContent>
+        </Card>
+      )}
 
       {canViewInventoryDebug && (
         <Card>
@@ -501,23 +525,17 @@ export default function InventoryControlList() {
       )}
 
       {/* Existing Control Lists panel */}
+      {branchId && (
       <Card>
         <CardContent className="py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-semibold uppercase text-muted-foreground">
-              Existing Control Lists {branchId ? `for ${branchName(branchId)}` : '(all branches)'}
+              Existing Control Lists for {branchName(branchId)}
             </div>
             <span className="text-xs text-muted-foreground">{branchPanelLists.length} list(s)</span>
           </div>
           {branchPanelLists.length === 0 ? (
-            allLists.length > 0 ? (
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-xs text-destructive">Control lists exist but are hidden by filters.</p>
-                <Button size="sm" variant="outline" className="h-7" onClick={clearFilters}>Reset filters</Button>
-              </div>
-          ) : (
-              <p className="text-xs text-muted-foreground">Create your first Control List.</p>
-            )
+            <p className="text-xs text-muted-foreground">No Control Lists for this branch yet — create one.</p>
           ) : (
               <div className="overflow-x-auto rounded border">
                 <table className="w-full text-xs">
@@ -525,7 +543,6 @@ export default function InventoryControlList() {
                     <tr className="text-left">
                       <th className="px-2 py-1.5">Code</th>
                       <th className="px-2 py-1.5">Name</th>
-                      {!branchId && <th className="px-2 py-1.5">Branch</th>}
                       <th className="px-2 py-1.5">Department</th>
                       <th className="px-2 py-1.5 text-center">Active</th>
                       <th className="px-2 py-1.5 text-right">Items</th>
@@ -539,7 +556,6 @@ export default function InventoryControlList() {
                         <tr key={l.id} className={`border-t ${!l.is_active ? 'opacity-60' : ''}`}>
                           <td className="px-2 py-1 font-mono">{l.control_list_code}</td>
                           <td className="px-2 py-1">{l.control_list_name}</td>
-                          {!branchId && <td className="px-2 py-1">{branchName(l.branch_id)}</td>}
                           <td className="px-2 py-1 capitalize">{l.department}</td>
                           <td className="px-2 py-1 text-center">
                             {l.is_active
@@ -576,14 +592,15 @@ export default function InventoryControlList() {
             )}
           </CardContent>
         </Card>
+      )}
 
-      {!controlListId ? (
+      {branchId && !controlListId ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             Select a Control List above, or click <span className="font-medium text-foreground">New Control List</span> to create one.
           </CardContent>
         </Card>
-      ) : (
+      ) : branchId && controlListId ? (
         <>
           {/* Header for current list */}
           <div className="flex flex-wrap items-center gap-2 px-1">
@@ -738,7 +755,7 @@ export default function InventoryControlList() {
             </div>
           )}
         </>
-      )}
+      ) : null}
 
       <ControlListFormDialog
         open={newListOpen} onOpenChange={setNewListOpen}
