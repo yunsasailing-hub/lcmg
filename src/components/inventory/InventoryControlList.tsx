@@ -80,7 +80,7 @@ function parseActive(v: any): boolean {
 }
 
 export default function InventoryControlList() {
-  const { hasRole } = useAuth();
+  const { hasRole, profile } = useAuth();
   const queryClient = useQueryClient();
   const isOwner = hasRole('owner');
   const canViewInventoryDebug = hasRole('owner') || hasRole('administrator');
@@ -96,6 +96,13 @@ export default function InventoryControlList() {
 
   const [branchId, setBranchId] = useState<string>('');
   const [department, setDepartment] = useState<Department | ''>('');
+
+  // Auto-select user's branch when available. Branch is REQUIRED for this module.
+  useEffect(() => {
+    if (!branchId && profile?.branch_id && branches.some(b => b.id === profile.branch_id)) {
+      setBranchId(profile.branch_id);
+    }
+  }, [profile?.branch_id, branches, branchId]);
   const [controlListId, setControlListId] = useState<string>('');
   const [optimisticList, setOptimisticList] = useState<EnrichedControlList | null>(null);
   const [lastCreatedTableSource, setLastCreatedTableSource] = useState('inventory_control_lists');
@@ -107,12 +114,14 @@ export default function InventoryControlList() {
   // Active = is_active true OR null (legacy rows). Filters are applied client-side
   // so "All branches" / "All departments" simply skip filtering.
   const filteredLists = useMemo(() => {
-    let lists = allLists.filter(l => l.is_active === true || l.is_active === null);
-    if (branchId) lists = lists.filter(l => l.branch_id === branchId);
+    if (!branchId) return [];
+    let lists = allLists.filter(l =>
+      (l.is_active === true || l.is_active === null) && l.branch_id === branchId,
+    );
     if (department) lists = lists.filter(l => l.department === department);
     if (
       optimisticList &&
-      (!branchId || optimisticList.branch_id === branchId) &&
+      optimisticList.branch_id === branchId &&
       (!department || optimisticList.department === department) &&
       !lists.some(l => l.id === optimisticList.id)
     ) {
@@ -124,10 +133,11 @@ export default function InventoryControlList() {
     return lists;
   }, [allLists, branchId, department, optimisticList]);
 
-  // Panel: control lists for selected branch, OR ALL lists when no branch selected.
+  // Panel: control lists for selected branch only (branch is required).
   const branchPanelLists = useMemo(() => {
-    let lists = branchId ? allLists.filter(l => l.branch_id === branchId) : [...allLists];
-    if (optimisticList && (!branchId || optimisticList.branch_id === branchId) && !lists.some(l => l.id === optimisticList.id)) {
+    if (!branchId) return [];
+    let lists = allLists.filter(l => l.branch_id === branchId);
+    if (optimisticList && optimisticList.branch_id === branchId && !lists.some(l => l.id === optimisticList.id)) {
       lists.unshift(optimisticList);
     }
     lists.sort((a, b) => (a.control_list_code || '').localeCompare(b.control_list_code || '', undefined, { numeric: true }));
@@ -222,7 +232,7 @@ export default function InventoryControlList() {
   }, [filteredLists, controlListId]);
 
   const clearFilters = () => {
-    setBranchId('');
+    // Branch stays required; only clear department + selection.
     setDepartment('');
     setControlListId('');
     setNewRows([]);
