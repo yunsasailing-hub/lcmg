@@ -425,21 +425,23 @@ export default function InventoryControlList() {
       <Card>
         <CardContent className="py-3 flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Branch</Label>
-            <Select value={branchId || '__all__'} onValueChange={(v) => {
-              const next = v === '__all__' ? '' : v;
-              setBranchId(next); setControlListId(''); setNewRows([]); setDrafts({});
+            <Label className="text-xs">Branch <span className="text-destructive">*</span></Label>
+            <Select value={branchId} onValueChange={(v) => {
+              setBranchId(v); setControlListId(''); setNewRows([]); setDrafts({});
             }}>
-              <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="All branches" /></SelectTrigger>
+              <SelectTrigger className="h-9 min-w-[180px]"><SelectValue placeholder="Select branch…" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All branches</SelectItem>
                 {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Department</Label>
-            <Select value={department || '__all__'} onValueChange={(v) => setDepartment(v === '__all__' ? '' : (v as Department))}>
+            <Select
+              value={department || '__all__'}
+              onValueChange={(v) => setDepartment(v === '__all__' ? '' : (v as Department))}
+              disabled={!branchId}
+            >
               <SelectTrigger className="h-9 min-w-[160px] capitalize"><SelectValue placeholder="All departments" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All departments</SelectItem>
@@ -449,14 +451,18 @@ export default function InventoryControlList() {
           </div>
           <div className="flex flex-col gap-1 flex-1 min-w-[260px]">
             <Label className="text-xs">Control List</Label>
-            <Select value={controlListId} onValueChange={setControlListId}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Select control list" /></SelectTrigger>
+            <Select value={controlListId} onValueChange={setControlListId} disabled={!branchId}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={branchId ? 'Select control list' : 'Select a branch first'} />
+              </SelectTrigger>
               <SelectContent>
                 {filteredLists.length === 0 && (
                   <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    {allLists.length === 0
-                      ? 'Create your first Control List'
-                      : 'No control lists match the filters.'}
+                    {!branchId
+                      ? 'Select a branch to see Control Lists.'
+                      : (branchPanelLists.length === 0
+                          ? 'No Control Lists for this branch yet — create one.'
+                          : 'No Control Lists match the department filter.')}
                   </div>
                 )}
                 {filteredLists.map(l => (
@@ -470,24 +476,32 @@ export default function InventoryControlList() {
             {hiddenListSafety && (
               <div className="mt-1 flex items-center gap-2 flex-wrap">
                 <p className="text-xs text-destructive">
-                  Control Lists exist but are hidden by filters. Clear filters or select the correct branch.
+                  Control Lists exist for this branch but are hidden by the department filter.
                 </p>
                 <Button size="sm" variant="outline" className="h-7" onClick={clearFilters}>
-                  Clear filters
+                  Clear department
                 </Button>
               </div>
             )}
           </div>
-          <Button size="sm" variant="default" onClick={() => setNewListOpen(true)}>
+          <Button size="sm" variant="default" onClick={() => setNewListOpen(true)} disabled={!branchId}>
             <FilePlus2 className="h-4 w-4 mr-1" /> New Control List
           </Button>
           {isOwner && (
-            <Button size="sm" variant="outline" onClick={() => setCopyOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => setCopyOpen(true)} disabled={!branchId}>
               <CopyIcon className="h-4 w-4 mr-1" /> Copy Control List
             </Button>
           )}
         </CardContent>
       </Card>
+
+      {!branchId && (
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Select a branch to continue.
+          </CardContent>
+        </Card>
+      )}
 
       {canViewInventoryDebug && (
         <Card>
