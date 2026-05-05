@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useAuth } from '@/hooks/useAuth';
-import { formatVN, todayVN, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
+import { formatVN, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
 import { useAllChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
 
@@ -249,8 +249,9 @@ function GroupedChecklists({
 export default function PendingChecklistsView() {
   const { user, profile, hasRole } = useAuth();
   const isOwner = hasRole('owner');
-  const today = todayVN();
-  const { data, isLoading } = useAllChecklists({ date: today });
+  // PATCH 2: show ALL unsubmitted checklists (today + overdue + future).
+  // Overdue items from previous days must remain visible until submitted.
+  const { data, isLoading } = useAllChecklists();
 
   const allPending = useMemo(
     () => (data ?? []).filter((c: any) => PENDING_STATUSES.includes(c.status)),

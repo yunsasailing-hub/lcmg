@@ -42,21 +42,24 @@ function splitTemplateTaskTitle(value: string) {
 
 export function useMyChecklists(date?: string) {
   const { user } = useAuth();
-  const targetDate = date || todayVN();
 
+  // PATCH 2: show ALL unsubmitted checklists for this user (today + overdue + future),
+  // not just today's. Overdue/late items must remain visible until submitted.
   return useQuery({
-    queryKey: ['checklists', 'my', targetDate],
+    queryKey: ['checklists', 'my', 'unsubmitted', date ?? 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('checklist_instances')
         .select('*, template:checklist_templates(title, code, department, checklist_type), branch:branches(id, name)')
         .eq('assigned_to', user!.id)
-        .eq('scheduled_date', targetDate)
         // Hide submitted/final statuses from "My Checklist".
         // Active statuses kept: pending, late, escalated, rejected (rejected = needs redo).
         .not('status', 'in', '(completed,verified)')
         .is('archive_hidden_at', null)
-        .order('created_at', { ascending: false });
+        .order('scheduled_date', { ascending: true })
+        .order('due_datetime', { ascending: true, nullsFirst: false });
+      if (date) query = query.eq('scheduled_date', date);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
