@@ -163,8 +163,13 @@ export default function StaffActionDashboard() {
         if (!c.department || c.department !== profile?.department) continue;
       }
       const dueISO = c.scheduled_date as string;
-      const isOverdue = dueISO < todayISO || c.status === 'late' || c.status === 'escalated';
-      const status: ActionItem['status'] = isOverdue ? 'Overdue' : 'Due Today';
+      // PATCH 3 — unified timing logic.
+      const computed = getChecklistStatus({
+        due_datetime: c.due_datetime ?? null,
+        scheduled_date: dueISO,
+        status: c.status,
+      });
+      const status: ActionItem['status'] = computed.isOverdue ? 'Overdue' : 'Due Today';
       const code = c.template?.code ? `${c.template.code} · ` : '';
       out.push({
         key: `chk_${c.id}`,
