@@ -17,6 +17,7 @@ import { useLastExecutionByTemplate, parseLocalDate } from '@/hooks/useLastExecu
 import { occurrencesInRange } from '@/lib/maintenanceSchedule';
 import TaskCompletionDialog, { type EarlyPreviewPayload } from '@/components/maintenance/TaskCompletionDialog';
 import type { Database } from '@/integrations/supabase/types';
+import { getChecklistStatus } from '@/lib/checklistStatus';
 
 type Frequency = Database['public']['Enums']['maintenance_schedule_frequency'];
 
@@ -163,8 +164,13 @@ export default function StaffActionDashboard() {
         if (!c.department || c.department !== profile?.department) continue;
       }
       const dueISO = c.scheduled_date as string;
-      const isOverdue = dueISO < todayISO || c.status === 'late' || c.status === 'escalated';
-      const status: ActionItem['status'] = isOverdue ? 'Overdue' : 'Due Today';
+      // PATCH 3 — unified timing logic.
+      const computed = getChecklistStatus({
+        due_datetime: c.due_datetime ?? null,
+        scheduled_date: dueISO,
+        status: c.status,
+      });
+      const status: ActionItem['status'] = computed.isOverdue ? 'Overdue' : 'Due Today';
       const code = c.template?.code ? `${c.template.code} · ` : '';
       out.push({
         key: `chk_${c.id}`,
