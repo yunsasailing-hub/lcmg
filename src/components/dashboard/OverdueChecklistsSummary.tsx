@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format, startOfDay, endOfDay, subDays } from 'date-fns';
-import { formatVNDateTime } from '@/lib/timezone';
+import { formatVNDateTime, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
 import {
   AlertTriangle, Clock, ShieldAlert, Building2, Filter, X, CalendarIcon,
 } from 'lucide-react';
@@ -167,11 +167,18 @@ function ChecklistRow({
           <span>·</span>
           <span>{typeLabel}</span>
         </div>
-        {instance.due_datetime && (
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Due: {formatVNDateTime(instance.due_datetime)}
-          </p>
-        )}
+        {(() => {
+          const dateSrc = instance.due_datetime ?? instance.scheduled_date ?? null;
+          const dateDMY = dateSrc ? formatVNDateDMY(dateSrc) : null;
+          const timeHM = instance.due_datetime ? formatVNTimeHM(instance.due_datetime) : null;
+          if (!dateDMY && !timeHM) return null;
+          return (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {dateDMY && <>Date: <span className="text-foreground font-medium">{dateDMY}</span></>}
+              {timeHM && <> · Due: <span className="text-foreground font-medium">{timeHM}</span></>}
+            </p>
+          );
+        })()}
       </div>
     </div>
   );
