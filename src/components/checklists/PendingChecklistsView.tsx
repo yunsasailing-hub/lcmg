@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useAuth } from '@/hooks/useAuth';
-import { formatVN, todayVN } from '@/lib/timezone';
+import { formatVN, todayVN, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
 import { useAllChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
 
@@ -48,6 +48,14 @@ function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: bool
   const branchLabel = instance.resolved_branch?.name
     ?? instance.branch?.name
     ?? (ownerView ? 'Unassigned — Needs Review' : 'Unknown / Legacy');
+  const dateSource =
+    instance.due_datetime
+    ?? instance.scheduled_date
+    ?? instance.assigned_date
+    ?? instance.created_at
+    ?? null;
+  const dateDMY = dateSource ? formatVNDateDMY(dateSource) : null;
+  const dueHM = instance.due_datetime ? formatVNTimeHM(instance.due_datetime) : null;
 
   return (
     <div className="w-full flex flex-col gap-1.5 rounded-lg border bg-card px-3 py-2.5 sm:px-4 sm:py-3">
@@ -76,10 +84,18 @@ function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: bool
         <span><span className="text-muted-foreground/70">Branch:</span> <span className="text-foreground font-medium">{branchLabel}</span></span>
         <span><span className="text-muted-foreground/70">Dept:</span> <span className="text-foreground font-medium capitalize">{instance.department}</span></span>
         <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{instance.checklist_type}</span></span>
-        {instance.due_datetime && (
-          <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /><span className="text-foreground font-medium">{formatDueTime(instance.due_datetime)}</span></span>
-        )}
       </div>
+      {/* Line 3: date + due time */}
+      {(dateDMY || dueHM) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground pl-6">
+          {dateDMY && (
+            <span><span className="text-muted-foreground/70">Date:</span> <span className="text-foreground font-medium">{dateDMY}</span></span>
+          )}
+          {dueHM && (
+            <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /><span className="text-muted-foreground/70">Due:</span> <span className="text-foreground font-medium">{dueHM}</span></span>
+          )}
+        </div>
+      )}
       {/* Line 3: assignee + overdue, only if any */}
       {(instance.assignee || overdueText) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs pl-6">
