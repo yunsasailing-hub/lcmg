@@ -7,12 +7,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatVN, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
 import { useAllChecklists, type ChecklistStatus } from '@/hooks/useChecklists';
 import { TemplateCodeBadge } from '@/components/checklists/TemplateCodeBadge';
+import { getChecklistStatus } from '@/lib/checklistStatus';
 
 const PENDING_STATUSES: ChecklistStatus[] = ['pending', 'late', 'escalated'];
 
+// PATCH 3 — unified labels: only "Pending" or "Overdue" for active states.
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
   pending: { label: 'Pending', variant: 'secondary' },
-  late: { label: 'Late', variant: 'destructive', className: 'bg-warning text-warning-foreground hover:bg-warning/80' },
+  late: { label: 'Overdue', variant: 'destructive' },
   escalated: { label: 'Overdue', variant: 'destructive' },
   completed: { label: 'Done', variant: 'default' },
   verified: { label: 'Verified', variant: 'default' },
@@ -38,13 +40,17 @@ function formatOverdue(dt: string | null) {
 
 function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: boolean }) {
   const tpl = instance.template;
-  const cfg = statusConfig[instance.status as ChecklistStatus];
+  // PATCH 3 — single source of truth for overdue/pending decision.
+  const computed = getChecklistStatus(instance);
+  const baseCfg = statusConfig[instance.status as ChecklistStatus];
+  const cfg = (instance.status === 'pending' || instance.status === 'late' || instance.status === 'escalated')
+    ? { ...baseCfg, label: computed.label, variant: computed.isOverdue ? 'destructive' as const : 'secondary' as const, className: undefined }
+    : baseCfg;
   const StatusIcon =
-    instance.status === 'rejected' || instance.status === 'escalated' ? AlertTriangle
+    instance.status === 'rejected' || computed.isOverdue ? AlertTriangle
       : instance.status === 'completed' || instance.status === 'verified' ? CircleCheck
       : Circle;
-  const isLate = instance.status === 'late' || instance.status === 'escalated';
-  const overdueText = isLate ? formatOverdue(instance.due_datetime) : null;
+  const overdueText = computed.isOverdue ? formatOverdue(instance.due_datetime) : null;
   const branchLabel = instance.resolved_branch?.name
     ?? instance.branch?.name
     ?? (ownerView ? 'Unassigned — Needs Review' : 'Unknown / Legacy');
@@ -63,8 +69,7 @@ function ChecklistRow({ instance, ownerView }: { instance: any; ownerView?: bool
       <div className="flex items-center gap-2 min-w-0">
         <StatusIcon
           className={`h-4 w-4 shrink-0 ${
-            instance.status === 'rejected' || instance.status === 'escalated' ? 'text-destructive'
-              : instance.status === 'late' ? 'text-warning'
+            instance.status === 'rejected' || computed.isOverdue ? 'text-destructive'
               : 'text-muted-foreground'
           }`}
         />
