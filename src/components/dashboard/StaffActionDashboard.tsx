@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { todayVN, formatVN, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
+import { todayVN, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
 import {
   useMaintenanceTasks,
   type EnrichedMaintenanceTask,
