@@ -249,8 +249,9 @@ function GroupedChecklists({
 export default function PendingChecklistsView() {
   const { user, profile, hasRole } = useAuth();
   const isOwner = hasRole('owner');
-  const today = todayVN();
-  const { data, isLoading } = useAllChecklists({ date: today });
+  // PATCH 2: show ALL unsubmitted checklists (today + overdue + future).
+  // Overdue items from previous days must remain visible until submitted.
+  const { data, isLoading } = useAllChecklists();
 
   const allPending = useMemo(
     () => (data ?? []).filter((c: any) => PENDING_STATUSES.includes(c.status)),
