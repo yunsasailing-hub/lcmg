@@ -30,10 +30,11 @@ import { ChecklistPhotoPreview } from '@/components/checklists/ChecklistPhotoPre
 
 // ─── Status helpers ───
 
+// PATCH 3 — unified labels: only "Pending" or "Overdue" for active states.
 const statusConfig: Record<ChecklistStatus, { label: string; variant: 'secondary' | 'default' | 'destructive' | 'outline'; className?: string }> = {
   pending: { label: 'Pending', variant: 'secondary' },
-  late: { label: 'Late', variant: 'destructive', className: 'bg-warning text-warning-foreground hover:bg-warning/80' },
-  escalated: { label: 'Overdue / escalated', variant: 'destructive', className: 'bg-warning text-warning-foreground hover:bg-warning/80' },
+  late: { label: 'Overdue', variant: 'destructive' },
+  escalated: { label: 'Overdue', variant: 'destructive' },
   completed: { label: 'Done', variant: 'default', className: 'bg-emerald-600 text-white hover:bg-emerald-600/80' },
   verified: { label: 'Verified', variant: 'default', className: 'bg-ring text-primary-foreground hover:bg-ring/80' },
   rejected: { label: 'Rejected', variant: 'destructive' },
