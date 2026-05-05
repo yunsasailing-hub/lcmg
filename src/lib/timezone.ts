@@ -49,3 +49,27 @@ export function todayVN(): string {
   const d = parts.find(p => p.type === 'day')!.value;
   return `${y}-${m}-${d}`;
 }
+
+/** Format a date or ISO timestamp as DD/MM/YYYY in Vietnam time.
+ *  Accepts plain YYYY-MM-DD strings (no timezone shift) and full ISO timestamps. */
+export function formatVNDateDMY(value: string | Date | null | undefined): string {
+  if (!value) return '';
+  const d =
+    typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? new Date(`${value}T00:00:00+07:00`)
+      : typeof value === 'string'
+        ? new Date(value)
+        : value;
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: VN_TIMEZONE, day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(d);
+}
+
+/** Format only the HH:mm part of an ISO timestamp in Vietnam time. */
+export function formatVNTimeHM(iso: string | Date | null | undefined): string {
+  if (!iso) return '';
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: VN_TIMEZONE, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(d);
+}
