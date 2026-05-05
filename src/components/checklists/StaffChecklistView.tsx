@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { formatVN } from '@/lib/timezone';
+import { formatVN, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
 import { optimizeChecklistImage, ImageTooLargeError } from '@/lib/imageCompression';
 import { logSaveStep } from '@/lib/saveDebug';
 import PhotoSaveDebugPanel from './PhotoSaveDebugPanel';
@@ -83,6 +83,10 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
           : CircleCheck;
         const branchName = (instance as any).branch?.name ?? 'Unknown / Legacy';
         const dueText = (instance as any).due_datetime ? formatDueTime((instance as any).due_datetime) : null;
+        const inst: any = instance;
+        const dateSource = inst.due_datetime ?? inst.scheduled_date ?? inst.assigned_date ?? inst.created_at ?? null;
+        const dateDMY = dateSource ? formatVNDateDMY(dateSource) : null;
+        const dueHM = inst.due_datetime ? formatVNTimeHM(inst.due_datetime) : null;
 
         return (
           <button
@@ -107,10 +111,17 @@ function ChecklistList({ onSelect }: { onSelect: (id: string, templateId: string
               <span><span className="text-muted-foreground/70">Branch:</span> <span className="text-foreground font-medium">{branchName}</span></span>
               <span><span className="text-muted-foreground/70">Dept:</span> <span className="text-foreground font-medium capitalize">{instance.department}</span></span>
               <span><span className="text-muted-foreground/70">Type:</span> <span className="text-foreground font-medium capitalize">{instance.checklist_type}</span></span>
-              {dueText && (
-                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /><span className="text-foreground font-medium">{dueText}</span></span>
-              )}
             </div>
+            {(dateDMY || dueHM) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground pl-6">
+                {dateDMY && (
+                  <span><span className="text-muted-foreground/70">Date:</span> <span className="text-foreground font-medium">{dateDMY}</span></span>
+                )}
+                {dueHM && (
+                  <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /><span className="text-muted-foreground/70">Due:</span> <span className="text-foreground font-medium">{dueHM}</span></span>
+                )}
+              </div>
+            )}
           </button>
         );
       })}
