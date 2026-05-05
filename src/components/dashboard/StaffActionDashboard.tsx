@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { todayVN, formatVN } from '@/lib/timezone';
+import { todayVN, formatVN, formatVNDateDMY, formatVNTimeHM } from '@/lib/timezone';
 import {
   useMaintenanceTasks,
   type EnrichedMaintenanceTask,
@@ -385,10 +385,11 @@ function TypeBadge({ type }: { type: ActionItem['type'] }) {
 }
 
 function ActionRow({ item, onClick }: { item: ActionItem; onClick: () => void }) {
-  const dueText =
-    item.dueDatetime ? formatVN(item.dueDatetime)
-    : item.dueTime ? `${item.dueISO} · ${item.dueTime.slice(0, 5)}`
-    : item.dueISO;
+  const dateDMY = item.dueISO ? formatVNDateDMY(item.dueISO) : null;
+  const timeHM =
+    item.dueDatetime ? formatVNTimeHM(item.dueDatetime)
+    : item.dueTime ? item.dueTime.slice(0, 5)
+    : null;
   return (
     <Card className="p-3 sm:p-4">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -404,8 +405,13 @@ function ActionRow({ item, onClick }: { item: ActionItem; onClick: () => void })
           <div className="text-xs text-muted-foreground">
             {item.branchName ?? '—'}
             {item.department && <> · <span className="capitalize">{item.department}</span></>}
-            {' · '}{dueText}
           </div>
+          {(dateDMY || timeHM) && (
+            <div className="text-xs text-muted-foreground">
+              {dateDMY && <><span className="text-muted-foreground/70">Date:</span> <span className="text-foreground font-medium">{dateDMY}</span></>}
+              {timeHM && <> · <span className="text-muted-foreground/70">Due:</span> <span className="text-foreground font-medium">{timeHM}</span></>}
+            </div>
+          )}
         </div>
         <Button
           size="lg"
