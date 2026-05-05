@@ -17,6 +17,7 @@ import { useLastExecutionByTemplate, parseLocalDate } from '@/hooks/useLastExecu
 import { occurrencesInRange } from '@/lib/maintenanceSchedule';
 import TaskCompletionDialog, { type EarlyPreviewPayload } from '@/components/maintenance/TaskCompletionDialog';
 import type { Database } from '@/integrations/supabase/types';
+import { getChecklistStatus } from '@/lib/checklistStatus';
 
 type Frequency = Database['public']['Enums']['maintenance_schedule_frequency'];
 
